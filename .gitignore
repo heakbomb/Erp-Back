@@ -1,0 +1,66 @@
+# =========================================
+# Spring Initializr & Build
+# =========================================
+# Spring Initializr가 생성하는 도움말 파일
+HELP.md
+
+# Maven/Gradle 빌드 결과물
+target/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Maven Wrapper: Wrapper 자체는 포함시키기 위한 설정
+.mvn/
+!/mvn/wrapper/maven-wrapper.jar
+!/mvn/wrapper/maven-wrapper.properties
+
+
+# =========================================
+# IDE specific files
+# =========================================
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+
+# =========================================
+# Log & OS generated files
+# =========================================
+# Log files
+*.log
+
+# Operating System files (macOS, Windows)
+.DS_Store
+Thumbs.db
+
+
+# =========================================
+# Sensitive configuration files
+# =========================================
+# 데이터베이스 비밀번호 등 민감 정보 포함 파일
+application.properties
+application.yml
