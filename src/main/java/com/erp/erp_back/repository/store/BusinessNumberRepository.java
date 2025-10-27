@@ -1,4 +1,4 @@
-package com.erp.erp_back.repository.user;
+package com.erp.erp_back.repository.store;
 
 import java.util.Optional;
 

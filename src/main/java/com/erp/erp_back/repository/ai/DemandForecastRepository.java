@@ -1,4 +1,4 @@
-package com.erp.erp_back.repository.AI;
+package com.erp.erp_back.repository.ai;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
