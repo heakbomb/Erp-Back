@@ -1,7 +1,9 @@
-package com.erp.erp_back.entity;
+package com.erp.erp_back.entity.user;
 
 import java.time.LocalDateTime;
 import java.util.List;
+
+import com.erp.erp_back.entity.store.BusinessNumber;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;

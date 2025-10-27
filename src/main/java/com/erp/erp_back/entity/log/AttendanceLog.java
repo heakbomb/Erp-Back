@@ -1,7 +1,9 @@
-package com.erp.erp_back.entity;
+package com.erp.erp_back.entity.log;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
+
+import com.erp.erp_back.entity.store.Store;
+import com.erp.erp_back.entity.user.Employee;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -16,30 +18,30 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "SalesTransaction")
+@Table(name = "AttendanceLog")
 @Data
 @NoArgsConstructor
-public class SalesTransaction {
+public class AttendanceLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "transaction_id")
-    private Long transactionId;
+    @Column(name = "log_id")
+    private Long logId;
 
-    @Column(name = "idempotency_key", unique = true, length = 100)
-    private String idempotencyKey;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "employee_id", nullable = false)
+    private Employee employee;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "store_id", nullable = false)
     private Store store;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "menu_id", nullable = false)
-    private MenuItem menuItem;
+    @Column(name = "record_time", nullable = false)
+    private LocalDateTime recordTime;
 
-    @Column(name = "transaction_time", nullable = false)
-    private LocalDateTime transactionTime;
+    @Column(name = "record_type", nullable = false, length = 20)
+    private String recordType;
 
-    @Column(name = "sales_amount", nullable = false, precision = 10, scale = 2)
-    private BigDecimal salesAmount;
+    @Column(name = "client_ip", length = 40)
+    private String clientIp;
 }

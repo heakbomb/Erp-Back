@@ -1,4 +1,4 @@
-package com.erp.erp_back.entity;
+package com.erp.erp_back.entity.user;
 
 import java.time.LocalDateTime;
 

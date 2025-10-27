@@ -1,6 +1,8 @@
-package com.erp.erp_back.entity;
+package com.erp.erp_back.entity.store;
 
 import java.util.List;
+
+import com.erp.erp_back.entity.user.Owner;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;

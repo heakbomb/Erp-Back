@@ -1,6 +1,9 @@
-package com.erp.erp_back.entity;
+package com.erp.erp_back.entity.ai;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+
+import com.erp.erp_back.entity.store.Store;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -15,30 +18,26 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "PayrollSetting")
+@Table(name = "DemandForecast")
 @Data
 @NoArgsConstructor
-public class PayrollSetting {
+public class DemandForecast {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "setting_id")
-    private Long settingId;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "employee_id", nullable = false)
-    private Employee employee;
+    @Column(name = "forecast_id")
+    private Long forecastId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "store_id", nullable = false)
     private Store store;
 
-    @Column(name = "wage_type", nullable = false, length = 20)
-    private String wageType;
+    @Column(name = "forecast_date", nullable = false)
+    private LocalDate forecastDate;
 
-    @Column(name = "base_wage", nullable = false, precision = 10, scale = 2)
-    private BigDecimal baseWage;
+    @Column(name = "predicted_sales_max", nullable = false, precision = 10, scale = 2)
+    private BigDecimal predictedSalesMax;
 
-    @Column(name = "deduction_items", columnDefinition = "json")
-    private String deductionItems;
+    @Column(name = "predicted_visitors", nullable = false)
+    private int predictedVisitors;
 }
