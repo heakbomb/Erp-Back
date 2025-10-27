@@ -1,4 +1,4 @@
-package com.erp.erp_back.entity;
+package com.erp.erp_back.entity.erp;
 
 import java.math.BigDecimal;
 
@@ -15,26 +15,24 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "MenuItem")
+@Table(name = "RecipeIngredient")
 @Data
 @NoArgsConstructor
-public class MenuItem {
+public class RecipeIngredient {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "menu_id")
-    private Long menuId;
+    @Column(name = "recipe_id")
+    private Long recipeId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "store_id", nullable = false)
-    private Store store;
+    @JoinColumn(name = "menu_id", nullable = false)
+    private MenuItem menuItem;
 
-    @Column(name = "menu_name", nullable = false, length = 100)
-    private String menuName;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "item_id", nullable = false)
+    private Inventory inventory;
 
-    @Column(name = "price", nullable = false, precision = 10, scale = 2)
-    private BigDecimal price;
-
-    @Column(name = "calculated_cost", nullable = false, precision = 10, scale = 2)
-    private BigDecimal calculatedCost;
+    @Column(name = "consumption_qty", nullable = false, precision = 10, scale = 3)
+    private BigDecimal consumptionQty;
 }

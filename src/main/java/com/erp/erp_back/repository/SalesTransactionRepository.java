@@ -3,7 +3,7 @@ package com.erp.erp_back.repository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import com.erp.erp_back.entity.SalesTransaction;
+import com.erp.erp_back.entity.erp.SalesTransaction;
 
 @Repository
 public interface SalesTransactionRepository extends JpaRepository<SalesTransaction, Long> {

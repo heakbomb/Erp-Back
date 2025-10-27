@@ -1,6 +1,8 @@
-package com.erp.erp_back.entity;
+package com.erp.erp_back.entity.subscripition;
 
 import java.time.LocalDate;
+
+import com.erp.erp_back.entity.user.Owner;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

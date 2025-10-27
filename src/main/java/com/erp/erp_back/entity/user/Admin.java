@@ -1,4 +1,4 @@
-package com.erp.erp_back.entity;
+package com.erp.erp_back.entity.user;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

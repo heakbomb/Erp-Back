@@ -1,6 +1,9 @@
-package com.erp.erp_back.entity;
+package com.erp.erp_back.entity.hr;
 
 import java.time.LocalDate;
+
+import com.erp.erp_back.entity.store.Store;
+import com.erp.erp_back.entity.user.Employee;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

@@ -1,6 +1,9 @@
-package com.erp.erp_back.entity;
+package com.erp.erp_back.entity.hr;
 
-import java.time.LocalDateTime;
+import java.math.BigDecimal;
+
+import com.erp.erp_back.entity.store.Store;
+import com.erp.erp_back.entity.user.Employee;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -15,15 +18,15 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "AttendanceLog")
+@Table(name = "PayrollSetting")
 @Data
 @NoArgsConstructor
-public class AttendanceLog {
+public class PayrollSetting {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "log_id")
-    private Long logId;
+    @Column(name = "setting_id")
+    private Long settingId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id", nullable = false)
@@ -33,12 +36,12 @@ public class AttendanceLog {
     @JoinColumn(name = "store_id", nullable = false)
     private Store store;
 
-    @Column(name = "record_time", nullable = false)
-    private LocalDateTime recordTime;
+    @Column(name = "wage_type", nullable = false, length = 20)
+    private String wageType;
 
-    @Column(name = "record_type", nullable = false, length = 20)
-    private String recordType;
+    @Column(name = "base_wage", nullable = false, precision = 10, scale = 2)
+    private BigDecimal baseWage;
 
-    @Column(name = "client_ip", length = 40)
-    private String clientIp;
+    @Column(name = "deduction_items", columnDefinition = "json")
+    private String deductionItems;
 }

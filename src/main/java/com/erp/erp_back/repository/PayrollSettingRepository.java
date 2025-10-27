@@ -3,7 +3,7 @@ package com.erp.erp_back.repository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import com.erp.erp_back.entity.PayrollSetting;
+import com.erp.erp_back.entity.hr.PayrollSetting;
 
 @Repository
 public interface PayrollSettingRepository extends JpaRepository<PayrollSetting, Long> {

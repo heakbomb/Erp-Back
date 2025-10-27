@@ -3,7 +3,7 @@ package com.erp.erp_back.repository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import com.erp.erp_back.entity.MenuItem;
+import com.erp.erp_back.entity.erp.MenuItem;
 
 @Repository
 public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {

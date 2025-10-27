@@ -1,7 +1,9 @@
-package com.erp.erp_back.entity;
+package com.erp.erp_back.entity.erp;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+import com.erp.erp_back.entity.store.Store;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -16,30 +18,30 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "PurchaseHistory")
+@Table(name = "SalesTransaction")
 @Data
 @NoArgsConstructor
-public class PurchaseHistory {
+public class SalesTransaction {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "purchase_id")
-    private Long purchaseId;
+    @Column(name = "transaction_id")
+    private Long transactionId;
+
+    @Column(name = "idempotency_key", unique = true, length = 100)
+    private String idempotencyKey;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "store_id", nullable = false)
     private Store store;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "item_id", nullable = false)
-    private Inventory inventory;
+    @JoinColumn(name = "menu_id", nullable = false)
+    private MenuItem menuItem;
 
-    @Column(name = "purchase_qty", nullable = false, precision = 10, scale = 3)
-    private BigDecimal purchaseQty;
+    @Column(name = "transaction_time", nullable = false)
+    private LocalDateTime transactionTime;
 
-    @Column(name = "unit_price", nullable = false, precision = 10, scale = 2)
-    private BigDecimal unitPrice;
-
-    @Column(name = "purchase_date", nullable = false)
-    private LocalDate purchaseDate;
+    @Column(name = "sales_amount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal salesAmount;
 }

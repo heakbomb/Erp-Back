@@ -1,7 +1,9 @@
-package com.erp.erp_back.entity;
+package com.erp.erp_back.entity.erp;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+
+import com.erp.erp_back.entity.store.Store;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
