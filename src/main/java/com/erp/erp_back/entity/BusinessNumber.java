@@ -1,5 +1,8 @@
 package com.erp.erp_back.entity;
 
+import java.util.List;
+
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -7,15 +10,23 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 
 @Entity
-@Table(name = "BusinessNumber")
-@Data
+@Table(name = "BusinessNumber") 
+@Getter
+@Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class BusinessNumber {
 
     @Id
@@ -23,10 +34,17 @@ public class BusinessNumber {
     @Column(name = "biz_id")
     private Long bizId;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "owner_id", nullable = false, unique = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id", nullable = false)
     private Owner owner;
 
-    @Column(name = "biz_num", nullable = false, unique = true, length = 10)
+    @Column(nullable = false)
+    private String phone;
+
+    @Column(name = "biz_num", nullable = false, length = 10)
     private String bizNum;
+
+    // Corrected relationship: BusinessNumber has a One-to-Many with Store
+    @OneToMany(mappedBy = "businessNumber", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Store> stores;
 }
