@@ -1,9 +1,9 @@
-package com.erp.erp_back.repository;
+package com.erp.erp_back.repository.user;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import com.erp.erp_back.entity.OwnerSetting;
+import com.erp.erp_back.entity.user.OwnerSetting;
 
 @Repository
 public interface OwnerSettingRepository extends JpaRepository<OwnerSetting, Long> {

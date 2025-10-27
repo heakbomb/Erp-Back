@@ -1,11 +1,11 @@
-package com.erp.erp_back.repository;
+package com.erp.erp_back.repository.erp;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import com.erp.erp_back.entity.SessionLog;
+import com.erp.erp_back.entity.erp.RecipeIngredient;
 
 @Repository
-public interface SessionLogRepository extends JpaRepository<SessionLog, Long> {
+public interface RecipeIngredientRepository extends JpaRepository<RecipeIngredient, Long> {
     // 기본적인 CRUD 메소드가 이미 모두 구현되어 있음
 }

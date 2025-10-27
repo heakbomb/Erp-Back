@@ -1,11 +1,11 @@
-package com.erp.erp_back.repository;
+package com.erp.erp_back.repository.log;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import com.erp.erp_back.entity.subscripition.Subscription;
+import com.erp.erp_back.entity.log.AttendanceLog;
 
 @Repository
-public interface SubscriptionRepository extends JpaRepository<Subscription, Long> {
+public interface AttendanceLogRepository extends JpaRepository<AttendanceLog, Long> {
     // 기본적인 CRUD 메소드가 이미 모두 구현되어 있음
 }

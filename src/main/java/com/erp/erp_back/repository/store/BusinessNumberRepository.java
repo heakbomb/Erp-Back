@@ -1,11 +1,11 @@
-package com.erp.erp_back.repository;
+package com.erp.erp_back.repository.user;
 
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import com.erp.erp_back.entity.BusinessNumber;
+import com.erp.erp_back.entity.store.BusinessNumber;
 
 @Repository
 public interface BusinessNumberRepository extends JpaRepository<BusinessNumber, Long> {
