@@ -1,0 +1,28 @@
+package com.erp.erp_back.dto;
+
+import java.math.BigDecimal;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Getter
+@Setter
+@NoArgsConstructor
+public class SubscriptionRequest {
+
+    @NotBlank
+    @Size(max = 100)
+    private String subName;
+
+    @NotNull
+    @PositiveOrZero
+    private BigDecimal monthlyPrice; 
+
+    @NotNull
+    private Boolean isActive; 
+}

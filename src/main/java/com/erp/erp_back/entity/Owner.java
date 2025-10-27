@@ -1,20 +1,29 @@
 package com.erp.erp_back.entity;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
-@Table(name = "Owner")
-@Data
-@NoArgsConstructor // 파라미터가 없는 기본 생성자를 자동 생성
+@Table(name = "Owner") // As per physical table name in the PDF [cite: 4]
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Owner {
 
     @Id
@@ -22,21 +31,24 @@ public class Owner {
     @Column(name = "owner_id")
     private Long ownerId;
 
-    @Column(name = "username", nullable = false, unique = true, length = 50)
+    // The PDF's logical name is "이름(실명)" but the physical name is "username" 
+    @Column(nullable = false, unique = true, length = 50)
     private String username;
 
-    @Column(name = "password", nullable = false, length = 255)
+    @Column(nullable = false, length = 255)
     private String password;
 
-    @Column(name = "salt", nullable = false, length = 64)
+    // Added 'salt' field as defined in the PDF 
+    @Column(nullable = false, length = 64)
     private String salt;
 
-    @Column(name = "email", nullable = false, unique = true, length = 100)
+    @Column(nullable = false, unique = true, length = 100)
     private String email;
-
-    @Column(name = "phone", nullable = false, length = 20)
-    private String phone;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    // Correct One-to-Many relationship with BusinessNumber [cite: 18]
+    @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<BusinessNumber> businessNumbers;
 }

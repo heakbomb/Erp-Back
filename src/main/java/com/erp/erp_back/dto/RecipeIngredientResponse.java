@@ -1,0 +1,19 @@
+package com.erp.erp_back.dto;
+
+import java.math.BigDecimal;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@Getter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class RecipeIngredientResponse {
+    private Long recipeId;
+    private Long menuId;
+    private Long itemId;
+    private BigDecimal consumptionQty;
+}
