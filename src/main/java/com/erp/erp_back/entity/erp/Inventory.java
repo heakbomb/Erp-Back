@@ -1,7 +1,6 @@
 package com.erp.erp_back.entity.erp;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
 import com.erp.erp_back.entity.store.Store;
 
@@ -15,6 +14,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -25,6 +26,8 @@ import lombok.Setter;
 })
 @Getter // @Data 대신 사용
 @Setter // @Data 대신 사용
+@Builder
+@AllArgsConstructor
 @NoArgsConstructor
 public class Inventory {
 
@@ -42,18 +45,15 @@ public class Inventory {
 
     // --- [누락된 필드 추가 1] ---
     @Column(name = "item_type", nullable = false, length = 20)
-    private String itemType; // 
+    private String itemType; 
 
     // --- [누락된 필드 추가 2] ---
     @Column(name = "stock_type", nullable = false, length = 20)
-    private String stockType; // 
+    private String stockType; 
 
     @Column(name = "stock_qty", nullable = false, precision = 10, scale = 3)
-    private BigDecimal stockQty; // 
+    private BigDecimal stockQty; 
 
     @Column(name = "safety_qty", nullable = false, precision = 10, scale = 3)
-    private BigDecimal safetyQty; // 
-
-    @Column(name = "expiry_date")
-    private LocalDate expiryDate; // 
+    private BigDecimal safetyQty; 
 }
