@@ -2,9 +2,10 @@ package com.erp.erp_back.service.hr;
 
 
 import java.time.LocalDate;
-import java.util.List;
 
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.erp.erp_back.dto.hr.DocumentListResponseDto;
@@ -30,7 +31,6 @@ public interface EmployeeDocumentService {
     /**
      * [신규] 사업장별 문서 목록 조회
      */
-    List<DocumentListResponseDto> getDocumentsByStore(Long storeId);
-
+    Page<DocumentListResponseDto> getDocumentsByStore(Long storeId, String status, String search, Pageable pageable);
     
 }

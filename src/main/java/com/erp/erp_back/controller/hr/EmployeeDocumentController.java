@@ -4,9 +4,10 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
-import java.util.List;
 
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -69,10 +70,15 @@ public class EmployeeDocumentController {
 
     // [신규] 사업장별 문서 목록 조회 API
     @GetMapping("/store/{storeId}")
-    public ResponseEntity<List<DocumentListResponseDto>> getDocumentsByStore(
-            @PathVariable Long storeId) {
+    public ResponseEntity<Page<DocumentListResponseDto>> getDocumentsByStore(
+            @PathVariable Long storeId,
+            @RequestParam(name = "status", defaultValue = "ACTIVE") String status,
+            // [신규] search 파라미터 추가, 기본값 "" (빈 문자열)
+            @RequestParam(name = "search", defaultValue = "") String search,
+            Pageable pageable) {
         
-        List<DocumentListResponseDto> documents = documentService.getDocumentsByStore(storeId);
-        return ResponseEntity.ok(documents);
+        // 서비스 호출 시 search 전달
+        Page<DocumentListResponseDto> documentsPage = documentService.getDocumentsByStore(storeId, status, search, pageable);
+        return ResponseEntity.ok(documentsPage);
     }
 }
