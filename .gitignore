@@ -64,3 +64,6 @@ Thumbs.db
 # 데이터베이스 비밀번호 등 민감 정보 포함 파일
 application.properties
 application.yml
+
+# 로컬 파일 저장
+uploads/

@@ -45,15 +45,16 @@ public class Inventory {
 
     // --- [누락된 필드 추가 1] ---
     @Column(name = "item_type", nullable = false, length = 20)
-    private String itemType; // 
+    private String itemType; 
 
     // --- [누락된 필드 추가 2] ---
     @Column(name = "stock_type", nullable = false, length = 20)
-    private String stockType; // 
+    private String stockType; 
 
     @Column(name = "stock_qty", nullable = false, precision = 10, scale = 3)
-    private BigDecimal stockQty; // 
+    private BigDecimal stockQty; 
 
     @Column(name = "safety_qty", nullable = false, precision = 10, scale = 3)
-    private BigDecimal safetyQty; // 
+    private BigDecimal safetyQty; 
+
 }
