@@ -51,4 +51,8 @@ public class Store {
     @Column(name = "approved_at")
     private LocalDateTime approvedAt;
 
+    // ✅ 허용된 IP/CIDR 목록 (콤마로 구분)
+    @Column(name = "allowed_cidr_list", length = 512)
+    private String allowedCidrList;
+
 }

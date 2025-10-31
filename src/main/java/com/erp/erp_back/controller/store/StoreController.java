@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.erp.erp_back.dto.store.StoreCreateRequest;
 import com.erp.erp_back.dto.store.StoreResponse;
+import com.erp.erp_back.dto.store.StoreSimpleResponse;
 import com.erp.erp_back.service.store.StoreService;
 
 @RestController
@@ -75,5 +76,12 @@ public class StoreController {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<String> handleBadReq(IllegalArgumentException e) {
         return ResponseEntity.badRequest().body(e.getMessage());
+    }
+
+    // ✅ 추가: 오너가 가진 모든 사업장 (사이드바용)
+    // GET /api/store/by-owner/{ownerId}
+    @GetMapping("/by-owner/{ownerId}")
+    public ResponseEntity<List<StoreSimpleResponse>> getStoresByOwner(@PathVariable Long ownerId) {
+        return ResponseEntity.ok(storeService.getStoresByOwner(ownerId));
     }
 }

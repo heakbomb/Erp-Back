@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.erp.erp_back.dto.store.StoreCreateRequest;
 import com.erp.erp_back.dto.store.StoreResponse;
+import com.erp.erp_back.dto.store.StoreSimpleResponse;
 import com.erp.erp_back.entity.store.BusinessNumber;
 import com.erp.erp_back.entity.store.Store;
 import com.erp.erp_back.repository.auth.EmployeeAssignmentRepository;
@@ -109,5 +110,13 @@ public class StoreService {
 
         // 부모 삭제
         storeRepository.deleteById(storeId);
+    }
+    // ✅ 추가: 오너별 사업장 단순 목록 (사이드바용)
+    @Transactional(readOnly = true)
+    public List<StoreSimpleResponse> getStoresByOwner(Long ownerId) {
+        List<Store> rows = storeRepository.findAllByOwnerId(ownerId);
+        return rows.stream()
+                .map(StoreSimpleResponse::from)
+                .collect(Collectors.toList());
     }
 }

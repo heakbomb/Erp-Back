@@ -24,9 +24,20 @@ public interface EmployeeAssignmentRepository extends JpaRepository<EmployeeAssi
            """)
     List<EmployeeAssignment> findPendingByStoreId(@Param("storeId") Long storeId);
 
-    // ✅ FK 존재 여부 확인
+    // ✅ FK 존재 여부 확인 (스토어 삭제 전 체크/정리용)
     boolean existsByStore_StoreId(Long storeId);
 
-    // ✅ 자식 먼저 일괄 삭제
+    // ✅ 자식 먼저 일괄 삭제 (스토어 삭제 전 정리용)
     void deleteByStore_StoreId(Long storeId);
+
+    // ✅ 근태 권한 확인: 해당 직원이 해당 매장에 승인 상태인지
+    @Query("""
+        select count(a) > 0
+        from EmployeeAssignment a
+        where a.employee.employeeId = :employeeId
+          and a.store.storeId = :storeId
+          and a.status = 'APPROVED'
+    """)
+    boolean existsApprovedByEmployeeAndStore(@Param("employeeId") Long employeeId,
+                                             @Param("storeId") Long storeId);
 }
