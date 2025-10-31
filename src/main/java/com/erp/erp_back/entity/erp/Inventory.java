@@ -56,4 +56,5 @@ public class Inventory {
 
     @Column(name = "safety_qty", nullable = false, precision = 10, scale = 3)
     private BigDecimal safetyQty; 
+
 }

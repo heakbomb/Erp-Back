@@ -38,6 +38,4 @@ public class InventoryRequest {
     @NotNull(message = "안전 재고량은 필수입니다.")
     @PositiveOrZero(message = "안전 재고량은 0 이상이어야 합니다.")
     private BigDecimal safetyQty; 
-
-    private LocalDate expiryDate; // (유통기한, NULL 허용 )
 }

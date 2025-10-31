@@ -1,5 +1,4 @@
 package com.erp.erp_back.entity.hr;
-
 import java.time.LocalDateTime;
 
 import com.erp.erp_back.entity.store.Store;

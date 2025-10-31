@@ -1,5 +1,4 @@
 package com.erp.erp_back.entity.hr;
-
 import java.time.LocalDate;
 
 import com.erp.erp_back.entity.store.Store;
@@ -15,7 +14,6 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 @Entity
 @Table(name = "EmployeeDocument")
 @Data
