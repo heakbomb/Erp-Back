@@ -1,8 +1,7 @@
 package com.erp.erp_back.entity.hr;
-
 import java.time.LocalDateTime;
 
-import com.erp.erp_back.entity.user.Employee;
+import com.erp.erp_back.entity.store.Store;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -28,8 +27,8 @@ public class OnboardingData {
     private Long onboardingId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private Employee user;
+    @JoinColumn(name = "store_id", nullable = false)
+    private Store store;
 
     @Column(name = "data_type", nullable = false, length = 50)
     private String dataType;
