@@ -20,5 +20,4 @@ public class InventoryResponse {
     private String stockType;  
     private BigDecimal stockQty;
     private BigDecimal safetyQty;
-    private LocalDate expiryDate;
 }

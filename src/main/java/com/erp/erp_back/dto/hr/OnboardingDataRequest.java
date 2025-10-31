@@ -13,12 +13,9 @@ import lombok.Setter;
 public class OnboardingDataRequest {
 
     @NotNull
-    private Long userId; 
+    private Long storeId; 
 
     @NotBlank
     @Size(max = 50)
-    private String dataType; // (예: "MENU_FILE", "INVENTORY_FILE")
-
-    @NotBlank
-    private String rawJsonData; 
+    private String dataType;
 }
