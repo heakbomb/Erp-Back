@@ -1,4 +1,4 @@
-package com.erp.erp_back.service;
+package com.erp.erp_back.service.erp;
 
 import java.math.BigDecimal;
 
@@ -91,6 +91,14 @@ public class MenuItemService {
             throw new EntityNotFoundException("메뉴가 존재하지 않습니다.");
         }
         menuItemRepository.deleteById(menuId);
+    }
+
+    @Transactional
+    public MenuItemResponse updateCalculatedCost(Long menuId, BigDecimal newCost) {
+        MenuItem m = menuItemRepository.findById(menuId)
+                .orElseThrow(() -> new EntityNotFoundException("MENU_NOT_FOUND"));
+        m.setCalculatedCost(newCost.setScale(2)); // DB 스케일(2) 정렬
+        return toDTO(m);
     }
 
     private MenuItemResponse toDTO(MenuItem m) {

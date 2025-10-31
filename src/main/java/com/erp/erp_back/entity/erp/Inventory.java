@@ -15,6 +15,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -25,6 +27,8 @@ import lombok.Setter;
 })
 @Getter // @Data 대신 사용
 @Setter // @Data 대신 사용
+@Builder
+@AllArgsConstructor
 @NoArgsConstructor
 public class Inventory {
 
@@ -53,7 +57,4 @@ public class Inventory {
 
     @Column(name = "safety_qty", nullable = false, precision = 10, scale = 3)
     private BigDecimal safetyQty; // 
-
-    @Column(name = "expiry_date")
-    private LocalDate expiryDate; // 
 }
