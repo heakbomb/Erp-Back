@@ -16,7 +16,7 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/phone-verify") // (주의) /api/auth 아님
+@RequestMapping("/phone-verify") // (주의) /api/auth 아님
 public class PhoneVerifyController {
 
     private final PhoneVerifyService phoneVerifyService;

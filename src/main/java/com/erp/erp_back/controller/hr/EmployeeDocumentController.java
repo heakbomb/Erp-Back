@@ -25,7 +25,7 @@ import com.erp.erp_back.entity.hr.EmployeeDocument;
 import com.erp.erp_back.service.hr.EmployeeDocumentService;
 
 @RestController
-@RequestMapping("/api/hr/documents") // API 경로 예시
+@RequestMapping("/hr/documents") // API 경로 예시
 public class EmployeeDocumentController {
 
     private final EmployeeDocumentService documentService;
