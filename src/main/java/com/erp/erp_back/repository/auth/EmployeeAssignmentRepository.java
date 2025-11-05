@@ -29,4 +29,7 @@ public interface EmployeeAssignmentRepository extends JpaRepository<EmployeeAssi
 
     // ✅ 자식 먼저 일괄 삭제
     void deleteByStore_StoreId(Long storeId);
+
+    /** (Admin) 특정 상태(status)의 근무 신청 개수 계산 */
+    long countByStatus(String status);
 }

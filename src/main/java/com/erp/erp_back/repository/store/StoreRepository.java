@@ -26,4 +26,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
             @Param("q") String q,
             Pageable pageable
     );
+
+    /** (Admin) 특정 상태(status)의 사업장 개수 계산 */
+    long countByStatus(String status);
 }
