@@ -4,17 +4,15 @@ import java.time.LocalDateTime;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Getter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
 
-@Getter
+@Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class SessionLogResponse {
-    private Long sessionId;
-    private Long ownerId;
-    private String userType; 
-    private LocalDateTime loginTime;
-    
+public class StoreQrResponse {
+    private Long storeId;
+    private String qrToken;
+    private LocalDateTime expireAt;
 }

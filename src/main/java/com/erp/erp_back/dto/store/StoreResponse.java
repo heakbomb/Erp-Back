@@ -19,8 +19,10 @@ public class StoreResponse {
     private String storeName;
     private String industry;
     private String posVendor;
-    private String status; 
-    private LocalDateTime approvedAt; 
+    private String status;
+    private LocalDateTime approvedAt;
+    private Double latitude;
+    private Double longitude;
 
     // ✅ Store 엔티티 → DTO 변환용 생성자
     public StoreResponse(Store store) {
@@ -31,6 +33,9 @@ public class StoreResponse {
         this.posVendor = store.getPosVendor();
         this.status = store.getStatus();
         this.approvedAt = store.getApprovedAt();
+        // 👇 여기 두 줄이 핵심
+        this.latitude = store.getLatitude();
+        this.longitude = store.getLongitude();
     }
 
     // ✅ 정적 팩토리 메서드 (Service에서 사용)

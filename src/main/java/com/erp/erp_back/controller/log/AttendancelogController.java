@@ -55,7 +55,32 @@ public class AttendancelogController {
         return ResponseEntity.ok(service.byDay(employeeId, storeId, date));
     }
 
-    // 가벼운 에러 응답
+    // =========================
+    // 직원 본인 조회용
+    // =========================
+
+    /** 직원 본인 최근 N건 (storeId 선택) */
+    @GetMapping("/my/recent")
+    public ResponseEntity<List<AttendanceLogResponse>> myRecent(
+            @RequestParam Long employeeId,
+            @RequestParam(required = false) Long storeId,
+            @RequestParam(required = false, defaultValue = "30") Integer limit
+    ) {
+        return ResponseEntity.ok(service.myRecent(employeeId, limit, storeId));
+    }
+
+    /** 직원 본인 기간 조회 (storeId 선택) */
+    @GetMapping("/my/range")
+    public ResponseEntity<List<AttendanceLogResponse>> myRange(
+            @RequestParam Long employeeId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) Long storeId
+    ) {
+        return ResponseEntity.ok(service.myRange(employeeId, from, to, storeId));
+    }
+
+    // 공통 에러 응답
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<String> badRequest(IllegalArgumentException e) {
         return ResponseEntity.badRequest().body(e.getMessage());

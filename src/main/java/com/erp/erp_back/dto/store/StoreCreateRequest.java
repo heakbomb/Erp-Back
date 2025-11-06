@@ -13,16 +13,20 @@ import lombok.Setter;
 public class StoreCreateRequest {
 
     @NotNull(message = "사업자 정보 ID는 필수입니다.")
-    private Long bizId; 
+    private Long bizId;
 
     @NotBlank(message = "사업장 이름은 필수입니다.")
     @Size(max = 100)
-    private String storeName; 
+    private String storeName;
 
     @NotBlank(message = "업종은 필수입니다.")
     @Size(max = 50)
-    private String industry; 
+    private String industry;
 
     @Size(max = 50)
-    private String posVendor; 
+    private String posVendor;
+
+    private Double latitude;
+    
+    private Double longitude;
 }

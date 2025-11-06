@@ -36,20 +36,20 @@ public class BusinessNumber {
     @Column(name = "biz_id")
     private Long bizId; // PK
 
-    /** ✅ 사장(Owner)와 다대일 관계 — 한 명의 사장이 여러 사업자 번호를 가질 수 있음 */
+    /** 사장(Owner)와 다대일 관계 — 한 명의 사장이 여러 사업자 번호를 가질 수 있음 */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id", nullable = true)
     private Owner owner;
 
-    /** ✅ 사업자 대표 연락처 */
+    /**  사업자 대표 연락처 */
     @Column(nullable = false, length = 20)
     private String phone;
 
-    /** ✅ 사업자등록번호 (하이픈 제거 10자리) */
+    /** 사업자등록번호 (하이픈 제거 10자리) */
     @Column(name = "biz_num", nullable = false, unique = true, length = 10)
     private String bizNum;
 
-    /** ✅ 국세청 인증 정보 추가 필드들 */
+    /** 국세청 인증 정보 추가 필드들 */
     @Column(name = "open_status", length = 50)
     private String openStatus; // 계속사업자 / 폐업자 등
 
@@ -65,7 +65,7 @@ public class BusinessNumber {
     @Column(name = "certified_at")
     private LocalDateTime certifiedAt; // 인증된 시각
 
-    /** ✅ 한 사업자번호가 여러 사업장(Store)을 가질 수 있음 */
+    /**  한 사업자번호가 여러 사업장(Store)을 가질 수 있음 */
     @OneToMany(mappedBy = "businessNumber", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Store> stores;
 }
