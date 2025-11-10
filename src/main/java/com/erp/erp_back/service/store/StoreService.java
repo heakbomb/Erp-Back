@@ -15,9 +15,11 @@ import com.erp.erp_back.dto.store.StoreSimpleResponse;
 import com.erp.erp_back.entity.log.AttendanceQrToken;
 import com.erp.erp_back.entity.store.BusinessNumber;
 import com.erp.erp_back.entity.store.Store;
+import com.erp.erp_back.entity.store.StoreGps;
 import com.erp.erp_back.repository.auth.EmployeeAssignmentRepository;
 import com.erp.erp_back.repository.log.AttendanceQrTokenRepository;
 import com.erp.erp_back.repository.store.BusinessNumberRepository;
+import com.erp.erp_back.repository.store.StoreGpsRepository;
 import com.erp.erp_back.repository.store.StoreRepository;
 
 @Service
@@ -28,17 +30,20 @@ public class StoreService {
     private final BusinessNumberRepository businessNumberRepository;
     private final EmployeeAssignmentRepository assignmentRepository;
     private final AttendanceQrTokenRepository attendanceQrTokenRepository;
+    private final StoreGpsRepository storeGpsRepository;   
 
     public StoreService(
             StoreRepository storeRepository,
             BusinessNumberRepository businessNumberRepository,
             EmployeeAssignmentRepository assignmentRepository,
-            AttendanceQrTokenRepository attendanceQrTokenRepository
+            AttendanceQrTokenRepository attendanceQrTokenRepository,
+            StoreGpsRepository storeGpsRepository
     ) {
         this.storeRepository = storeRepository;
         this.businessNumberRepository = businessNumberRepository;
         this.assignmentRepository = assignmentRepository;
         this.attendanceQrTokenRepository = attendanceQrTokenRepository;
+        this.storeGpsRepository = storeGpsRepository;
     }
 
     // 사업장 등록
@@ -54,19 +59,31 @@ public class StoreService {
                 .businessNumber(bn)
                 .build();
 
-        // ✅ 여기서 위도/경도도 같이 세팅
-        store.setLatitude(request.getLatitude());
-        store.setLongitude(request.getLongitude());
-
         Store saved = storeRepository.save(store);
-        return StoreResponse.from(saved);
+
+        // ✅ 위치는 별도 테이블에 저장
+        if (request.getLatitude() != null || request.getLongitude() != null) {
+            StoreGps gps = new StoreGps();
+            gps.setStore(saved);
+            gps.setLatitude(request.getLatitude());
+            gps.setLongitude(request.getLongitude());
+            // 반경 기본값 있으면 여기서 세팅
+            gps.setGpsRadiusM(80);
+            storeGpsRepository.save(gps);
+            return StoreResponse.of(saved, gps);
+        }
+
+        return StoreResponse.of(saved, null);
     }
 
     @Transactional(readOnly = true)
     public List<StoreResponse> getAllStores() {
-        return storeRepository.findAll()
-                .stream()
-                .map(StoreResponse::from)
+        List<Store> stores = storeRepository.findAll();
+        return stores.stream()
+                .map(s -> {
+                    StoreGps gps = storeGpsRepository.findByStore_StoreId(s.getStoreId()).orElse(null);
+                    return StoreResponse.of(s, gps);
+                })
                 .collect(Collectors.toList());
     }
 
@@ -74,7 +91,8 @@ public class StoreService {
     public StoreResponse getStore(Long storeId) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사업장을 찾을 수 없습니다."));
-        return StoreResponse.from(store);
+        StoreGps gps = storeGpsRepository.findByStore_StoreId(storeId).orElse(null);
+        return StoreResponse.of(store, gps);
     }
 
     public StoreResponse updateStore(Long storeId, StoreCreateRequest request) {
@@ -85,17 +103,28 @@ public class StoreService {
         store.setIndustry(request.getIndustry());
         store.setPosVendor(request.getPosVendor());
 
-        // ✅ 수정할 때도 위도/경도 반영
-        store.setLatitude(request.getLatitude());
-        store.setLongitude(request.getLongitude());
-
         if (request.getBizId() != null) {
             BusinessNumber bn = businessNumberRepository.findById(request.getBizId())
                     .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 사업자(bizId) 입니다."));
             store.setBusinessNumber(bn);
         }
 
-        return StoreResponse.from(store);
+        // ✅ GPS도 별도 처리
+        StoreGps gps = storeGpsRepository.findByStore_StoreId(storeId).orElse(null);
+        if (request.getLatitude() != null || request.getLongitude() != null) {
+            if (gps == null) {
+                gps = new StoreGps();
+                gps.setStore(store);
+            }
+            gps.setLatitude(request.getLatitude());
+            gps.setLongitude(request.getLongitude());
+            if (gps.getGpsRadiusM() == null) {
+                gps.setGpsRadiusM(80);
+            }
+            storeGpsRepository.save(gps);
+        }
+
+        return StoreResponse.of(store, gps);
     }
 
     public void deleteStore(Long storeId) {
@@ -116,15 +145,8 @@ public class StoreService {
             assignmentRepository.deleteByStore_StoreId(storeId);
         }
 
+        // GPS는 FK ON DELETE CASCADE로 해두면 자동으로 지워짐
         storeRepository.deleteById(storeId);
-    }
-
-    @Transactional(readOnly = true)
-    public List<StoreSimpleResponse> getStoresByOwner(Long ownerId) {
-        List<Store> rows = storeRepository.findAllByOwnerId(ownerId);
-        return rows.stream()
-                .map(StoreSimpleResponse::from)
-                .collect(Collectors.toList());
     }
 
     // =============================
@@ -187,5 +209,15 @@ public class StoreService {
                 .qrToken(latest.getTokenValue())
                 .expireAt(latest.getExpireAt())
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<StoreSimpleResponse> getStoresByOwner(Long ownerId) {
+        // 기존에 쓰던 repo 메서드 유지
+        List<Store> rows = storeRepository.findAllByOwnerId(ownerId);
+
+        return rows.stream()
+                .map(StoreSimpleResponse::from)
+                .collect(Collectors.toList());
     }
 }

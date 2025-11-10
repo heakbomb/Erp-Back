@@ -2,12 +2,8 @@ package com.erp.erp_back.entity.store;
 
 import java.time.LocalDateTime;
 
-import com.erp.erp_back.entity.enums.CostingMethod;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -22,7 +18,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "Store") 
+@Table(name = "store")   // 소문자로 맞춰두는 게 안전
 @Getter
 @Setter
 @NoArgsConstructor
@@ -55,24 +51,5 @@ public class Store {
     @Column(name = "approved_at")
     private LocalDateTime approvedAt;
 
-    // ✅ 허용된 IP/CIDR 목록 (이전 버전용 — 현재는 QR/GPS 기반이지만 컬럼은 유지)
-    @Column(name = "allowed_cidr_list", length = 512)
-    private String allowedCidrList;
-
-    // ✅ 매장 GPS 좌표 (QR + GPS 기반 출퇴근 검증용)
-    @Column(name = "latitude")
-    private Double latitude;
-
-    @Column(name = "longitude")
-    private Double longitude;
-
-    // ✅ 허용 반경 (미터 단위)
-    @Column(name = "gps_radius_m")
-    private Integer gpsRadiusM;
-
-    @Builder.Default
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private CostingMethod costingMethod = CostingMethod.WEIGHTED_AVERAGE;
-
+    
 }

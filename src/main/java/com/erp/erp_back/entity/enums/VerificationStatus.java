@@ -1,4 +1,4 @@
-package com.erp.erp_back.entity.auth;
+package com.erp.erp_back.entity.enums;
 
 // 인증 상태를 나타내는 Enum
 public enum VerificationStatus {

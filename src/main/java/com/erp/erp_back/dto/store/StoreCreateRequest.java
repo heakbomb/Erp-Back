@@ -29,4 +29,6 @@ public class StoreCreateRequest {
     private Double latitude;
     
     private Double longitude;
+
+    private Integer gpsRadiusM;
 }
