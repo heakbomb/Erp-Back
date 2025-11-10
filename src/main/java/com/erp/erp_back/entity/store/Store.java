@@ -18,7 +18,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "Store") 
+@Table(name = "store")   // 소문자로 맞춰두는 게 안전
 @Getter
 @Setter
 @NoArgsConstructor
@@ -31,7 +31,7 @@ public class Store {
     @Column(name = "store_id")
     private Long storeId;
 
-    // Corrected relationship: Store has a Many-to-One with BusinessNumber via biz_id 
+    // ✅ 사업자 번호 (BusinessNumber 테이블과 N:1 관계)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "biz_id", nullable = false)
     private BusinessNumber businessNumber;
@@ -47,8 +47,9 @@ public class Store {
 
     @Column(nullable = false, length = 20)
     private String status;
-    
+
     @Column(name = "approved_at")
     private LocalDateTime approvedAt;
 
+    
 }
