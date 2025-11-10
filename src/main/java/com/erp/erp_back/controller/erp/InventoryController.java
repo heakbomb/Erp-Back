@@ -1,7 +1,11 @@
 package com.erp.erp_back.controller.erp;
 
-import java.net.URI;
-
+import com.erp.erp_back.dto.erp.InventoryRequest;
+import com.erp.erp_back.dto.erp.InventoryResponse;
+import com.erp.erp_back.entity.enums.ActiveStatus;
+import com.erp.erp_back.service.erp.InventoryService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -9,16 +13,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import com.erp.erp_back.dto.erp.InventoryAdjustRequest;
-import com.erp.erp_back.dto.erp.InventoryRequest;
-import com.erp.erp_back.dto.erp.InventoryResponse;
-import com.erp.erp_back.service.erp.InventoryService;
-
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
+import java.net.URI;
 
 @RestController
-@RequestMapping("/owner/inventory") // ▶ http://localhost:8080/owner/inventory
+@RequestMapping("/owner/inventory")
 @RequiredArgsConstructor
 @Validated
 @CrossOrigin(origins = "http://localhost:3000")
@@ -26,73 +24,60 @@ public class InventoryController {
 
     private final InventoryService inventoryService;
 
-    /** =============================
-     *  재고 등록 (Create)
-     *  POST /owner/inventory
-     *  Body: InventoryRequest { storeId, itemName, itemType, stockType, stockQty, safetyQty, expiryDate? }
-     *  응답: 201 + Location 헤더, InventoryResponse
-     * ============================== */
-    @PostMapping
-    public ResponseEntity<InventoryResponse> create(@Valid @RequestBody InventoryRequest req) {
-        InventoryResponse res = inventoryService.createInventory(req /*, ownerId 생략 */);
-        return ResponseEntity
-                .created(URI.create("/owner/inventory/" + res.getItemId()))
-                .body(res);
-    }
-
-    /** ========== (옵션) 목록 조회 ==========
-     * GET /owner/inventory?storeId=10&q=bean&page=0&size=20&sort=itemName,asc
-     */
     @GetMapping
-    public Page<InventoryResponse> list(@RequestParam Long storeId,
-                                        @RequestParam(required = false) String q,
-                                        @PageableDefault(size = 10, sort = "itemName") Pageable pageable) {
-        return inventoryService.list(storeId, q, pageable);
+    public ResponseEntity<Page<InventoryResponse>> getInventoryPage(
+            @RequestParam Long storeId,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) ActiveStatus status,
+            @PageableDefault(size = 10, sort = "itemName") Pageable pageable
+    ) {
+        Page<InventoryResponse> page = inventoryService.getInventoryPage(storeId, q, status, pageable);
+        return ResponseEntity.ok(page);
     }
 
-    /** ========== (옵션) 단건 조회 ==========
-     * GET /owner/inventory/{itemId}
-     */
     @GetMapping("/{itemId}")
-    public InventoryResponse getOne(@PathVariable Long itemId) {
-        return inventoryService.findInventoryById(itemId);
+    public ResponseEntity<InventoryResponse> getInventory(
+            @PathVariable Long itemId,
+            @RequestParam Long storeId
+    ) {
+        return ResponseEntity.ok(inventoryService.getInventory(storeId, itemId));
     }
 
-    /** ========== (옵션) 수정 ==========
-     * PATCH /owner/inventory/{itemId}
-     * Body: InventoryRequest (storeId는 동일 매장만 허용)
-     */
+    @PostMapping
+    public ResponseEntity<InventoryResponse> createInventory(
+            @Valid @RequestBody InventoryRequest req
+    ) {
+        InventoryResponse created = inventoryService.createInventory(req);
+        URI location = URI.create(String.format("/owner/inventory/%d?storeId=%d",
+                created.getItemId(), created.getStoreId()));
+        return ResponseEntity.created(location).body(created);
+    }
+
     @PatchMapping("/{itemId}")
-    public InventoryResponse update(@PathVariable Long itemId,
-                                    @Valid @RequestBody InventoryRequest req) {
-        return inventoryService.updateInventory(itemId, req);
+    public ResponseEntity<InventoryResponse> updateInventory(
+            @PathVariable Long itemId,
+            @RequestParam Long storeId,
+            @Valid @RequestBody InventoryRequest req
+    ) {
+        InventoryResponse updated = inventoryService.updateInventory(storeId, itemId, req);
+        return ResponseEntity.ok(updated);
     }
 
-    /** ========== (옵션) 수량 증감(입고/차감) ==========
-     * PATCH /owner/inventory/{itemId}/adjust
-     * Body: InventoryAdjustRequest { deltaQty }
-     */
-    @PatchMapping("/{itemId}/adjust")
-    public InventoryResponse adjust(@PathVariable Long itemId,
-                                    @Valid @RequestBody InventoryAdjustRequest req) {
-        return inventoryService.adjustQty(itemId, req);
-    }
-
-    /** ========== (옵션) 삭제 ==========
-     * DELETE /owner/inventory/{itemId}
-     */
-    @DeleteMapping("/{itemId}")
-    public ResponseEntity<Void> delete(@PathVariable Long itemId) {
-        inventoryService.deleteInventory(itemId);
+    @PostMapping("/{itemId}/deactivate")
+    public ResponseEntity<Void> deactivate(
+            @PathVariable Long itemId,
+            @RequestParam Long storeId
+    ) {
+        inventoryService.deactivate(storeId, itemId);
         return ResponseEntity.noContent().build();
     }
 
-    /** ========== (옵션) 다건 삭제 ==========
-     * DELETE /owner/inventory?ids=1,2,3
-     */
-    @DeleteMapping(params = "ids")
-    public ResponseEntity<Void> deleteBulk(@RequestParam java.util.List<Long> ids) {
-        inventoryService.deleteBulk(ids);
+    @PostMapping("/{itemId}/reactivate")
+    public ResponseEntity<Void> reactivate(
+            @PathVariable Long itemId,
+            @RequestParam Long storeId
+    ) {
+        inventoryService.reactivate(storeId, itemId);
         return ResponseEntity.noContent().build();
     }
 }

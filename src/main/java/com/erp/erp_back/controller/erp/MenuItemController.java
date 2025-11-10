@@ -1,7 +1,11 @@
 package com.erp.erp_back.controller.erp;
 
-import java.net.URI;
-
+import com.erp.erp_back.dto.erp.MenuItemRequest;
+import com.erp.erp_back.dto.erp.MenuItemResponse;
+import com.erp.erp_back.entity.enums.ActiveStatus;
+import com.erp.erp_back.service.erp.MenuItemService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -9,57 +13,77 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import com.erp.erp_back.dto.erp.MenuItemRequest;
-import com.erp.erp_back.dto.erp.MenuItemResponse;
-import com.erp.erp_back.service.erp.MenuItemService;
-
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-
+import java.net.URI;
 
 @RestController
-@RequestMapping("/owner/menu") 
+@RequestMapping("/owner/menu")
 @RequiredArgsConstructor
 @Validated
-@CrossOrigin(origins = "http://localhost:3000") // 프론트(3000)에서 호출 허용
+@CrossOrigin(origins = "http://localhost:3000")
 public class MenuItemController {
 
     private final MenuItemService menuItemService;
 
-    // 생성: POST /owner/menu
-    @PostMapping
-    public ResponseEntity<MenuItemResponse> create(@Valid @RequestBody MenuItemRequest req) {
-        MenuItemResponse res = menuItemService.createMenu(req /* 인증 미적용: ownerId 생략 */);
-        return ResponseEntity
-                .created(URI.create("/owner/menu/" + res.getMenuId())) // 201 + Location
-                .body(res);
-    }
-
-    // 목록: GET /owner/menu?storeId=10&q=ame&page=0&size=20&sort=menuName,asc
+    /** 목록: /owner/menu?storeId=11&q=아메리카노&status=ACTIVE&page=0&size=20&sort=menuName,asc */
     @GetMapping
-    public Page<MenuItemResponse> list(@RequestParam Long storeId,
-                                       @RequestParam(required = false) String q,
-                                       @PageableDefault(size = 20, sort = "menuName") Pageable pageable) {
-        return menuItemService.list(storeId, q, pageable);
+    public ResponseEntity<Page<MenuItemResponse>> getMenuPage(
+            @RequestParam Long storeId,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) ActiveStatus status,
+            @PageableDefault(size = 20, sort = "menuName") Pageable pageable
+    ) {
+        Page<MenuItemResponse> page = menuItemService.getMenuPage(storeId, q, status, pageable);
+        return ResponseEntity.ok(page);
     }
 
-    // 단건 조회: GET /owner/menu/{menuId}
+    /** 단건 조회: /owner/menu/{menuId}?storeId=11 */
     @GetMapping("/{menuId}")
-    public MenuItemResponse getOne(@PathVariable Long menuId) {
-        return menuItemService.findMenuById(menuId);
+    public ResponseEntity<MenuItemResponse> getMenu(
+            @PathVariable Long menuId,
+            @RequestParam Long storeId
+    ) {
+        return ResponseEntity.ok(menuItemService.getMenu(storeId, menuId));
     }
 
-    // 수정: PATCH /owner/menu/{menuId}
+    /** 생성: POST /owner/menu */
+    @PostMapping
+    public ResponseEntity<MenuItemResponse> createMenu(
+            @Valid @RequestBody MenuItemRequest req
+    ) {
+        MenuItemResponse created = menuItemService.createMenu(req);
+        URI location = URI.create(String.format("/owner/menu/%d?storeId=%d",
+                created.getMenuId(), created.getStoreId()));
+        return ResponseEntity.created(location).body(created);
+    }
+
+    /** 수정: PATCH /owner/menu/{menuId}?storeId=11 */
     @PatchMapping("/{menuId}")
-    public MenuItemResponse update(@PathVariable Long menuId,
-                                   @Valid @RequestBody MenuItemRequest req) {
-        return menuItemService.updateMenu(menuId, req);
+    public ResponseEntity<MenuItemResponse> updateMenu(
+            @PathVariable Long menuId,
+            @RequestParam Long storeId,
+            @Valid @RequestBody MenuItemRequest req
+    ) {
+        MenuItemResponse updated = menuItemService.updateMenu(storeId, menuId, req);
+        return ResponseEntity.ok(updated);
     }
 
-    // 삭제: DELETE /owner/menu/{menuId}
-    @DeleteMapping("/{menuId}")
-    public ResponseEntity<Void> delete(@PathVariable Long menuId) {
-        menuItemService.deleteMenu(menuId);
-        return ResponseEntity.noContent().build(); // 204
+    /** 비활성화: POST /owner/menu/{menuId}/deactivate?storeId=11 */
+    @PostMapping("/{menuId}/deactivate")
+    public ResponseEntity<Void> deactivate(
+            @PathVariable Long menuId,
+            @RequestParam Long storeId
+    ) {
+        menuItemService.deactivate(storeId, menuId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** 비활성화 해제: POST /owner/menu/{menuId}/reactivate?storeId=11 */
+    @PostMapping("/{menuId}/reactivate")
+    public ResponseEntity<Void> reactivate(
+            @PathVariable Long menuId,
+            @RequestParam Long storeId
+    ) {
+        menuItemService.reactivate(storeId, menuId);
+        return ResponseEntity.noContent().build();
     }
 }
