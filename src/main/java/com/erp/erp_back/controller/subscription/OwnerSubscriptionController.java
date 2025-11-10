@@ -4,6 +4,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,16 +32,31 @@ public class OwnerSubscriptionController {
      */
     @PostMapping
     public ResponseEntity<OwnerSubscriptionResponse> createSubscription(
-            // ❗️ [인증] 실제로는 @AuthenticationPrincipal Owner owner 로 받아야 함
-            // ❗️ 임시로 ownerId=1L (기본 사장님) 사용
+            //  [인증] 실제로는 @AuthenticationPrincipal Owner owner 로 받아야 함
+            //  임시로 ownerId=1L (기본 사장님) 사용
             @Valid @RequestBody OwnerSubscriptionRequest request
     ) {
-        Long tempOwnerId = 1L; // ❗️ 임시 하드코딩된 사장님 ID
+        Long tempOwnerId = 1L; 
         
         OwnerSubscriptionResponse response = ownerSubService.createSubscription(tempOwnerId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
-    
+    /**
+     * ⭐️ [신규] (Owner) 현재 구독 상태 조회
+     * GET /owner/subscriptions/current
+     */
+    @GetMapping("/current")
+    public ResponseEntity<OwnerSubscriptionResponse> getCurrentSubscription() {
+        Long tempOwnerId = 1L; // ⭐️ 사장 ID 1번 하드코딩
+        
+        // ⭐️ (참고) 서비스 레이어에 getSubscriptionByOwnerId 같은 메서드가 필요합니다.
+        // 이 메서드는 OwnerSubscription과 Subscription을 조인(Join)해서
+        // OwnerSubscriptionResponse DTO (subName, monthlyPrice 포함)를 반환해야 합니다.
+        OwnerSubscriptionResponse response = ownerSubService.getCurrentSubscriptionByOwnerId(tempOwnerId);
+        
+        return ResponseEntity.ok(response);
+    }                                           
+             
     // --- (예외 핸들러) ---
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<String> handleNotFound(EntityNotFoundException e) {

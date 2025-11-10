@@ -11,6 +11,6 @@ import lombok.Setter;
 public class OwnerSubscriptionRequest {
     // ownerId는 인증 토큰에서 추출
 
-    @NotNull
-    private Long subId; // 신청할 구독 상품 ID
+    @NotNull(message = "구독 상품 ID(subId)는 필수입니다.")
+    private Long subId;
 }

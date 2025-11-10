@@ -19,14 +19,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.erp.erp_back.dto.subscription.SubscriptionRequest;
 import com.erp.erp_back.dto.subscription.SubscriptionResponse;
-import com.erp.erp_back.service.subscription.SubscriptionService; // ❗️ 이 파일이 필요합니다.
+import com.erp.erp_back.service.subscription.SubscriptionService;
 
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/admin/subscriptions") // ✅ 프론트엔드가 호출한 바로 그 경로
+@RequestMapping("/admin/subscriptions")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class AdminSubscriptionController {

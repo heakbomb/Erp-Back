@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import com.erp.erp_back.entity.subscripition.Subscription;
 
@@ -13,11 +14,10 @@ import com.erp.erp_back.entity.subscripition.Subscription;
 public interface SubscriptionRepository extends JpaRepository<Subscription, Long> {
     /**
      * ✅ [신규] (Admin) 구독 상품 페이징 및 검색/필터링 쿼리
-     * - status: "ALL", "ACTIVE", "INACTIVE"
-     * - q: subName 검색
      */
     @Query("SELECT s FROM Subscription s " +
-           "WHERE ( (:status = 'ALL') OR " +
+           // ⭐️ [수정] :status = 'PRODUCTS' 조건을 'ALL'과 동일하게 추가합니다.
+           "WHERE ( (:status = 'ALL' OR :status = 'PRODUCTS') OR " + 
            "        (:status = 'ACTIVE' AND s.isActive = true) OR " +
            "        (:status = 'INACTIVE' AND s.isActive = false) ) " +
            "AND (:q = '' OR s.subName LIKE %:q%)")

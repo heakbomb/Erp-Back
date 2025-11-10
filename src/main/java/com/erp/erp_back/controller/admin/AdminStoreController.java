@@ -1,7 +1,6 @@
 package com.erp.erp_back.controller.admin;
 
 import java.util.Map;
-import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,7 +21,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.erp.erp_back.dto.store.StoreCreateRequest;
 import com.erp.erp_back.dto.store.StoreResponse;
-import com.erp.erp_back.entity.store.Store;
 import com.erp.erp_back.service.store.StoreService;
 @RestController
 @RequestMapping("/admin/stores") // 프론트와 일치하는 경로

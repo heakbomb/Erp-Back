@@ -35,4 +35,10 @@ public interface OwnerSubscriptionRepository extends JpaRepository<OwnerSubscrip
 
     /** (Owner) 사장님이 현재 활성/만료예정인 구독이 있는지 확인 */
     Optional<OwnerSubscription> findFirstByOwnerOwnerIdAndExpiryDateAfter(Long ownerId, LocalDate date);
+
+    /**
+     * 사장님 ID(ownerId)를 기준으로 가장 최근에 만료되는(혹은 가장 최근에 시작된)
+     * 구독 정보 1건을 찾습니다.
+     */
+    Optional<OwnerSubscription> findFirstByOwner_OwnerIdOrderByExpiryDateDesc(Long ownerId);
 }

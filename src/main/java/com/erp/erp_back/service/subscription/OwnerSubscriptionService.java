@@ -30,8 +30,8 @@ public class OwnerSubscriptionService {
     private final SubscriptionRepository subscriptionRepository;
 
     /**
-     * 1. (Owner) 구독 신청 (결제)
-     * (임시: ownerId를 파라미터로 받지만, 실제로는 SecurityContext에서 가져와야 함)
+     * 1. (Owner) 구독 신청 또는 변경 (UPSERT)
+     * 사장님(1L)의 기존 구독을 찾아서 덮어쓰거나(Update), 없으면 새로 생성(Create)합니다.
      */
     public OwnerSubscriptionResponse createSubscription(Long ownerId, OwnerSubscriptionRequest request) {
         
@@ -45,25 +45,49 @@ public class OwnerSubscriptionService {
             throw new IllegalStateException("현재 신청할 수 없는 구독 상품입니다.");
         }
 
-        // ❗️ 이미 활성 구독이 있는지 확인 (Repository 쿼리 사용)
-        ownerSubRepo.findFirstByOwnerOwnerIdAndExpiryDateAfter(ownerId, LocalDate.now())
-            .ifPresent(existingSub -> {
-                throw new IllegalStateException("이미 활성화된 구독(만료일: " + existingSub.getExpiryDate() + ")이 존재합니다.");
-            });
+        // ❗️ [수정] 에러를 던지는 대신, '기존 구독'을 찾습니다.
+        // (참고: Repository에 'findFirstByOwner_OwnerIdOrderByExpiryDateDesc'가 정의되어 있어야 합니다)
+        OwnerSubscription ownerSub = ownerSubRepo.findFirstByOwner_OwnerIdOrderByExpiryDateDesc(ownerId)
+                .orElse(new OwnerSubscription()); // ⭐️ 기존 구독이 없으면 새 객체 생성
 
-        // (실제로는 결제 API 연동 후) 구독 정보 생성
-        OwnerSubscription newSub = new OwnerSubscription();
-        newSub.setOwner(owner);
-        newSub.setSubscription(subscription);
-        newSub.setStartDate(LocalDate.now());
-        newSub.setExpiryDate(LocalDate.now().plusMonths(1)); // ❗️ 정책: 1개월 구독
+        // ❗️ [삭제] 기존 에러 발생 로직 삭제
+        // ownerSubRepo.findFirstByOwnerOwnerIdAndExpiryDateAfter(ownerId, LocalDate.now())
+        //     .ifPresent(existingSub -> {
+        //         throw new IllegalStateException("이미 활성화된 구독(...)이 존재합니다.");
+        //     });
 
-        OwnerSubscription saved = ownerSubRepo.save(newSub);
-        return toDto(saved);
+        // [수정] 'newSub' -> 'ownerSub' (기존/신규 객체 공통 사용)
+        ownerSub.setOwner(owner);
+        ownerSub.setSubscription(subscription);
+        ownerSub.setStartDate(LocalDate.now());
+        ownerSub.setExpiryDate(LocalDate.now().plusMonths(1)); // ❗️ 정책: 1개월 구독
+
+        OwnerSubscription saved = ownerSubRepo.save(ownerSub);
+        
+        // ⭐️ [수정] 'toDto' -> 'toFullDto' (Subscription 상세 정보 포함)
+        return toFullDto(saved);
     }
 
     /**
-     * 2. (Admin) 전체 구독 현황 목록 조회
+     * ⭐️ [신규] 2. (Owner) 현재 구독 현황 조회 (GET /owner/subscriptions/current)
+     * 사장님(1L)의 가장 최근 구독 정보를 DTO로 반환합니다.
+     */
+    @Transactional(readOnly = true) // ⭐️ Lazy-Loading을 위해 readOnly=true 필요
+    public OwnerSubscriptionResponse getCurrentSubscriptionByOwnerId(Long ownerId) {
+        
+        // Repository에서 사장님의 가장 최근 구독 1건 조회
+        // (참고: Repository에 'findFirstByOwner_OwnerIdOrderByExpiryDateDesc'가 정의되어 있어야 합니다)
+        OwnerSubscription ownerSub = ownerSubRepo.findFirstByOwner_OwnerIdOrderByExpiryDateDesc(ownerId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "사장님(ID: " + ownerId + ")의 구독 정보를 찾을 수 없습니다."
+                ));
+
+        // Full DTO로 변환하여 반환
+        return toFullDto(ownerSub);
+    }
+
+    /**
+     * 3. (Admin) 전체 구독 현황 목록 조회 (기존)
      */
     @Transactional(readOnly = true)
     public Page<AdminOwnerSubscriptionResponse> getAdminSubscriptions(String q, Pageable pageable) {
@@ -77,15 +101,23 @@ public class OwnerSubscriptionService {
     }
 
     /**
-     * Entity -> OwnerSubscriptionResponse (기본 DTO)
+     * ⭐️ [수정] Entity -> OwnerSubscriptionResponse (Full DTO)
+     * (기존 'toDto'를 대체하거나, 이름을 변경하여 사용)
+     * (참고: OwnerSubscriptionResponse DTO에 subName, monthlyPrice 등이 있어야 합니다)
      */
-    private OwnerSubscriptionResponse toDto(OwnerSubscription os) {
+    private OwnerSubscriptionResponse toFullDto(OwnerSubscription os) {
+        Subscription sub = os.getSubscription(); // ⭐️ Lazy 로딩된 Subscription 정보 가져오기
+        
         return OwnerSubscriptionResponse.builder()
                 .ownerSubId(os.getOwnerSubId())
                 .ownerId(os.getOwner().getOwnerId())
-                .subId(os.getSubscription().getSubId())
+                .subId(sub.getSubId()) // ⭐️
                 .startDate(os.getStartDate())
                 .expiryDate(os.getExpiryDate())
+                // ⭐️ [추가] 프론트엔드가 구독 현황 갱신에 필요한 상세 정보
+                .subName(sub.getSubName())
+                .monthlyPrice(sub.getMonthlyPrice())
+                .isActive(sub.isActive())
                 .build();
     }
 }

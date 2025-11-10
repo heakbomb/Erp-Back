@@ -6,6 +6,9 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+
+import com.erp.erp_back.entity.enums.VerificationStatus;
+
 import java.time.LocalDateTime;
 
 @Getter

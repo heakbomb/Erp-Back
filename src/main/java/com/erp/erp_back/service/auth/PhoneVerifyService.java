@@ -13,7 +13,7 @@ import com.erp.erp_back.dto.auth.PhoneVerifyRequestDto;
 import com.erp.erp_back.dto.auth.PhoneVerifyResponseDto;
 import com.erp.erp_back.dto.auth.PhoneVerifyStatusDto;
 import com.erp.erp_back.entity.auth.PhoneVerifyRequest;
-import com.erp.erp_back.entity.auth.VerificationStatus;
+import com.erp.erp_back.entity.enums.VerificationStatus;
 import com.erp.erp_back.repository.auth.PhoneVerifyRequestRepository;
 
 import jakarta.mail.Address;

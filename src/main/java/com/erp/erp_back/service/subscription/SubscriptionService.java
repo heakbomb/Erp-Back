@@ -4,6 +4,7 @@ import java.time.LocalDate;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,91 +19,73 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-@Transactional
 public class SubscriptionService {
 
     private final SubscriptionRepository subscriptionRepository;
-    private final OwnerSubscriptionRepository ownerSubscriptionRepository;
 
     /**
-     * (Admin) 구독 상품 목록 조회 (페이징, 검색, 필터)
+     * 1. (Admin) 구독 상품 목록 조회 (GET /admin/subscriptions)
+     * ⭐️ Repository의 @Query 메서드를 호출합니다.
      */
     @Transactional(readOnly = true)
     public Page<SubscriptionResponse> getSubscriptions(String status, String q, Pageable pageable) {
-        String effectiveStatus = (status == null || status.isEmpty()) ? "ALL" : status.toUpperCase();
-        String effectiveQuery = (q == null) ? "" : q.trim();
-
-        Page<Subscription> subPage = subscriptionRepository.findAdminSubscriptions(effectiveStatus, effectiveQuery, pageable);
+        // ⭐️ 제공해주신 Repository의 findAdminSubscriptions 쿼리 호출
+        Page<Subscription> subPage = subscriptionRepository.findAdminSubscriptions(status, q, pageable);
         
-        return subPage.map(this::toDto);
+        // ⭐️ Entity Page -> DTO Page 변환
+        return subPage.map(SubscriptionResponse::fromEntity);
     }
 
     /**
-     * (Admin) 구독 상품 단건 조회
+     * 2. (Admin) 구독 상품 단건 조회 (GET /admin/subscriptions/{id})
      */
     @Transactional(readOnly = true)
-    public SubscriptionResponse getSubscriptionById(Long subId) {
-        return subscriptionRepository.findById(subId)
-                .map(this::toDto)
-                .orElseThrow(() -> new EntityNotFoundException("구독 상품을 찾을 수 없습니다."));
+    public SubscriptionResponse getSubscriptionById(Long id) {
+        Subscription sub = subscriptionRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("구독 상품을 찾을 수 없습니다. ID: " + id));
+        return SubscriptionResponse.fromEntity(sub);
     }
 
     /**
-     * (Admin) 구독 상품 생성
+     * 3. (Admin) 구독 상품 생성 (POST /admin/subscriptions)
      */
+    @Transactional
     public SubscriptionResponse createSubscription(SubscriptionRequest request) {
-        Subscription subscription = new Subscription();
-        subscription.setSubName(request.getSubName());
-        subscription.setMonthlyPrice(request.getMonthlyPrice());
-        subscription.setActive(request.getIsActive());
+        Subscription newSub = new Subscription();
+        newSub.setSubName(request.getSubName());
+        newSub.setMonthlyPrice(request.getMonthlyPrice());
+        newSub.setActive(request.getIsActive());
         
-        Subscription saved = subscriptionRepository.save(subscription);
-        return toDto(saved);
+        Subscription saved = subscriptionRepository.save(newSub);
+        return SubscriptionResponse.fromEntity(saved);
     }
 
     /**
-     * (Admin) 구독 상품 수정
+     * 4. (Admin) 구독 상품 수정 (PUT /admin/subscriptions/{id})
      */
-    public SubscriptionResponse updateSubscription(Long subId, SubscriptionRequest request) {
-        Subscription subscription = subscriptionRepository.findById(subId)
-                .orElseThrow(() -> new EntityNotFoundException("구독 상품을 찾을 수 없습니다."));
+    @Transactional
+    public SubscriptionResponse updateSubscription(Long id, SubscriptionRequest request) {
+        Subscription sub = subscriptionRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("구독 상품을 찾을 수 없습니다. ID: " + id));
         
-        subscription.setSubName(request.getSubName());
-        subscription.setMonthlyPrice(request.getMonthlyPrice());
-        subscription.setActive(request.getIsActive());
-
-        Subscription updated = subscriptionRepository.save(subscription);
-        return toDto(updated);
+        sub.setSubName(request.getSubName());
+        sub.setMonthlyPrice(request.getMonthlyPrice());
+        sub.setActive(request.getIsActive());
+        
+        Subscription updated = subscriptionRepository.save(sub);
+        return SubscriptionResponse.fromEntity(updated);
     }
 
     /**
-     * (Admin) 구독 상품 삭제
+     * 5. (Admin) 구독 상품 삭제 (DELETE /admin/subscriptions/{id})
      */
-    public void deleteSubscription(Long subId) {
-        if (!subscriptionRepository.existsById(subId)) {
-            throw new EntityNotFoundException("구독 상품을 찾을 수 없습니다.");
+    @Transactional
+    public void deleteSubscription(Long id) {
+        if (!subscriptionRepository.existsById(id)) {
+            throw new EntityNotFoundException("삭제할 구독 상품을 찾을 수 없습니다. ID: " + id);
         }
-
-        // ❗️ [중요] 이 상품을 구독 중인 활성 사용자가 있는지 확인
-        boolean hasActiveUsers = ownerSubscriptionRepository
-                .existsBySubscriptionSubIdAndExpiryDateAfter(subId, LocalDate.now());
-        
-        if (hasActiveUsers) {
-            throw new IllegalStateException("이 구독 상품을 이용 중인 활성 사용자가 있어 삭제할 수 없습니다. 먼저 비활성(isActive=false)으로 변경하세요.");
-        }
-
-        subscriptionRepository.deleteById(subId);
-    }
-
-    /**
-     * Entity -> DTO 변환
-     */
-    private SubscriptionResponse toDto(Subscription s) {
-        return SubscriptionResponse.builder()
-                .subId(s.getSubId())
-                .subName(s.getSubName())
-                .monthlyPrice(s.getMonthlyPrice())
-                .isActive(s.isActive())
-                .build();
+        // ⭐️ (주의) 이 상품을 구독 중인 사장님이 있으면 오류가 날 수 있습니다.
+        // (향후 비활성화(isActive=false) 처리로 변경하는 것을 권장)
+        subscriptionRepository.deleteById(id);
     }
 }

@@ -8,7 +8,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.erp.erp_back.entity.auth.VerificationStatus;
+import com.erp.erp_back.entity.enums.VerificationStatus;
 import com.erp.erp_back.repository.auth.PhoneVerifyRequestRepository;
 import com.erp.erp_back.service.auth.PhoneVerifyService;
 

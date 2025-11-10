@@ -6,7 +6,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.erp.erp_back.entity.auth.PhoneVerifyRequest;
-import com.erp.erp_back.entity.auth.VerificationStatus;
+import com.erp.erp_back.entity.enums.VerificationStatus;
 
 public interface PhoneVerifyRequestRepository extends JpaRepository<PhoneVerifyRequest, Long> {
 

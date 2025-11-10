@@ -16,7 +16,7 @@ import com.erp.erp_back.service.subscription.OwnerSubscriptionService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/admin/subscriptions") // ✅ '구독 현황' API 루트
+@RequestMapping("/admin/owner-subscriptions") // ✅ '구독 현황' API 루트
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class AdminOwnerSubscriptionController {
@@ -32,6 +32,7 @@ public class AdminOwnerSubscriptionController {
             @RequestParam(name = "q", required = false, defaultValue = "") String q,
             @PageableDefault(size = 10, sort = "expiryDate") Pageable pageable
     ) {
-        return ResponseEntity.ok(ownerSubService.getAdminSubscriptions(q, pageable));
+        Page<AdminOwnerSubscriptionResponse> page = ownerSubService.getAdminSubscriptions(q, pageable);
+        return ResponseEntity.ok(page);
     }
 }

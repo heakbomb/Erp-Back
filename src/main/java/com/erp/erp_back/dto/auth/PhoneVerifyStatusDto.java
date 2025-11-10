@@ -1,6 +1,6 @@
 package com.erp.erp_back.dto.auth;
 
-import com.erp.erp_back.entity.auth.VerificationStatus;
+import com.erp.erp_back.entity.enums.VerificationStatus;
 
 import lombok.Getter;
 
