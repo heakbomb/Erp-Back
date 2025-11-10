@@ -1,11 +1,12 @@
+// src/main/java/com/erp/erp_back/repository/erp/PurchaseHistoryRepository.java
 package com.erp.erp_back.repository.erp;
 
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import com.erp.erp_back.entity.erp.PurchaseHistory;
 
-@Repository
-public interface PurchaseHistoryRepository extends JpaRepository<PurchaseHistory, Long> {
-    // 기본적인 CRUD 메소드가 이미 모두 구현되어 있음
+public interface PurchaseHistoryRepository extends JpaRepository<PurchaseHistory, Long>, JpaSpecificationExecutor<PurchaseHistory> {
+
+   List<PurchaseHistory> findByInventoryItemId(Long itemId);
 }
