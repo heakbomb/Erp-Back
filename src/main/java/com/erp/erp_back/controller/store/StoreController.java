@@ -19,7 +19,7 @@ import com.erp.erp_back.dto.store.StoreResponse;
 import com.erp.erp_back.service.store.StoreService;
 
 @RestController
-@RequestMapping("/api/store")
+@RequestMapping("/store")
 @CrossOrigin(origins = "*") // 프론트 연결시 CORS 방지
 public class StoreController {
 

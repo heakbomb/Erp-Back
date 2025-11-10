@@ -17,7 +17,7 @@ import com.erp.erp_back.service.user.EmployeeService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/employees")
+@RequestMapping("/employees")
 @RequiredArgsConstructor
 public class EmployeeController {
 

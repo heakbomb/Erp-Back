@@ -20,7 +20,7 @@ import com.erp.erp_back.service.auth.EmployeeAssignmentService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/assignments")
+@RequestMapping("/assignments")
 @RequiredArgsConstructor
 public class EmployeeAssignmentController {
 

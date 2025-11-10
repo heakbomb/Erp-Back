@@ -2,6 +2,8 @@ package com.erp.erp_back.service.user;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +19,18 @@ import lombok.RequiredArgsConstructor;
 public class EmployeeService {
 
     private final EmployeeRepository employeeRepository;
+
+    /** (Admin) 직원 계정 페이징 및 검색 조회 */
+    @Transactional(readOnly = true)
+    public Page<EmployeeResponse> getEmployeesForAdmin(String q, Pageable pageable) {
+        String effectiveQuery = (q == null) ? "" : q.trim();
+
+        // 1. Repository에서 Page<Employee> 조회
+        Page<Employee> employeePage = employeeRepository.findAdminEmployees(effectiveQuery, pageable);
+        
+        // 2. Page<Employee> -> Page<EmployeeResponse>로 변환
+        return employeePage.map(this::toDto);
+    }
 
     /** 직원 전체 목록 조회 */
     @Transactional(readOnly = true)

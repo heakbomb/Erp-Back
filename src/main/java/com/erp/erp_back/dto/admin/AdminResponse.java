@@ -1,4 +1,4 @@
-package com.erp.erp_back.dto.user;
+package com.erp.erp_back.dto.admin;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

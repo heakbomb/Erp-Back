@@ -2,6 +2,7 @@ package com.erp.erp_back.service.store;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,6 +49,15 @@ public class BusinessNumberService {
         if (phone.isBlank()) {
             throw new IllegalArgumentException("전화번호는 필수 입력입니다.");
         }
+        // ✅ --- 수정된 지점 ---
+        // 1. DB에서 먼저 조회
+        Optional<BusinessNumber> existing = businessRepo.findByBizNum(bno);
+        
+        // 2. 이미 존재하면 예외 발생
+        if (existing.isPresent()) {
+            throw new IllegalArgumentException("이미 등록된 사업자번호입니다.");
+        }
+        // --- 수정 완료 ---
 
         NtsStatusResponse res = ntsClient.status(List.of(bno));
         if (res == null || res.data() == null || res.data().isEmpty()) {
@@ -61,9 +71,10 @@ public class BusinessNumberService {
             throw new IllegalArgumentException("유효하지 않은 사업자번호입니다.");
         }
 
-        // ✅ 업서트(upsert)
-        BusinessNumber bn = businessRepo.findByBizNum(bno)
-                .orElseGet(() -> BusinessNumber.builder().bizNum(bno).build());
+        // 4. (신규일 때만) 객체 생성
+        BusinessNumber bn = BusinessNumber.builder()
+                .bizNum(bno)
+                .build();
 
         // ✅ 임시 Owner (로그인 기능 도입 전까지 기본 owner_id=1)
         Owner defaultOwner = ownerRepository.findById(defaultOwnerId)

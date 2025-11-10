@@ -16,7 +16,7 @@ import com.erp.erp_back.service.store.BusinessNumberService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/business-number") // ✅ 프론트 호출 경로와 통일
+@RequestMapping("/business-number") // ✅ 프론트 호출 경로와 통일
 @RequiredArgsConstructor
 public class BusinessNumberController {
 
