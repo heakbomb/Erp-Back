@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +25,7 @@ import com.erp.erp_back.repository.store.BusinessNumberRepository;
 import com.erp.erp_back.repository.store.StoreGpsRepository;
 import com.erp.erp_back.repository.store.StoreRepository;
 
+import jakarta.persistence.criteria.Predicate;
 @Service
 @Transactional
 public class StoreService {
@@ -48,6 +50,36 @@ public class StoreService {
         this.storeGpsRepository = storeGpsRepository;
     }
 
+    @Transactional(readOnly = true)
+    public Page<StoreResponse> getStoresForAdmin(String status, String q, Pageable pageable) {
+        // Specification을 사용하여 동적 쿼리 생성
+        Specification<Store> spec = (root, query, cb) -> {
+            Predicate p = cb.conjunction();
+
+            // 1. Status 필터링 (ALL이 아닐 경우)
+            if (status != null && !status.isEmpty() && !status.equals("ALL")) {
+                p = cb.and(p, cb.equal(root.get("status"), status));
+            }
+
+            // 2. q (검색어) 필터링 (storeName 기준)
+            if (q != null && !q.trim().isEmpty()) {
+                p = cb.and(p, cb.like(root.get("storeName"), "%" + q.trim() + "%"));
+            }
+
+            return p;
+        };
+
+    // 3. Specification과 Pageable을 사용하여 데이터 조회
+        Page<Store> storePage = storeRepository.findAll(spec, pageable);
+
+        // 4. Page<Store> -> Page<StoreResponse> 변환
+        //    (StoreGps 정보 포함)
+        return storePage.map(s -> {
+            StoreGps gps = storeGpsRepository.findByStore_StoreId(s.getStoreId()).orElse(null);
+            return StoreResponse.of(s, gps);
+        });
+    }
+
     public StoreResponse updateStoreStatus(Long storeId, String newStatus) {
         // "APPROVED" 또는 "REJECTED"만 허용 (이 로직은 유지)
         if (!newStatus.equals("APPROVED") && !newStatus.equals("REJECTED")) {
@@ -56,14 +88,6 @@ public class StoreService {
         
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("사업장을 찾을 수 없습니다."));
-
-        // ✅ [수정] "이미 처리된 사업장입니다." 예외 처리를 제거합니다.
-        // (요청: 승인/반려 상태도 다시 변경할 수 있어야 함)
-        /*
-        if (!store.getStatus().equals("PENDING")) {
-             throw new IllegalStateException("이미 처리된 사업장입니다.");
-        }
-        */
 
         // (선택적 개선) 이미 같은 상태로 변경하려 하면 경고
         if (store.getStatus().equals(newStatus)) {
