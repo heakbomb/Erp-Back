@@ -50,3 +50,6 @@ public class Store {
 
     @Column(name = "approved_at")
     private LocalDateTime approvedAt;
+
+    
+}

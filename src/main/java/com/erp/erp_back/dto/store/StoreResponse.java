@@ -3,6 +3,7 @@ package com.erp.erp_back.dto.store;
 import java.time.LocalDateTime;
 
 import com.erp.erp_back.entity.store.Store;
+import com.erp.erp_back.entity.store.StoreGps;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,22 +20,36 @@ public class StoreResponse {
     private String storeName;
     private String industry;
     private String posVendor;
-    private String status; 
-    private LocalDateTime approvedAt; 
+    private String status;
+    private LocalDateTime approvedAt;
+    private Double latitude;
+    private Double longitude;
 
-    // ✅ Store 엔티티 → DTO 변환용 생성자
-    public StoreResponse(Store store) {
-        this.storeId = store.getStoreId();
-        this.bizId = store.getBusinessNumber() != null ? store.getBusinessNumber().getBizId() : null;
-        this.storeName = store.getStoreName();
-        this.industry = store.getIndustry();
-        this.posVendor = store.getPosVendor();
-        this.status = store.getStatus();
-        this.approvedAt = store.getApprovedAt();
+    // ✅ 기존 방식: GPS 없이 Store만으로 만들 때
+    public static StoreResponse from(Store store) {
+        return StoreResponse.builder()
+                .storeId(store.getStoreId())
+                .bizId(store.getBusinessNumber() != null ? store.getBusinessNumber().getBizId() : null)
+                .storeName(store.getStoreName())
+                .industry(store.getIndustry())
+                .posVendor(store.getPosVendor())
+                .status(store.getStatus())
+                .approvedAt(store.getApprovedAt())
+                .build();
     }
 
-    // ✅ 정적 팩토리 메서드 (Service에서 사용)
-    public static StoreResponse from(Store store) {
-        return new StoreResponse(store);
+    // ✅ 새 방식: Store + StoreGps 두 개를 합쳐서 응답
+    public static StoreResponse of(Store store, StoreGps gps) {
+        return StoreResponse.builder()
+                .storeId(store.getStoreId())
+                .bizId(store.getBusinessNumber() != null ? store.getBusinessNumber().getBizId() : null)
+                .storeName(store.getStoreName())
+                .industry(store.getIndustry())
+                .posVendor(store.getPosVendor())
+                .status(store.getStatus())
+                .approvedAt(store.getApprovedAt())
+                .latitude(gps != null ? gps.getLatitude() : null)
+                .longitude(gps != null ? gps.getLongitude() : null)
+                .build();
     }
 }

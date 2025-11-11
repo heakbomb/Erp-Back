@@ -18,6 +18,7 @@ import com.erp.erp_back.repository.auth.PhoneVerifyRequestRepository;
 
 import jakarta.mail.Address;
 import jakarta.mail.Message;
+import jakarta.mail.MessagingException;
 import jakarta.mail.internet.InternetAddress;
 import lombok.RequiredArgsConstructor;
 
@@ -32,7 +33,7 @@ public class PhoneVerifyService {
      */
     @Transactional
     public PhoneVerifyResponseDto requestVerification(PhoneVerifyRequestDto requestDto) {
-        
+
         String authCode = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
         String normalizedPhoneNumber = requestDto.getPhoneNumber().replaceAll("-", "");
 
@@ -52,7 +53,7 @@ public class PhoneVerifyService {
      */
     @Transactional
     public PhoneVerifyStatusDto getVerificationStatus(String authCode) {
-        
+
         Optional<PhoneVerifyRequest> optRequest = phoneVerifyRepository.findByAuthCode(authCode);
 
         if (optRequest.isEmpty()) {
@@ -60,12 +61,12 @@ public class PhoneVerifyService {
         }
 
         PhoneVerifyRequest request = optRequest.get();
-        
+
         // PENDING 상태인데 만료시간이 지났다면, EXPIRED로 변경
         if (request.getStatus() == VerificationStatus.PENDING &&
-            request.getExpiresAt().isBefore(LocalDateTime.now())) {
-            
-            request.expire(); 
+                request.getExpiresAt().isBefore(LocalDateTime.now())) {
+
+            request.expire();
             phoneVerifyRepository.save(request); // @Transactional이므로 자동 UPDATE
             return new PhoneVerifyStatusDto(VerificationStatus.EXPIRED);
         }
@@ -79,14 +80,20 @@ public class PhoneVerifyService {
      */
     @Transactional
     public void verifyEmailAuth(String receivedCode, String receivedPhoneNumber) {
-        Optional<PhoneVerifyRequest> optRequest = 
-            phoneVerifyRepository.findByAuthCodeAndStatus(receivedCode, VerificationStatus.PENDING);
+        // ✅ 널/공백 방어
+        if (receivedCode == null || receivedCode.isBlank()) {
+            System.out.println("[인증 실패] 코드가 비었습니다.");
+            return;
+        }
+
+        Optional<PhoneVerifyRequest> optRequest =
+                phoneVerifyRepository.findByAuthCodeAndStatus(receivedCode, VerificationStatus.PENDING);
 
         if (optRequest.isEmpty()) {
             System.out.println("[인증 실패] " + receivedCode + "는 PENDING 상태가 아님");
             return;
         }
-        
+
         PhoneVerifyRequest request = optRequest.get();
 
         if (request.getExpiresAt().isBefore(LocalDateTime.now())) {
@@ -98,15 +105,18 @@ public class PhoneVerifyService {
 
         // 전화번호 정규화 후 비교
         String dbPhone = request.getPhoneNumber().replaceAll("[^0-9]", "");
-        String emailPhone = receivedPhoneNumber.replaceAll("[^0-9]", "");
-        
+        // ✅ 여기가 경고 나던 부분 → 널이면 빈 문자열로
+        String emailPhone = receivedPhoneNumber == null
+                ? ""
+                : receivedPhoneNumber.replaceAll("[^0-9]", "");
+
         if (dbPhone.equals(emailPhone)) {
-            System.out.println("[인증 성공] " + receivedPhoneNumber + " (" + receivedCode + ")");
+            System.out.println("[인증 성공] " + emailPhone + " (" + receivedCode + ")");
             request.verify();
             phoneVerifyRepository.save(request);
         } else {
-            System.out.println("[인증 실패] " + receivedCode + "의 전화번호 불일치. DB: " 
-                + dbPhone + ", 수신: " + emailPhone);
+            System.out.println("[인증 실패] " + receivedCode + "의 전화번호 불일치. DB: "
+                    + dbPhone + ", 수신: " + emailPhone);
         }
     }
 
@@ -115,22 +125,32 @@ public class PhoneVerifyService {
      */
     public String parsePhoneNumberFromEmail(Message message) {
         try {
+            // ✅ 널/길이 체크 추가
+            if (message == null || message.getFrom() == null || message.getFrom().length == 0 || message.getFrom()[0] == null) {
+                return null;
+            }
+
             Address from = message.getFrom()[0];
-            String emailAddress = (from instanceof InternetAddress) ?
-                ((InternetAddress) from).getAddress() : from.toString();
-            
+            String emailAddress = (from instanceof InternetAddress)
+                    ? ((InternetAddress) from).getAddress()
+                    : (from != null ? from.toString() : "");
+
             String phoneNumber = emailAddress.split("@")[0];
 
             Pattern pattern = Pattern.compile("\\D"); // 숫자가 아닌 문자
             Matcher matcher = pattern.matcher(phoneNumber);
             String normalizedPhone = matcher.replaceAll("");
-            
+
             if (normalizedPhone.startsWith("8210")) {
                 return "0" + normalizedPhone.substring(2);
             }
             return normalizedPhone;
 
+        } catch (MessagingException e) {
+            System.out.println("[파싱 오류] 메일 파싱 중 MessagingException: " + e.getMessage());
+            return null;
         } catch (Exception e) {
+            // 다른 예외도 한번에 로그만 남기고 흘려보냄
             System.out.println("[파싱 오류] " + e.getMessage());
             return null;
         }

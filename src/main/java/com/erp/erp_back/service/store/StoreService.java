@@ -1,6 +1,8 @@
 package com.erp.erp_back.service.store;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
@@ -8,13 +10,20 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.erp.erp_back.dto.log.StoreQrResponse;
 import com.erp.erp_back.dto.store.StoreCreateRequest;
 import com.erp.erp_back.dto.store.StoreResponse;
+import com.erp.erp_back.dto.store.StoreSimpleResponse;
+import com.erp.erp_back.entity.log.AttendanceQrToken;
 import com.erp.erp_back.entity.store.BusinessNumber;
 import com.erp.erp_back.entity.store.Store;
+import com.erp.erp_back.entity.store.StoreGps;
 import com.erp.erp_back.repository.auth.EmployeeAssignmentRepository;
+import com.erp.erp_back.repository.log.AttendanceQrTokenRepository;
 import com.erp.erp_back.repository.store.BusinessNumberRepository;
-import com.erp.erp_back.repository.store.StoreRepository; // ✅ 추가
+import com.erp.erp_back.repository.store.StoreGpsRepository;
+import com.erp.erp_back.repository.store.StoreRepository;
+
 @Service
 @Transactional
 public class StoreService {
@@ -22,28 +31,21 @@ public class StoreService {
     private final StoreRepository storeRepository;
     private final BusinessNumberRepository businessNumberRepository;
     private final EmployeeAssignmentRepository assignmentRepository;
+    private final AttendanceQrTokenRepository attendanceQrTokenRepository;
+    private final StoreGpsRepository storeGpsRepository;   
 
     public StoreService(
             StoreRepository storeRepository,
             BusinessNumberRepository businessNumberRepository,
-            EmployeeAssignmentRepository assignmentRepository
+            EmployeeAssignmentRepository assignmentRepository,
+            AttendanceQrTokenRepository attendanceQrTokenRepository,
+            StoreGpsRepository storeGpsRepository
     ) {
         this.storeRepository = storeRepository;
         this.businessNumberRepository = businessNumberRepository;
         this.assignmentRepository = assignmentRepository;
-    }
-
-    @Transactional(readOnly = true)
-    public Page<StoreResponse> getStoresForAdmin(String status, String q, Pageable pageable) {
-        String effectiveStatus = (status == null || status.equals("ALL")) ? "ALL" : status;
-        String effectiveQuery = (q == null) ? "" : q;
-
-        // 1. 엔티티 페이지 조회
-        Page<Store> storePage = storeRepository.findAdminStores(effectiveStatus, effectiveQuery, pageable);
-        
-        // 2. ✅ 엔티티 페이지(Page<Store>)를 DTO 페이지(Page<StoreResponse>)로 변환
-        // Page 객체의 .map() 기능을 사용합니다.
-        return storePage.map(StoreResponse::from); // (StoreResponse.from() 메서드가 이미 있다고 가정)
+        this.attendanceQrTokenRepository = attendanceQrTokenRepository;
+        this.storeGpsRepository = storeGpsRepository;
     }
 
     public StoreResponse updateStoreStatus(Long storeId, String newStatus) {
@@ -88,54 +90,41 @@ public class StoreService {
                 .build();
 
         Store saved = storeRepository.save(store);
-        return StoreResponse.from(saved);
+
+        // ✅ 위치는 별도 테이블에 저장
+        if (request.getLatitude() != null || request.getLongitude() != null) {
+            StoreGps gps = new StoreGps();
+            gps.setStore(saved);
+            gps.setLatitude(request.getLatitude());
+            gps.setLongitude(request.getLongitude());
+            // 반경 기본값 있으면 여기서 세팅
+            gps.setGpsRadiusM(80);
+            storeGpsRepository.save(gps);
+            return StoreResponse.of(saved, gps);
+        }
+
+        return StoreResponse.of(saved, null);
     }
 
-    // (Admin) 전체 조회
     @Transactional(readOnly = true)
     public List<StoreResponse> getAllStores() {
-        return storeRepository.findAll()
-                .stream()
-                .map(StoreResponse::from)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * ✅ [신규 추가] (Admin) 사장 ID로 필터링 조회
-     * AdminStoreController가 ownerId 파라미터와 함께 호출합니다.
-     * (OwnerStoreController도 '본인 ID'를 넣어서 재사용 가능)
-     */
-    @Transactional(readOnly = true)
-    public List<StoreResponse> getStoresByOwnerId(Long ownerId) {
-        // 1. StoreRepository에 추가한 메서드를 호출합니다.
-        List<Store> stores = storeRepository.findByBusinessNumber_Owner_OwnerId(ownerId);
-        
-        // 2. DTO로 변환하여 반환합니다.
+        List<Store> stores = storeRepository.findAll();
         return stores.stream()
-                .map(StoreResponse::from)
+                .map(s -> {
+                    StoreGps gps = storeGpsRepository.findByStore_StoreId(s.getStoreId()).orElse(null);
+                    return StoreResponse.of(s, gps);
+                })
                 .collect(Collectors.toList());
     }
 
-    @Transactional(readOnly = true)
-    public List<StoreResponse> getStoresByStatus(String status) {
-        // 1. StoreRepository에 추가한 메서드를 호출합니다.
-        List<Store> stores = storeRepository.findByStatus(status);
-        
-        // 2. DTO로 변환하여 반환합니다.
-        return stores.stream()
-                .map(StoreResponse::from)
-                .collect(Collectors.toList());
-    }
-
-    // (Admin) 단건 조회 (Owner가 사용 시 Controller에서 소유권 검증 필요)
     @Transactional(readOnly = true)
     public StoreResponse getStore(Long storeId) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사업장을 찾을 수 없습니다."));
-        return StoreResponse.from(store);
+        StoreGps gps = storeGpsRepository.findByStore_StoreId(storeId).orElse(null);
+        return StoreResponse.of(store, gps);
     }
 
-    // (Admin) 수정 (Owner가 사용 시 Controller에서 소유권 검증 필요)
     public StoreResponse updateStore(Long storeId, StoreCreateRequest request) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("사업장 없음"));
@@ -150,33 +139,115 @@ public class StoreService {
             store.setBusinessNumber(bn);
         }
 
-        return StoreResponse.from(store);
+        // ✅ GPS도 별도 처리
+        StoreGps gps = storeGpsRepository.findByStore_StoreId(storeId).orElse(null);
+        if (request.getLatitude() != null || request.getLongitude() != null) {
+            if (gps == null) {
+                gps = new StoreGps();
+                gps.setStore(store);
+            }
+            gps.setLatitude(request.getLatitude());
+            gps.setLongitude(request.getLongitude());
+            if (gps.getGpsRadiusM() == null) {
+                gps.setGpsRadiusM(80);
+            }
+            storeGpsRepository.save(gps);
+        }
+
+        return StoreResponse.of(store, gps);
     }
 
-    // ❗ 기존 시그니처도 유지
     public void deleteStore(Long storeId) {
         deleteStore(storeId, false);
     }
 
-    // (Admin) FK 안전 삭제 (Owner가 사용 시 Controller에서 force=false 강제)
     public void deleteStore(Long storeId, boolean force) {
-        // 존재 확인
         storeRepository.findById(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("삭제 대상 사업장이 존재하지 않습니다."));
 
         boolean hasChildren = assignmentRepository.existsByStore_StoreId(storeId);
 
         if (hasChildren && !force) {
-            // 컨트롤러의 @ExceptionHandler(IllegalStateException)에서 409로 내려가도록
             throw new IllegalStateException("해당 사업장에 연결된 근무 신청/배정이 있어 삭제할 수 없습니다. (force=true로 강제 삭제 가능)");
         }
 
         if (hasChildren) {
-            // 자식 먼저 삭제
             assignmentRepository.deleteByStore_StoreId(storeId);
         }
 
-        // 부모 삭제
+        // GPS는 FK ON DELETE CASCADE로 해두면 자동으로 지워짐
         storeRepository.deleteById(storeId);
+    }
+
+    // =============================
+    // ✅ 여기부터 QR 관련 (attendance_qr_token만 사용)
+    // =============================
+
+    @Transactional
+    public StoreQrResponse regenerateQrToken(Long storeId) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사업장을 찾을 수 없습니다."));
+
+        attendanceQrTokenRepository.deleteByStore_StoreId(storeId);
+
+        String token = UUID.randomUUID().toString();
+        LocalDateTime expires = LocalDateTime.now().plusMinutes(5);
+
+        AttendanceQrToken qr = new AttendanceQrToken();
+        qr.setStore(store);
+        qr.setTokenValue(token);
+        qr.setExpireAt(expires);
+
+        attendanceQrTokenRepository.save(qr);
+
+        return StoreQrResponse.builder()
+                .storeId(storeId)
+                .qrToken(token)
+                .expireAt(expires)
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public StoreQrResponse getQrToken(Long storeId) {
+        AttendanceQrToken latest = attendanceQrTokenRepository
+                .findTopByStore_StoreIdOrderByExpireAtDesc(storeId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사업장의 QR 토큰이 없습니다."));
+
+        return StoreQrResponse.builder()
+                .storeId(storeId)
+                .qrToken(latest.getTokenValue())
+                .expireAt(latest.getExpireAt())
+                .build();
+    }
+
+    @Transactional
+    public StoreQrResponse getOrRefreshQr(Long storeId, boolean refresh) {
+        if (refresh) {
+            return regenerateQrToken(storeId);
+        }
+
+        AttendanceQrToken latest = attendanceQrTokenRepository
+                .findTopByStore_StoreIdOrderByExpireAtDesc(storeId)
+                .orElse(null);
+
+        if (latest == null || latest.getExpireAt().isBefore(LocalDateTime.now())) {
+            return regenerateQrToken(storeId);
+        }
+
+        return StoreQrResponse.builder()
+                .storeId(storeId)
+                .qrToken(latest.getTokenValue())
+                .expireAt(latest.getExpireAt())
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<StoreSimpleResponse> getStoresByOwner(Long ownerId) {
+        // 기존에 쓰던 repo 메서드 유지
+        List<Store> rows = storeRepository.findAllByOwnerId(ownerId);
+
+        return rows.stream()
+                .map(StoreSimpleResponse::from)
+                .collect(Collectors.toList());
     }
 }

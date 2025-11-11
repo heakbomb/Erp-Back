@@ -6,5 +6,5 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public class PhoneVerifyResponseDto {
-    private String authCode;
+    private final String authCode;
 }

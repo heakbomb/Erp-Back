@@ -7,7 +7,7 @@ import lombok.Getter;
 @Getter
 public class PhoneVerifyStatusDto {
 
-    private String status;
+    private final String status;
 
     // Entity의 Enum을 DTO의 String으로 변환
     public PhoneVerifyStatusDto(VerificationStatus status) {

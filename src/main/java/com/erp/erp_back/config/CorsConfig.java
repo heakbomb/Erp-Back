@@ -17,21 +17,20 @@ public class CorsConfig {
   public FilterRegistrationBean<CorsFilter> corsFilter() {
     CorsConfiguration config = new CorsConfiguration();
 
-    // 프론트가 뜰 수 있는 모든 오리진 허용 (localhost/127.0.0.1/내 로컬 IP)
-    config.setAllowedOrigins(List.of(
+    // [수정] setAllowedOrigins 대신 setAllowedOriginPatterns 사용
+    // ngrok 주소는 실행 시마다 바뀌므로, 와일드카드(*) 패턴을 허용하는 것이 편리합니다.
+    config.setAllowedOriginPatterns(List.of(
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "http://192.168.0.151:3000"
+        "http://192.168.0.151:3000",
+        //"https://*.ngrok-free.app" // ✅ 모든 ngrok 서브도메인을 허용
+        "https://diphthongic-apolonia-aggravatingly.ngrok-free.dev"
     ));
-
-    // 프리플라이트 포함 모든 메소드/헤더 허용
+    
+    // [기존 설정 유지]
     config.setAllowedMethods(List.of("GET","POST","PUT","DELETE","PATCH","OPTIONS"));
     config.setAllowedHeaders(List.of("*"));
-
-    // 쿠키/인증정보 쓰는 경우 대비
     config.setAllowCredentials(true);
-
-    // 브라우저가 프리플라이트 결과 캐싱
     config.setMaxAge(3600L);
 
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
