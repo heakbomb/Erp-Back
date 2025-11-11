@@ -1,7 +1,9 @@
+// com.erp.erp_back.dto.erp.InventoryRequest.java
 package com.erp.erp_back.dto.erp;
 
 import java.math.BigDecimal;
 
+import com.erp.erp_back.entity.enums.ActiveStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -16,7 +18,7 @@ import lombok.Setter;
 public class InventoryRequest {
 
     @NotNull(message = "storeId는 필수입니다.")
-    private Long storeId; 
+    private Long storeId;
 
     @NotBlank(message = "품목명은 필수입니다.")
     @Size(max = 100)
@@ -24,7 +26,7 @@ public class InventoryRequest {
 
     @NotBlank(message = "품목 타입은 필수입니다.")
     @Size(max = 20)
-    private String itemType; 
+    private String itemType;
 
     @NotBlank(message = "수량 타입은 필수입니다.")
     @Size(max = 20)
@@ -36,5 +38,8 @@ public class InventoryRequest {
 
     @NotNull(message = "안전 재고량은 필수입니다.")
     @PositiveOrZero(message = "안전 재고량은 0 이상이어야 합니다.")
-    private BigDecimal safetyQty; 
+    private BigDecimal safetyQty;
+
+    /** 선택: 미전달 시 서비스에서 ACTIVE로 기본 처리 */
+    private ActiveStatus status;
 }

@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,7 +48,35 @@ public class StoreService {
         this.storeGpsRepository = storeGpsRepository;
     }
 
-    // 사업장 등록
+    public StoreResponse updateStoreStatus(Long storeId, String newStatus) {
+        // "APPROVED" 또는 "REJECTED"만 허용 (이 로직은 유지)
+        if (!newStatus.equals("APPROVED") && !newStatus.equals("REJECTED")) {
+            throw new IllegalArgumentException("잘못된 상태 값입니다. (APPROVED 또는 REJECTED만 가능)");
+        }
+        
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new IllegalArgumentException("사업장을 찾을 수 없습니다."));
+
+        // ✅ [수정] "이미 처리된 사업장입니다." 예외 처리를 제거합니다.
+        // (요청: 승인/반려 상태도 다시 변경할 수 있어야 함)
+        /*
+        if (!store.getStatus().equals("PENDING")) {
+             throw new IllegalStateException("이미 처리된 사업장입니다.");
+        }
+        */
+
+        // (선택적 개선) 이미 같은 상태로 변경하려 하면 경고
+        if (store.getStatus().equals(newStatus)) {
+            throw new IllegalStateException("이미 '" + newStatus + "' 상태입니다.");
+        }
+
+        store.setStatus(newStatus);
+        Store updatedStore = storeRepository.save(store);
+        
+        return StoreResponse.from(updatedStore);
+    }
+
+    // 사업장 등록 (Admin/Owner 공용 사용 가능)
     public StoreResponse createStore(StoreCreateRequest request) {
         BusinessNumber bn = businessNumberRepository.findById(request.getBizId())
                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 사업자(bizId) 입니다."));

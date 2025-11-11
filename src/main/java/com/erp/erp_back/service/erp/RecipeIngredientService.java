@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.erp.erp_back.dto.erp.RecipeIngredientRequest;
 import com.erp.erp_back.dto.erp.RecipeIngredientResponse;
 import com.erp.erp_back.dto.erp.RecipeIngredientUpdateRequest;
+import com.erp.erp_back.entity.enums.ActiveStatus;
 import com.erp.erp_back.entity.erp.Inventory;
 import com.erp.erp_back.entity.erp.MenuItem;
 import com.erp.erp_back.entity.erp.RecipeIngredient;
@@ -35,7 +36,6 @@ public class RecipeIngredientService {
     public List<RecipeIngredientResponse> listByMenu(Long menuId) {
         Objects.requireNonNull(menuId, "MENU_ID_MUST_NOT_BE_NULL");
 
-        // 메뉴 존재 검증
         menuItemRepository.findById(menuId)
                 .orElseThrow(() -> new EntityNotFoundException("MENU_NOT_FOUND"));
 
@@ -62,6 +62,14 @@ public class RecipeIngredientService {
         // 동일 매장 데이터인지 확인
         if (!menu.getStore().getStoreId().equals(inv.getStore().getStoreId())) {
             throw new IllegalArgumentException("STORE_MISMATCH_BETWEEN_MENU_AND_INVENTORY");
+        }
+
+        // 서버단 정책: 비활성 메뉴/재고는 레시피에 사용할 수 없음
+        if (menu.getStatus() == ActiveStatus.INACTIVE) {
+            throw new IllegalStateException("CANNOT_ATTACH_INGREDIENT_TO_INACTIVE_MENU");
+        }
+        if (inv.getStatus() == ActiveStatus.INACTIVE) {
+            throw new IllegalStateException("CANNOT_USE_INACTIVE_INVENTORY_IN_RECIPE");
         }
 
         // 중복 방지
@@ -93,7 +101,17 @@ public class RecipeIngredientService {
             throw new IllegalArgumentException("INVALID_CONSUMPTION_QTY");
         }
 
-        entity.setConsumptionQty(req.getConsumptionQty()); // 변경감지로 업데이트
+        // 메뉴/재고 현재 상태 확인 (안전)
+        MenuItem menu = entity.getMenuItem();
+        Inventory inv = entity.getInventory();
+        if (menu.getStatus() == ActiveStatus.INACTIVE) {
+            throw new IllegalStateException("CANNOT_MODIFY_RECIPE_OF_INACTIVE_MENU");
+        }
+        if (inv.getStatus() == ActiveStatus.INACTIVE) {
+            throw new IllegalStateException("CANNOT_USE_INACTIVE_INVENTORY_IN_RECIPE");
+        }
+
+        entity.setConsumptionQty(req.getConsumptionQty()); // 변경감지
         return toDTO(entity);
     }
 

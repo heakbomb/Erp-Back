@@ -14,13 +14,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class PurchaseHistoryRequest {
-
-    @NotNull(message = "storeId는 필수입니다.")
-    private Long storeId;
-
-    @NotNull(message = "itemId는 필수입니다.")
-    private Long itemId;
+public class PurchaseHistoryUpdateRequest {
 
     @NotNull(message = "구매 수량은 필수입니다.")
     @Positive(message = "구매 수량은 0보다 커야 합니다.")
