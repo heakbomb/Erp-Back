@@ -80,7 +80,7 @@ public class PurchaseHistoryService {
         // 정책: 비활성 재고로 매입 시 자동 활성화
         if (item.getStatus() == ActiveStatus.INACTIVE) {
             item.setStatus(ActiveStatus.ACTIVE);
-            // TODO: Audit log 남기려면 여기서 기록
+        
         }
 
         // 매입 저장

@@ -1,6 +1,13 @@
 // src/main/java/com/erp/erp_back/service/erp/InventoryService.java
 package com.erp.erp_back.service.erp;
 
+import java.math.BigDecimal;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.erp.erp_back.dto.erp.InventoryRequest;
 import com.erp.erp_back.dto.erp.InventoryResponse;
 import com.erp.erp_back.entity.enums.ActiveStatus;
@@ -8,14 +15,9 @@ import com.erp.erp_back.entity.erp.Inventory;
 import com.erp.erp_back.entity.store.Store;
 import com.erp.erp_back.repository.erp.InventoryRepository;
 import com.erp.erp_back.repository.store.StoreRepository;
+
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
