@@ -1,17 +1,13 @@
 package com.erp.erp_back.service.subscription;
 
-import java.time.LocalDate;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.erp.erp_back.dto.subscription.SubscriptionRequest;
 import com.erp.erp_back.dto.subscription.SubscriptionResponse;
 import com.erp.erp_back.entity.subscripition.Subscription;
-import com.erp.erp_back.repository.subscripition.OwnerSubscriptionRepository;
 import com.erp.erp_back.repository.subscripition.SubscriptionRepository;
 
 import jakarta.persistence.EntityNotFoundException;

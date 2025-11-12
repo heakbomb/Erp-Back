@@ -50,7 +50,7 @@ public class OwnerService {
         if (!ownerRepository.existsById(id)) {
             throw new IllegalArgumentException("해당 사장님(ID=" + id + ")을 찾을 수 없습니다.");
         }
-        // TODO: 삭제 전 연결된 데이터(BusinessNumber, Store 등) 처리 로직 필요
+        // 
         ownerRepository.deleteById(id);
     }
 
