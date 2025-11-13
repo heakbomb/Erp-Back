@@ -1,5 +1,7 @@
 package com.erp.erp_back.repository.user;
 
+import java.time.LocalDateTime; // ⭐️ 추가
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,4 +19,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
             @Param("q") String q,
             Pageable pageable
     );
+
+    // ⭐️ (신규) 통계용: 특정 시간 이후 가입한 직원 수
+    long countByCreatedAtAfter(LocalDateTime start);
 }

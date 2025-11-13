@@ -44,14 +44,14 @@ public class InventoryService {
                 .build();
 
         Inventory saved = inventoryRepository.save(inv);
-        return toResponse(saved);
+        return toDTO(saved);
     }
 
     /* ========= 단건 조회 ========= */
     public InventoryResponse getInventory(Long storeId, Long itemId) {
         Inventory inv = inventoryRepository.findByItemIdAndStoreStoreId(itemId, storeId)
                 .orElseThrow(() -> new EntityNotFoundException("INVENTORY_NOT_FOUND"));
-        return toResponse(inv);
+        return toDTO(inv);
     }
 
     /* ========= 목록(검색/상태/페이징) ========= */
@@ -69,7 +69,7 @@ public class InventoryService {
                     : inventoryRepository.findByStoreStoreIdAndStatus(storeId, status, pageable);
         }
 
-        return page.map(this::toResponse);
+        return page.map(this::toDTO);
     }
 
     /* ========= 수정 ========= */
@@ -88,7 +88,7 @@ public class InventoryService {
             inv.setStatus(req.getStatus());
         }
 
-        return toResponse(inv);
+        return toDTO(inv);
     }
 
     /* ========= 활성/비활성 전환 ========= */
@@ -111,16 +111,17 @@ public class InventoryService {
         return v == null ? BigDecimal.ZERO : v;
     }
 
-    private InventoryResponse toResponse(Inventory inv) {
+    private InventoryResponse toDTO(Inventory inventory) {
         return InventoryResponse.builder()
-                .itemId(inv.getItemId())
-                .storeId(inv.getStore().getStoreId())
-                .itemName(inv.getItemName())
-                .itemType(inv.getItemType())
-                .stockType(inv.getStockType())
-                .stockQty(nonNull(inv.getStockQty()))
-                .safetyQty(nonNull(inv.getSafetyQty()))
-                .status(inv.getStatus())
+                .itemId(inventory.getItemId())
+                .storeId(inventory.getStore().getStoreId())
+                .itemName(inventory.getItemName())
+                .itemType(inventory.getItemType())
+                .stockType(inventory.getStockType())
+                .stockQty(nonNull(inventory.getStockQty()))
+                .safetyQty(nonNull(inventory.getSafetyQty()))
+                .lastUnitCost(nonNull(inventory.getLastUnitCost()))
+                .status(inventory.getStatus())
                 .build();
     }
 }
