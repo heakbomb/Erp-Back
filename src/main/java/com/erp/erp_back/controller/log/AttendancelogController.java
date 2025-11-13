@@ -23,7 +23,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/attendance")
+@RequestMapping("/attendance")
 @CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class AttendancelogController {

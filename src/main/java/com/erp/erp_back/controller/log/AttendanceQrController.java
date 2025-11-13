@@ -12,7 +12,7 @@ import com.erp.erp_back.service.log.AttendanceQrService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/attendance/qr")
+@RequestMapping("/attendance/qr")
 @RequiredArgsConstructor
 public class AttendanceQrController {
 

@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.erp.erp_back.dto.erp.PurchaseHistoryRequest;
 import com.erp.erp_back.dto.erp.PurchaseHistoryUpdateRequest;
 import com.erp.erp_back.dto.erp.PurchaseHistoryResponse;
+import com.erp.erp_back.entity.enums.ActiveStatus;
 import com.erp.erp_back.entity.erp.Inventory;
 import com.erp.erp_back.entity.erp.PurchaseHistory;
 import com.erp.erp_back.entity.store.Store;

@@ -22,7 +22,7 @@ import com.erp.erp_back.dto.store.StoreSimpleResponse;
 import com.erp.erp_back.service.store.StoreService;
 
 @RestController
-@RequestMapping("/api/store")
+@RequestMapping("/store")
 @CrossOrigin(origins = "*")
 public class StoreController {
 
