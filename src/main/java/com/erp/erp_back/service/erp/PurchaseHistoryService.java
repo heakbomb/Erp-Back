@@ -3,6 +3,8 @@ package com.erp.erp_back.service.erp;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
 
 import org.springframework.data.domain.Page;
@@ -12,9 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.erp.erp_back.dto.erp.PurchaseHistoryRequest;
-import com.erp.erp_back.dto.erp.PurchaseHistoryResponse;
 import com.erp.erp_back.dto.erp.PurchaseHistoryUpdateRequest;
-import com.erp.erp_back.entity.enums.ActiveStatus;
+import com.erp.erp_back.dto.erp.PurchaseHistoryResponse;
 import com.erp.erp_back.entity.erp.Inventory;
 import com.erp.erp_back.entity.erp.PurchaseHistory;
 import com.erp.erp_back.entity.store.Store;
@@ -33,7 +34,7 @@ public class PurchaseHistoryService {
     private final InventoryRepository inventoryRepository;
     private final StoreRepository storeRepository;
 
-    /* ====== 목록 (Specification) ====== */
+    /* ====== 목록 (Specification로 통합 필터) ====== */
     @Transactional(readOnly = true)
     public Page<PurchaseHistoryResponse> listPurchase(
             Long storeId, Long itemId, LocalDate from, LocalDate to, Pageable pageable) {
@@ -94,9 +95,13 @@ public class PurchaseHistoryService {
                         .build()
         );
 
-        // 재고 수량 입고(+)
-        BigDecimal newQty = nz(item.getStockQty()).add(nz(req.getPurchaseQty()));
-        item.setStockQty(newQty);
+        // 2) 재고 수량 증가만 반영 (평균원가 계산 제거)
+        BigDecimal prevQty  = nz(item.getStockQty());
+        BigDecimal addQty   = nz(req.getPurchaseQty());
+        item.setStockQty(prevQty.add(addQty));
+
+        // 3) 최신단가만 재산출 (구매일 최신, 동일일자면 purchaseId 큰 것)
+        recomputeLatestCostFromHistory(item.getItemId());
 
         return toDTO(saved);
     }
@@ -104,20 +109,21 @@ public class PurchaseHistoryService {
     /* ====== 단건 조회 ====== */
     @Transactional(readOnly = true)
     public PurchaseHistoryResponse getPurchase(Long purchaseId) {
-        PurchaseHistory ph = purchaseHistoryRepository.findById(purchaseId)
+        PurchaseHistory purchase = purchaseHistoryRepository.findById(purchaseId)
                 .orElseThrow(() -> new EntityNotFoundException("PURCHASE_NOT_FOUND"));
-        return toDTO(ph);
+        return toDTO(purchase);
     }
 
-    /* ====== 수정 (수량 Δ만 재고반영) ====== */
+    /* ====== 수정 ====== */
     @Transactional
     public PurchaseHistoryResponse updatePurchase(Long purchaseId, PurchaseHistoryUpdateRequest req) {
-        PurchaseHistory ph = purchaseHistoryRepository.findById(purchaseId)
+        PurchaseHistory purchase = purchaseHistoryRepository.findById(purchaseId)
                 .orElseThrow(() -> new EntityNotFoundException("PURCHASE_NOT_FOUND"));
 
-        Inventory item = ph.getInventory();
+        Inventory item = purchase.getInventory();
 
-        BigDecimal prevQty = nz(ph.getPurchaseQty());
+        // 1) 재고 수량 보정 (Δ)
+        BigDecimal prevQty = nz(purchase.getPurchaseQty());
         BigDecimal nextQty = nz(req.getPurchaseQty());
         BigDecimal delta   = nextQty.subtract(prevQty);
 
@@ -127,22 +133,48 @@ public class PurchaseHistoryService {
         }
         item.setStockQty(newStock);
 
-        ph.setPurchaseQty(nextQty);
-        ph.setUnitPrice(nz(req.getUnitPrice()));
-        ph.setPurchaseDate(req.getPurchaseDate());
+        // 2) 매입 레코드 갱신
+        purchase.setPurchaseQty(nextQty);
+        purchase.setUnitPrice(nz(req.getUnitPrice()));
+        purchase.setPurchaseDate(req.getPurchaseDate());
 
-        return toDTO(ph);
+        // 3) 최신단가만 재산출
+        recomputeLatestCostFromHistory(item.getItemId());
+
+        return toDTO(purchase);
+    }
+
+    /* ====== 내부: 최신단가만 재계산 ====== */
+    private void recomputeLatestCostFromHistory(Long itemId) {
+        Inventory inventory = inventoryRepository.findById(itemId)
+                .orElseThrow(() -> new EntityNotFoundException("INVENTORY_NOT_FOUND"));
+
+        List<PurchaseHistory> all = purchaseHistoryRepository.findByInventoryItemId(itemId);
+        if (all.isEmpty()) {
+            // 매입기록이 없으면 최신단가 0
+            inventory.setLastUnitCost(BigDecimal.ZERO);
+            return;
+        }
+
+        // 최신단가 = '구매일' 최신(동일일자는 purchaseId 큰 것) 레코드의 unitPrice
+        PurchaseHistory latest = all.stream()
+                .max(Comparator
+                        .<PurchaseHistory, LocalDate>comparing(p -> p.getPurchaseDate() == null ? LocalDate.MIN : p.getPurchaseDate())
+                        .thenComparing(PurchaseHistory::getPurchaseId))
+                .orElse(all.get(0));
+
+        inventory.setLastUnitCost(nz(latest.getUnitPrice()));
     }
 
     /* ====== DTO 매핑 ====== */
-    private PurchaseHistoryResponse toDTO(PurchaseHistory ph) {
+    private PurchaseHistoryResponse toDTO(PurchaseHistory purchase) {
         return PurchaseHistoryResponse.builder()
-                .purchaseId(ph.getPurchaseId())
-                .storeId(ph.getStore().getStoreId())
-                .itemId(ph.getInventory().getItemId())
-                .purchaseQty(ph.getPurchaseQty())
-                .unitPrice(ph.getUnitPrice())
-                .purchaseDate(ph.getPurchaseDate())
+                .purchaseId(purchase.getPurchaseId())
+                .storeId(purchase.getStore().getStoreId())
+                .itemId(purchase.getInventory().getItemId())
+                .purchaseQty(purchase.getPurchaseQty())
+                .unitPrice(purchase.getUnitPrice())
+                .purchaseDate(purchase.getPurchaseDate())
                 .build();
     }
 

@@ -54,4 +54,8 @@ public class Inventory {
     @Builder.Default
     @Column(name = "status", nullable = false, length = 10)
     private ActiveStatus status = ActiveStatus.ACTIVE;
+
+    @Builder.Default
+    @Column(precision = 19, scale = 4, nullable = false)
+    private BigDecimal lastUnitCost = BigDecimal.ZERO; 
 }
