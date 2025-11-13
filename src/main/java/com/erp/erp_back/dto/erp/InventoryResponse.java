@@ -22,5 +22,6 @@ public class InventoryResponse {
     private BigDecimal stockQty;
     private BigDecimal safetyQty;
     private ActiveStatus status;
+    private BigDecimal lastUnitCost;
 
 }
