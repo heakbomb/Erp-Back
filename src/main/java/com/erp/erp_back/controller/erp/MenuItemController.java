@@ -2,6 +2,7 @@ package com.erp.erp_back.controller.erp;
 
 import com.erp.erp_back.dto.erp.MenuItemRequest;
 import com.erp.erp_back.dto.erp.MenuItemResponse;
+import com.erp.erp_back.dto.erp.MenuStatsResponse;
 import com.erp.erp_back.entity.enums.ActiveStatus;
 import com.erp.erp_back.service.erp.MenuItemService;
 import jakarta.validation.Valid;
@@ -86,4 +87,12 @@ public class MenuItemController {
         menuItemService.reactivate(storeId, menuId);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/stats")
+    public ResponseEntity<MenuStatsResponse> getMenuStats(
+            @RequestParam Long storeId
+    ) {
+        return ResponseEntity.ok(menuItemService.getMenuStats(storeId));
+    }
+    
 }

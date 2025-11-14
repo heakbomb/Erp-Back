@@ -30,6 +30,7 @@ public class RecipeIngredientService {
     private final RecipeIngredientRepository recipeIngredientRepository;
     private final MenuItemRepository menuItemRepository;
     private final InventoryRepository inventoryRepository;
+    private final MenuItemService menuItemService; // 메뉴 원가 재계산 호출
 
     /** 메뉴별 레시피 목록 */
     @Transactional(readOnly = true)
@@ -48,8 +49,7 @@ public class RecipeIngredientService {
     /** 레시피 등록 */
     @Transactional
     public RecipeIngredientResponse createRecipe(RecipeIngredientRequest req) {
-        if (req.getConsumptionQty() == null ||
-            req.getConsumptionQty().compareTo(BigDecimal.ZERO) <= 0) {
+        if (req.getConsumptionQty() == null || req.getConsumptionQty().compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("INVALID_CONSUMPTION_QTY");
         }
 
@@ -59,12 +59,12 @@ public class RecipeIngredientService {
         Inventory inv = inventoryRepository.findById(req.getItemId())
                 .orElseThrow(() -> new EntityNotFoundException("INVENTORY_NOT_FOUND"));
 
-        // 동일 매장 데이터인지 확인
+        // 동일 매장인지 검증
         if (!menu.getStore().getStoreId().equals(inv.getStore().getStoreId())) {
             throw new IllegalArgumentException("STORE_MISMATCH_BETWEEN_MENU_AND_INVENTORY");
         }
 
-        // 서버단 정책: 비활성 메뉴/재고는 레시피에 사용할 수 없음
+        // 비활성 사용 금지 정책
         if (menu.getStatus() == ActiveStatus.INACTIVE) {
             throw new IllegalStateException("CANNOT_ATTACH_INGREDIENT_TO_INACTIVE_MENU");
         }
@@ -73,18 +73,21 @@ public class RecipeIngredientService {
         }
 
         // 중복 방지
-        if (recipeIngredientRepository
-                .existsByMenuItemMenuIdAndInventoryItemId(req.getMenuId(), req.getItemId())) {
+        if (recipeIngredientRepository.existsByMenuItemMenuIdAndInventoryItemId(req.getMenuId(), req.getItemId())) {
             throw new DuplicateKeyException("INGREDIENT_ALREADY_EXISTS_FOR_MENU");
         }
 
-        RecipeIngredient entity = RecipeIngredient.builder()
-                .menuItem(menu)
-                .inventory(inv)
-                .consumptionQty(req.getConsumptionQty())
-                .build();
+        RecipeIngredient saved = recipeIngredientRepository.save(
+                RecipeIngredient.builder()
+                        .menuItem(menu)
+                        .inventory(inv)
+                        .consumptionQty(req.getConsumptionQty())
+                        .build()
+        );
 
-        RecipeIngredient saved = recipeIngredientRepository.save(entity);
+        // ✅ 레시피가 바뀌었으니 해당 메뉴 원가 재계산 + 저장
+        menuItemService.recalcAndSave(menu.getStore().getStoreId(), menu.getMenuId());
+
         return toDTO(saved);
     }
 
@@ -96,14 +99,13 @@ public class RecipeIngredientService {
         RecipeIngredient entity = recipeIngredientRepository.findById(recipeId)
                 .orElseThrow(() -> new EntityNotFoundException("RECIPE_INGREDIENT_NOT_FOUND"));
 
-        if (req.getConsumptionQty() == null ||
-            req.getConsumptionQty().compareTo(BigDecimal.ZERO) <= 0) {
+        if (req.getConsumptionQty() == null || req.getConsumptionQty().compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("INVALID_CONSUMPTION_QTY");
         }
 
-        // 메뉴/재고 현재 상태 확인 (안전)
         MenuItem menu = entity.getMenuItem();
         Inventory inv = entity.getInventory();
+
         if (menu.getStatus() == ActiveStatus.INACTIVE) {
             throw new IllegalStateException("CANNOT_MODIFY_RECIPE_OF_INACTIVE_MENU");
         }
@@ -111,7 +113,11 @@ public class RecipeIngredientService {
             throw new IllegalStateException("CANNOT_USE_INACTIVE_INVENTORY_IN_RECIPE");
         }
 
-        entity.setConsumptionQty(req.getConsumptionQty()); // 변경감지
+        entity.setConsumptionQty(req.getConsumptionQty()); // 변경감지만
+
+        // ✅ 변경 즉시 해당 메뉴 원가 재계산 + 저장
+        menuItemService.recalcAndSave(menu.getStore().getStoreId(), menu.getMenuId());
+
         return toDTO(entity);
     }
 
@@ -123,7 +129,13 @@ public class RecipeIngredientService {
         RecipeIngredient entity = recipeIngredientRepository.findById(recipeId)
                 .orElseThrow(() -> new EntityNotFoundException("RECIPE_INGREDIENT_NOT_FOUND"));
 
+        Long storeId = entity.getMenuItem().getStore().getStoreId();
+        Long menuId  = entity.getMenuItem().getMenuId();
+
         recipeIngredientRepository.delete(entity);
+
+        // ✅ 삭제 후에도 해당 메뉴 원가 재계산 + 저장
+        menuItemService.recalcAndSave(storeId, menuId);
     }
 
     /** 엔티티 → DTO 변환 */

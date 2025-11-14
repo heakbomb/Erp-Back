@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.erp.erp_back.dto.erp.PurchaseHistoryRequest;
 import com.erp.erp_back.dto.erp.PurchaseHistoryUpdateRequest;
 import com.erp.erp_back.dto.erp.PurchaseHistoryResponse;
-import com.erp.erp_back.entity.enums.ActiveStatus;
 import com.erp.erp_back.entity.erp.Inventory;
 import com.erp.erp_back.entity.erp.PurchaseHistory;
 import com.erp.erp_back.entity.store.Store;
@@ -34,6 +33,7 @@ public class PurchaseHistoryService {
     private final PurchaseHistoryRepository purchaseHistoryRepository;
     private final InventoryRepository inventoryRepository;
     private final StoreRepository storeRepository;
+    private final MenuItemService menuItemService; // ⭐ [추가] 메뉴 원가 전파를 위해 주입
 
     /* ====== 목록 (Specification로 통합 필터) ====== */
     @Transactional(readOnly = true)
@@ -79,13 +79,7 @@ public class PurchaseHistoryService {
             throw new IllegalArgumentException("ITEM_NOT_BELONG_TO_STORE");
         }
 
-        // 정책: 비활성 재고로 매입 시 자동 활성화
-        if (item.getStatus() == ActiveStatus.INACTIVE) {
-            item.setStatus(ActiveStatus.ACTIVE);
-        
-        }
-
-        // 매입 저장
+        // 1) 매입 저장
         PurchaseHistory saved = purchaseHistoryRepository.save(
                 PurchaseHistory.builder()
                         .store(store)
@@ -96,13 +90,16 @@ public class PurchaseHistoryService {
                         .build()
         );
 
-        // 2) 재고 수량 증가만 반영 (평균원가 계산 제거)
+        // 2) 재고 수량 증가만 반영
         BigDecimal prevQty  = nz(item.getStockQty());
         BigDecimal addQty   = nz(req.getPurchaseQty());
         item.setStockQty(prevQty.add(addQty));
 
-        // 3) 최신단가만 재산출 (구매일 최신, 동일일자면 purchaseId 큰 것)
+        // 3) 최신단가만 재산출
         recomputeLatestCostFromHistory(item.getItemId());
+        
+        // ⭐ [추가] 원가 변경을 메뉴 서비스에 전파
+        menuItemService.propagateCostUpdate(item.getItemId());
 
         return toDTO(saved);
     }
@@ -141,6 +138,9 @@ public class PurchaseHistoryService {
 
         // 3) 최신단가만 재산출
         recomputeLatestCostFromHistory(item.getItemId());
+
+        // ⭐ [추가] 원가 변경을 메뉴 서비스에 전파
+        menuItemService.propagateCostUpdate(item.getItemId());
 
         return toDTO(purchase);
     }
