@@ -1,10 +1,9 @@
 // src/main/java/com/erp/erp_back/service/erp/MenuItemService.java
 package com.erp.erp_back.service.erp;
 
-import java.math.BigDecimal;
-
 import com.erp.erp_back.dto.erp.MenuItemRequest;
 import com.erp.erp_back.dto.erp.MenuItemResponse;
+import com.erp.erp_back.dto.erp.MenuStatsResponse;
 import com.erp.erp_back.entity.erp.Inventory;
 import com.erp.erp_back.entity.erp.MenuItem;
 import com.erp.erp_back.entity.erp.RecipeIngredient;
@@ -19,8 +18,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -105,16 +107,31 @@ public class MenuItemService {
         menu.setStatus(ActiveStatus.ACTIVE);
     }
 
+    // ⭐ [추가] PurchaseHistoryService가 재고 단가 변경을 알릴 때 호출
+    @Transactional
+    public void propagateCostUpdate(Long inventoryId) {
+        // 이 재고를 사용하는 모든 레시피 목록 조회
+        List<RecipeIngredient> recipes = recipeIngredientRepository.findByInventoryItemId(inventoryId);
+
+        // 중복 없는 menuId 목록 추출
+        Set<Long> menuIdsToUpdate = recipes.stream()
+                .map(r -> r.getMenuItem().getMenuId())
+                .collect(Collectors.toSet());
+
+        // 각 메뉴의 원가를 다시 계산합니다. (동적 계산이므로 DB 저장 필요 없음)
+        menuIdsToUpdate.forEach(this::computeMenuCostByLatest);
+    }
+
     /* ===== Helper ===== */
 
-    private MenuItemResponse toResponseWithLatestCost(MenuItem m) {
-        BigDecimal latestCost = computeMenuCostByLatest(m.getMenuId());
+    private MenuItemResponse toResponseWithLatestCost(MenuItem menu) {
+        BigDecimal latestCost = computeMenuCostByLatest(menu.getMenuId());
         return MenuItemResponse.builder()
-                .menuId(m.getMenuId())
-                .storeId(m.getStore().getStoreId())
-                .menuName(m.getMenuName())
-                .price(m.getPrice())
-                .status(m.getStatus())
+                .menuId(menu.getMenuId())
+                .storeId(menu.getStore().getStoreId())
+                .menuName(menu.getMenuName())
+                .price(menu.getPrice())
+                .status(menu.getStatus())
                 // ✅ 백엔드에서 계산해 넣어줌
                 .calculatedCost(latestCost)
                 .build();
@@ -122,20 +139,54 @@ public class MenuItemService {
 
     // Σ(소모량 × 재고.lastUnitCost). 비활성 재고는 제외(원하면 포함으로 바꿔도 됨)
     private BigDecimal computeMenuCostByLatest(Long menuId) {
-        List<RecipeIngredient> ingredients = recipeIngredientRepository.findByMenuItemMenuId(menuId);
-        BigDecimal sum = BigDecimal.ZERO;
+    List<RecipeIngredient> ingredients =
+            recipeIngredientRepository.findByMenuItemMenuId(menuId);
+    BigDecimal sum = BigDecimal.ZERO;
 
-        for (RecipeIngredient ri : ingredients) {
-            Inventory inv = ri.getInventory();
-            if (inv == null) continue;
-            if (inv.getStatus() == ActiveStatus.INACTIVE) continue; // 비활성 재고 무시(정책)
+    for (RecipeIngredient ri : ingredients) {
+        Inventory inv = ri.getInventory();
+        if (inv == null) continue;
+        if (inv.getStatus() == ActiveStatus.INACTIVE) continue; // 비활성 재고 제외
 
-            BigDecimal qty = nz(ri.getConsumptionQty());
-            BigDecimal last = nz(inv.getLastUnitCost());
-            sum = sum.add(qty.multiply(last));
-        }
-        return sum;
+        BigDecimal qty  = nz(ri.getConsumptionQty());
+        BigDecimal last = nz(inv.getLastUnitCost());
+        sum = sum.add(qty.multiply(last));
     }
+    return sum;
+}
+
+    /** 단일 메뉴 재계산 + 저장 */
+@Transactional
+public void recalcAndSave(Long storeId, Long menuId) {
+    MenuItem menu = menuItemRepository.findByMenuIdAndStoreStoreId(menuId, storeId)
+            .orElseThrow(() -> new EntityNotFoundException("MENU_NOT_FOUND"));
+    BigDecimal cost = computeMenuCostByLatest(menuId);
+    menu.setCalculatedCost(cost);
+    // menuItemRepository.save(menu); // JPA dirty checking으로 flush
+}
+
+/** 특정 재고(itemId)를 쓰는 모든 메뉴 재계산 */
+@Transactional
+public void recalcByInventory(Long storeId, Long itemId) {
+    List<RecipeIngredient> used = recipeIngredientRepository.findByInventoryItemId(itemId);
+    for (RecipeIngredient ri : used) {
+        MenuItem menu = ri.getMenuItem();
+        if (menu != null && Objects.equals(menu.getStore().getStoreId(), storeId)) {
+            BigDecimal cost = computeMenuCostByLatest(menu.getMenuId());
+            menu.setCalculatedCost(cost);
+        }
+    }
+}
+
+@Transactional(readOnly = true)
+public MenuStatsResponse getMenuStats(Long storeId) {
+    long total = menuItemRepository.countByStoreStoreId(storeId);
+    long inactive = menuItemRepository.countByStoreStoreIdAndStatus(
+            storeId, ActiveStatus.INACTIVE
+    );
+    return new MenuStatsResponse(total, inactive);
+}
+
 
     private static BigDecimal nz(BigDecimal v) {
         return v == null ? BigDecimal.ZERO : v;

@@ -1,13 +1,6 @@
 // src/main/java/com/erp/erp_back/service/erp/InventoryService.java
 package com.erp.erp_back.service.erp;
 
-import java.math.BigDecimal;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.erp.erp_back.dto.erp.InventoryRequest;
 import com.erp.erp_back.dto.erp.InventoryResponse;
 import com.erp.erp_back.entity.enums.ActiveStatus;
@@ -15,9 +8,14 @@ import com.erp.erp_back.entity.erp.Inventory;
 import com.erp.erp_back.entity.store.Store;
 import com.erp.erp_back.repository.erp.InventoryRepository;
 import com.erp.erp_back.repository.store.StoreRepository;
-
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
@@ -41,20 +39,21 @@ public class InventoryService {
                 .stockQty(nonNull(req.getStockQty()))
                 .safetyQty(nonNull(req.getSafetyQty()))
                 .status(req.getStatus() != null ? req.getStatus() : ActiveStatus.ACTIVE)
+                // ⭐ [FIX] lastUnitCost를 명시적으로 초기화하여 DB NOT NULL 오류 (500 에러) 방지
+                .lastUnitCost(BigDecimal.ZERO) 
                 .build();
 
         Inventory saved = inventoryRepository.save(inv);
         return toDTO(saved);
     }
 
-    /* ========= 단건 조회 ========= */
+    /* (중략: getInventory, getInventoryPage, updateInventory, deactivate, reactivate) */
     public InventoryResponse getInventory(Long storeId, Long itemId) {
         Inventory inv = inventoryRepository.findByItemIdAndStoreStoreId(itemId, storeId)
                 .orElseThrow(() -> new EntityNotFoundException("INVENTORY_NOT_FOUND"));
         return toDTO(inv);
     }
 
-    /* ========= 목록(검색/상태/페이징) ========= */
     public Page<InventoryResponse> getInventoryPage(Long storeId, String q, ActiveStatus status, Pageable pageable) {
         Page<Inventory> page;
         boolean hasQ = q != null && !q.isBlank();
@@ -72,7 +71,6 @@ public class InventoryService {
         return page.map(this::toDTO);
     }
 
-    /* ========= 수정 ========= */
     @Transactional
     public InventoryResponse updateInventory(Long storeId, Long itemId, InventoryRequest req) {
         Inventory inv = inventoryRepository.findByItemIdAndStoreStoreId(itemId, storeId)
@@ -91,7 +89,6 @@ public class InventoryService {
         return toDTO(inv);
     }
 
-    /* ========= 활성/비활성 전환 ========= */
     @Transactional
     public void deactivate(Long storeId, Long itemId) {
         Inventory inv = inventoryRepository.findByItemIdAndStoreStoreId(itemId, storeId)
@@ -105,7 +102,7 @@ public class InventoryService {
                 .orElseThrow(() -> new EntityNotFoundException("INVENTORY_NOT_FOUND"));
         inv.setStatus(ActiveStatus.ACTIVE);
     }
-
+    
     /* ========= 헬퍼 ========= */
     private BigDecimal nonNull(BigDecimal v) {
         return v == null ? BigDecimal.ZERO : v;
