@@ -1,6 +1,7 @@
 package com.erp.erp_back.dto.store;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import com.erp.erp_back.entity.store.Store;
 import com.erp.erp_back.entity.store.StoreGps;
@@ -9,8 +10,10 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter; // ⭐️ Setter 필수
 
 @Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -25,20 +28,25 @@ public class StoreResponse {
     private Double latitude;
     private Double longitude;
 
-    // ✅ 기존 방식: GPS 없이 Store만으로 만들 때
-    public static StoreResponse from(Store store) {
-        return StoreResponse.builder()
-                .storeId(store.getStoreId())
-                .bizId(store.getBusinessNumber() != null ? store.getBusinessNumber().getBizId() : null)
-                .storeName(store.getStoreName())
-                .industry(store.getIndustry())
-                .posVendor(store.getPosVendor())
-                .status(store.getStatus())
-                .approvedAt(store.getApprovedAt())
-                .build();
+    // --- 상세 정보 필드 ---
+    private String ownerName;
+    private String ownerEmail;
+    private String bizNum; 
+    private String openStatus; 
+    private String taxType; 
+    private String startDt; 
+    private String phone;
+
+    // --- 직원 목록 리스트 ---
+    private List<StoreEmployeeDto> employees;
+
+    @Getter @Builder
+    public static class StoreEmployeeDto {
+        private String name;
+        private String role;
+        private String status;
     }
 
-    // ✅ 새 방식: Store + StoreGps 두 개를 합쳐서 응답
     public static StoreResponse of(Store store, StoreGps gps) {
         return StoreResponse.builder()
                 .storeId(store.getStoreId())

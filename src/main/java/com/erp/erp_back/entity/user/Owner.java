@@ -34,7 +34,7 @@ public class Owner {
     private Long ownerId;
 
     // The PDF's logical name is "이름(실명)" but the physical name is "username" 
-    @Column(nullable = false, unique = true, length = 50)
+    @Column(nullable = false, length = 50)
     private String username;
 
     @Column(nullable = false, length = 255)

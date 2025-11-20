@@ -16,4 +16,8 @@ public class AdminStoreDashboardItem {
     private long employeeCount; // 직원 수 (집계)
     private BigDecimal totalSalesMonth; // 당월 매출 (집계)
     private LocalDateTime lastSalesDate; // 최근 매출일
+
+    private String ownerName;
+    private String ownerEmail;
+    private String bizNum; // 필드 추가
 }

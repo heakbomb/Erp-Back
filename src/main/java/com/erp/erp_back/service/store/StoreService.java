@@ -15,6 +15,7 @@ import com.erp.erp_back.dto.log.StoreQrResponse;
 import com.erp.erp_back.dto.store.StoreCreateRequest;
 import com.erp.erp_back.dto.store.StoreResponse;
 import com.erp.erp_back.dto.store.StoreSimpleResponse;
+import com.erp.erp_back.entity.auth.EmployeeAssignment;
 import com.erp.erp_back.entity.log.AttendanceQrToken;
 import com.erp.erp_back.entity.store.BusinessNumber;
 import com.erp.erp_back.entity.store.Store;
@@ -26,42 +27,33 @@ import com.erp.erp_back.repository.store.StoreGpsRepository;
 import com.erp.erp_back.repository.store.StoreRepository;
 
 import jakarta.persistence.criteria.Predicate;
+import lombok.RequiredArgsConstructor;
+
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class StoreService {
 
     private final StoreRepository storeRepository;
     private final BusinessNumberRepository businessNumberRepository;
     private final EmployeeAssignmentRepository assignmentRepository;
     private final AttendanceQrTokenRepository attendanceQrTokenRepository;
-    private final StoreGpsRepository storeGpsRepository;   
+    private final StoreGpsRepository storeGpsRepository;
 
-    public StoreService(
-            StoreRepository storeRepository,
-            BusinessNumberRepository businessNumberRepository,
-            EmployeeAssignmentRepository assignmentRepository,
-            AttendanceQrTokenRepository attendanceQrTokenRepository,
-            StoreGpsRepository storeGpsRepository
-    ) {
-        this.storeRepository = storeRepository;
-        this.businessNumberRepository = businessNumberRepository;
-        this.assignmentRepository = assignmentRepository;
-        this.attendanceQrTokenRepository = attendanceQrTokenRepository;
-        this.storeGpsRepository = storeGpsRepository;
-    }
-
+    /**
+     * (Admin) 사업장 목록 조회 (페이징, 검색, 상태 필터링)
+     */
     @Transactional(readOnly = true)
     public Page<StoreResponse> getStoresForAdmin(String status, String q, Pageable pageable) {
-        // Specification을 사용하여 동적 쿼리 생성
         Specification<Store> spec = (root, query, cb) -> {
             Predicate p = cb.conjunction();
 
-            // 1. Status 필터링 (ALL이 아닐 경우)
+            // 상태 필터 (ALL이 아니면 해당 상태만)
             if (status != null && !status.isEmpty() && !status.equals("ALL")) {
                 p = cb.and(p, cb.equal(root.get("status"), status));
             }
 
-            // 2. q (검색어) 필터링 (storeName 기준)
+            // 검색 (사업장명 포함)
             if (q != null && !q.trim().isEmpty()) {
                 p = cb.and(p, cb.like(root.get("storeName"), "%" + q.trim() + "%"));
             }
@@ -69,38 +61,84 @@ public class StoreService {
             return p;
         };
 
-    // 3. Specification과 Pageable을 사용하여 데이터 조회
         Page<Store> storePage = storeRepository.findAll(spec, pageable);
 
-        // 4. Page<Store> -> Page<StoreResponse> 변환
-        //    (StoreGps 정보 포함)
+        // DTO 변환 (GPS 정보 포함)
         return storePage.map(s -> {
             StoreGps gps = storeGpsRepository.findByStore_StoreId(s.getStoreId()).orElse(null);
             return StoreResponse.of(s, gps);
         });
     }
 
+    /**
+     * (Admin) 사업장 상태 변경 (승인/반려)
+     */
     public StoreResponse updateStoreStatus(Long storeId, String newStatus) {
-        // "APPROVED" 또는 "REJECTED"만 허용 (이 로직은 유지)
-        if (!newStatus.equals("APPROVED") && !newStatus.equals("REJECTED")) {
-            throw new IllegalArgumentException("잘못된 상태 값입니다. (APPROVED 또는 REJECTED만 가능)");
-        }
-        
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("사업장을 찾을 수 없습니다."));
 
-        // (선택적 개선) 이미 같은 상태로 변경하려 하면 경고
-        if (store.getStatus().equals(newStatus)) {
-            throw new IllegalStateException("이미 '" + newStatus + "' 상태입니다.");
+        store.setStatus(newStatus);
+        
+        // 승인 시각 기록 (최초 승인 시)
+        if ("APPROVED".equals(newStatus) && store.getApprovedAt() == null) {
+            store.setApprovedAt(LocalDateTime.now());
         }
 
-        store.setStatus(newStatus);
-        Store updatedStore = storeRepository.save(store);
+        Store updated = storeRepository.save(store);
+        StoreGps gps = storeGpsRepository.findByStore_StoreId(updated.getStoreId()).orElse(null);
         
-        return StoreResponse.from(updatedStore);
+        return StoreResponse.of(updated, gps);
     }
 
-    // 사업장 등록 (Admin/Owner 공용 사용 가능)
+    /**
+     * (공용) 단건 상세 조회
+     * - GPS 정보 + 사업자 정보 + 사장님 정보 + 직원 목록까지 모두 조회
+     */
+    @Transactional(readOnly = true)
+    public StoreResponse getStore(Long storeId) {
+        // 1. 기본 정보
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사업장을 찾을 수 없습니다."));
+        
+        // 2. GPS 정보 (있을 수도, 없을 수도 있음)
+        StoreGps gps = storeGpsRepository.findByStore_StoreId(storeId).orElse(null);
+
+        // 3. DTO 생성
+        StoreResponse response = StoreResponse.of(store, gps);
+
+        // 4. 상세 정보 채우기 (BusinessNumber, Owner)
+        if (store.getBusinessNumber() != null) {
+            BusinessNumber biz = store.getBusinessNumber();
+            response.setBizNum(biz.getBizNum());
+            response.setPhone(biz.getPhone());
+            response.setOpenStatus(biz.getOpenStatus());
+            response.setTaxType(biz.getTaxType());
+            response.setStartDt(biz.getStartDt());
+            
+            if (biz.getOwner() != null) {
+                response.setOwnerName(biz.getOwner().getUsername());
+                response.setOwnerEmail(biz.getOwner().getEmail());
+            }
+        }
+
+        // 5. 직원 목록 조회 및 매핑
+        List<EmployeeAssignment> assignments = assignmentRepository.findAllByStoreId(storeId);
+        List<StoreResponse.StoreEmployeeDto> employeeDtos = assignments.stream()
+                .map(ea -> StoreResponse.StoreEmployeeDto.builder()
+                        .name(ea.getEmployee().getName())
+                        .role(ea.getRole())
+                        .status(ea.getStatus())
+                        .build())
+                .collect(Collectors.toList());
+        
+        response.setEmployees(employeeDtos);
+
+        return response;
+    }
+
+    /**
+     * 사업장 생성
+     */
     public StoreResponse createStore(StoreCreateRequest request) {
         BusinessNumber bn = businessNumberRepository.findById(request.getBizId())
                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 사업자(bizId) 입니다."));
@@ -115,13 +153,11 @@ public class StoreService {
 
         Store saved = storeRepository.save(store);
 
-        // ✅ 위치는 별도 테이블에 저장
         if (request.getLatitude() != null || request.getLongitude() != null) {
             StoreGps gps = new StoreGps();
             gps.setStore(saved);
             gps.setLatitude(request.getLatitude());
             gps.setLongitude(request.getLongitude());
-            // 반경 기본값 있으면 여기서 세팅
             gps.setGpsRadiusM(80);
             storeGpsRepository.save(gps);
             return StoreResponse.of(saved, gps);
@@ -130,25 +166,9 @@ public class StoreService {
         return StoreResponse.of(saved, null);
     }
 
-    @Transactional(readOnly = true)
-    public List<StoreResponse> getAllStores() {
-        List<Store> stores = storeRepository.findAll();
-        return stores.stream()
-                .map(s -> {
-                    StoreGps gps = storeGpsRepository.findByStore_StoreId(s.getStoreId()).orElse(null);
-                    return StoreResponse.of(s, gps);
-                })
-                .collect(Collectors.toList());
-    }
-
-    @Transactional(readOnly = true)
-    public StoreResponse getStore(Long storeId) {
-        Store store = storeRepository.findById(storeId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 사업장을 찾을 수 없습니다."));
-        StoreGps gps = storeGpsRepository.findByStore_StoreId(storeId).orElse(null);
-        return StoreResponse.of(store, gps);
-    }
-
+    /**
+     * 사업장 수정
+     */
     public StoreResponse updateStore(Long storeId, StoreCreateRequest request) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("사업장 없음"));
@@ -163,7 +183,6 @@ public class StoreService {
             store.setBusinessNumber(bn);
         }
 
-        // ✅ GPS도 별도 처리
         StoreGps gps = storeGpsRepository.findByStore_StoreId(storeId).orElse(null);
         if (request.getLatitude() != null || request.getLongitude() != null) {
             if (gps == null) {
@@ -172,79 +191,63 @@ public class StoreService {
             }
             gps.setLatitude(request.getLatitude());
             gps.setLongitude(request.getLongitude());
-            if (gps.getGpsRadiusM() == null) {
-                gps.setGpsRadiusM(80);
-            }
+            if (gps.getGpsRadiusM() == null) gps.setGpsRadiusM(80);
             storeGpsRepository.save(gps);
         }
 
         return StoreResponse.of(store, gps);
     }
 
-    public void deleteStore(Long storeId) {
-        deleteStore(storeId, false);
-    }
-
+    /**
+     * 사업장 삭제
+     */
     public void deleteStore(Long storeId, boolean force) {
-        storeRepository.findById(storeId)
+        Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("삭제 대상 사업장이 존재하지 않습니다."));
 
         boolean hasChildren = assignmentRepository.existsByStore_StoreId(storeId);
 
         if (hasChildren && !force) {
-            throw new IllegalStateException("해당 사업장에 연결된 근무 신청/배정이 있어 삭제할 수 없습니다. (force=true로 강제 삭제 가능)");
+            throw new IllegalStateException("해당 사업장에 연결된 근무 신청/배정이 있어 삭제할 수 없습니다.");
         }
 
         if (hasChildren) {
             assignmentRepository.deleteByStore_StoreId(storeId);
         }
 
-        // GPS는 FK ON DELETE CASCADE로 해두면 자동으로 지워짐
-        storeRepository.deleteById(storeId);
-    }
-
-    // =============================
-    // ✅ 여기부터 QR 관련 (attendance_qr_token만 사용)
-    // =============================
-
-    @Transactional
-    public StoreQrResponse regenerateQrToken(Long storeId) {
-        Store store = storeRepository.findById(storeId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 사업장을 찾을 수 없습니다."));
-
+        // GPS는 FK Cascade로 자동 삭제됨(엔티티 설정에 따름) 또는 명시적 삭제 필요 시 추가
+        // QR 토큰 삭제
         attendanceQrTokenRepository.deleteByStore_StoreId(storeId);
-
-        String token = UUID.randomUUID().toString();
-        LocalDateTime expires = LocalDateTime.now().plusMinutes(5);
-
-        AttendanceQrToken qr = new AttendanceQrToken();
-        qr.setStore(store);
-        qr.setTokenValue(token);
-        qr.setExpireAt(expires);
-
-        attendanceQrTokenRepository.save(qr);
-
-        return StoreQrResponse.builder()
-                .storeId(storeId)
-                .qrToken(token)
-                .expireAt(expires)
-                .build();
+        
+        storeRepository.delete(store);
     }
 
+    /**
+     * 전체 사업장 목록 (리스트)
+     */
     @Transactional(readOnly = true)
-    public StoreQrResponse getQrToken(Long storeId) {
-        AttendanceQrToken latest = attendanceQrTokenRepository
-                .findTopByStore_StoreIdOrderByExpireAtDesc(storeId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 사업장의 QR 토큰이 없습니다."));
-
-        return StoreQrResponse.builder()
-                .storeId(storeId)
-                .qrToken(latest.getTokenValue())
-                .expireAt(latest.getExpireAt())
-                .build();
+    public List<StoreResponse> getAllStores() {
+        return storeRepository.findAll().stream()
+                .map(s -> {
+                    StoreGps gps = storeGpsRepository.findByStore_StoreId(s.getStoreId()).orElse(null);
+                    return StoreResponse.of(s, gps);
+                })
+                .collect(Collectors.toList());
     }
 
-    @Transactional
+    /**
+     * 오너별 사업장 목록
+     */
+    @Transactional(readOnly = true)
+    public List<StoreSimpleResponse> getStoresByOwner(Long ownerId) {
+        return storeRepository.findAllByOwnerId(ownerId).stream()
+                .map(StoreSimpleResponse::from)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * QR 코드 조회/갱신
+     */
     public StoreQrResponse getOrRefreshQr(Long storeId, boolean refresh) {
         if (refresh) {
             return regenerateQrToken(storeId);
@@ -265,13 +268,26 @@ public class StoreService {
                 .build();
     }
 
-    @Transactional(readOnly = true)
-    public List<StoreSimpleResponse> getStoresByOwner(Long ownerId) {
-        // 기존에 쓰던 repo 메서드 유지
-        List<Store> rows = storeRepository.findAllByOwnerId(ownerId);
+    private StoreQrResponse regenerateQrToken(Long storeId) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사업장을 찾을 수 없습니다."));
 
-        return rows.stream()
-                .map(StoreSimpleResponse::from)
-                .collect(Collectors.toList());
+        attendanceQrTokenRepository.deleteByStore_StoreId(storeId);
+
+        String token = UUID.randomUUID().toString();
+        LocalDateTime expires = LocalDateTime.now().plusMinutes(10);
+
+        AttendanceQrToken qr = new AttendanceQrToken();
+        qr.setStore(store);
+        qr.setTokenValue(token);
+        qr.setExpireAt(expires);
+
+        attendanceQrTokenRepository.save(qr);
+
+        return StoreQrResponse.builder()
+                .storeId(storeId)
+                .qrToken(token)
+                .expireAt(expires)
+                .build();
     }
 }
