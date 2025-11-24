@@ -15,6 +15,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.util.List;
 
 @RestController
 @RequestMapping("/owner/menu")
@@ -93,6 +94,11 @@ public class MenuItemController {
             @RequestParam Long storeId
     ) {
         return ResponseEntity.ok(menuItemService.getMenuStats(storeId));
+    }
+
+    @GetMapping("/pos")
+    public List<MenuItemResponse> getActiveMenusForPos(@RequestParam Long storeId) {
+        return menuItemService.listActiveMenusForPos(storeId);
     }
     
 }
