@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.erp.erp_back.dto.user.EmployeeResponse;
 import com.erp.erp_back.entity.user.Employee;
+import com.erp.erp_back.mapper.UserMapper;
 import com.erp.erp_back.repository.user.EmployeeRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -19,24 +20,21 @@ import lombok.RequiredArgsConstructor;
 public class EmployeeService {
 
     private final EmployeeRepository employeeRepository;
+    private final UserMapper userMapper;
 
     /** (Admin) 직원 계정 페이징 및 검색 조회 */
     @Transactional(readOnly = true)
     public Page<EmployeeResponse> getEmployeesForAdmin(String q, Pageable pageable) {
         String effectiveQuery = (q == null) ? "" : q.trim();
-
-        // 1. Repository에서 Page<Employee> 조회
-        Page<Employee> employeePage = employeeRepository.findAdminEmployees(effectiveQuery, pageable);
-        
-        // 2. Page<Employee> -> Page<EmployeeResponse>로 변환
-        return employeePage.map(this::toDto);
+        return employeeRepository.findAdminEmployees(effectiveQuery, pageable)
+                .map(userMapper::toEmployeeResponse);
     }
 
     /** 직원 전체 목록 조회 */
     @Transactional(readOnly = true)
     public List<EmployeeResponse> getAllEmployees() {
         return employeeRepository.findAll().stream()
-                .map(this::toDto)
+                .map(userMapper::toEmployeeResponse)
                 .toList();
     }
 
@@ -53,15 +51,10 @@ public class EmployeeService {
         Employee emp = employeeRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 직원(ID=" + id + ")을 찾을 수 없습니다."));
 
-        // 수정 가능한 필드 업데이트
-        emp.setName(req.getName());
-        emp.setEmail(req.getEmail());
-        emp.setPhone(req.getPhone());
-        emp.setProvider(req.getProvider()); // 항상 소셜 로그인용
-        // providerId는 일반적으로 변경 불가하므로 제외 (필요 시 추가)
+       userMapper.updateEmployeeFromDto(req, emp);
 
         Employee updated = employeeRepository.save(emp);
-        return toDto(updated);
+        return userMapper.toEmployeeResponse(updated);
     }
 
     /** 직원 삭제 */

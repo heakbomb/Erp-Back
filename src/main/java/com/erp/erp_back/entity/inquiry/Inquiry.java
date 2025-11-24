@@ -1,15 +1,33 @@
 package com.erp.erp_back.entity.inquiry;
 
-import com.erp.erp_back.entity.enums.InquiryCategory;
-import com.erp.erp_back.entity.enums.InquiryStatus;
-import com.erp.erp_back.entity.user.Admin;
-import com.erp.erp_back.entity.user.Owner;
-import jakarta.persistence.*;
-import lombok.*;
+import java.time.LocalDateTime;
+
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import java.time.LocalDateTime;
+import com.erp.erp_back.entity.enums.InquiryCategory;
+import com.erp.erp_back.entity.enums.InquiryStatus;
+import com.erp.erp_back.entity.store.Store;
+import com.erp.erp_back.entity.user.Admin;
+import com.erp.erp_back.entity.user.Owner;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Getter
@@ -57,6 +75,10 @@ public class Inquiry {
 
     @Column(name = "answered_at")
     private LocalDateTime answeredAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_id", nullable = true) // null 허용
+    private Store store;
 
     // 관리자 답변 등록 메서드 (Dirty Checking 용)
     public void reply(Admin admin, String answer) {

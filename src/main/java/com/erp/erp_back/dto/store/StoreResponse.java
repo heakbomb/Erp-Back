@@ -3,14 +3,11 @@ package com.erp.erp_back.dto.store;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import com.erp.erp_back.entity.store.Store;
-import com.erp.erp_back.entity.store.StoreGps;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter; // ⭐️ Setter 필수
+import lombok.Setter;
 
 @Getter
 @Setter
@@ -40,24 +37,15 @@ public class StoreResponse {
     // --- 직원 목록 리스트 ---
     private List<StoreEmployeeDto> employees;
 
-    @Getter @Builder
+    // ⭐️ [수정] Inner Class에도 생성자 어노테이션 추가
+    @Getter
+    @Setter 
+    @Builder
+    @NoArgsConstructor  // 추가: 기본 생성자
+    @AllArgsConstructor // 추가: 모든 필드 생성자 (public으로 생성됨)
     public static class StoreEmployeeDto {
         private String name;
         private String role;
         private String status;
-    }
-
-    public static StoreResponse of(Store store, StoreGps gps) {
-        return StoreResponse.builder()
-                .storeId(store.getStoreId())
-                .bizId(store.getBusinessNumber() != null ? store.getBusinessNumber().getBizId() : null)
-                .storeName(store.getStoreName())
-                .industry(store.getIndustry())
-                .posVendor(store.getPosVendor())
-                .status(store.getStatus())
-                .approvedAt(store.getApprovedAt())
-                .latitude(gps != null ? gps.getLatitude() : null)
-                .longitude(gps != null ? gps.getLongitude() : null)
-                .build();
     }
 }

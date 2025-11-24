@@ -1,21 +1,22 @@
 // src/main/java/com/erp/erp_back/service/erp/InventoryService.java
 package com.erp.erp_back.service.erp;
 
-import com.erp.erp_back.dto.erp.InventoryRequest;
-import com.erp.erp_back.dto.erp.InventoryResponse;
-import com.erp.erp_back.entity.enums.ActiveStatus;
-import com.erp.erp_back.entity.erp.Inventory;
-import com.erp.erp_back.entity.store.Store;
-import com.erp.erp_back.repository.erp.InventoryRepository;
-import com.erp.erp_back.repository.store.StoreRepository;
-import jakarta.persistence.EntityNotFoundException;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
+import com.erp.erp_back.dto.erp.InventoryRequest;
+import com.erp.erp_back.dto.erp.InventoryResponse;
+import com.erp.erp_back.entity.enums.ActiveStatus;
+import com.erp.erp_back.entity.erp.Inventory;
+import com.erp.erp_back.entity.store.Store;
+import com.erp.erp_back.mapper.InventoryMapper;
+import com.erp.erp_back.repository.erp.InventoryRepository;
+import com.erp.erp_back.repository.store.StoreRepository;
+
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +25,7 @@ public class InventoryService {
 
     private final InventoryRepository inventoryRepository;
     private final StoreRepository storeRepository;
+    private final InventoryMapper inventoryMapper;
 
     /* ========= 생성 ========= */
     @Transactional
@@ -31,27 +33,19 @@ public class InventoryService {
         Store store = storeRepository.findById(req.getStoreId())
                 .orElseThrow(() -> new EntityNotFoundException("STORE_NOT_FOUND"));
 
-        Inventory inv = Inventory.builder()
-                .store(store)
-                .itemName(req.getItemName().trim())
-                .itemType(req.getItemType().trim())
-                .stockType(req.getStockType().trim())
-                .stockQty(nonNull(req.getStockQty()))
-                .safetyQty(nonNull(req.getSafetyQty()))
-                .status(req.getStatus() != null ? req.getStatus() : ActiveStatus.ACTIVE)
-                // ⭐ [FIX] lastUnitCost를 명시적으로 초기화하여 DB NOT NULL 오류 (500 에러) 방지
-                .lastUnitCost(BigDecimal.ZERO) 
-                .build();
+        Inventory inv = inventoryMapper.toEntity(req, store);
 
         Inventory saved = inventoryRepository.save(inv);
-        return toDTO(saved);
+        return inventoryMapper.toResponse(saved);
     }
 
-    /* (중략: getInventory, getInventoryPage, updateInventory, deactivate, reactivate) */
+    /*
+     * (중략: getInventory, getInventoryPage, updateInventory, deactivate, reactivate)
+     */
     public InventoryResponse getInventory(Long storeId, Long itemId) {
         Inventory inv = inventoryRepository.findByItemIdAndStoreStoreId(itemId, storeId)
                 .orElseThrow(() -> new EntityNotFoundException("INVENTORY_NOT_FOUND"));
-        return toDTO(inv);
+        return inventoryMapper.toResponse(inv);
     }
 
     public Page<InventoryResponse> getInventoryPage(Long storeId, String q, ActiveStatus status, Pageable pageable) {
@@ -64,11 +58,12 @@ public class InventoryService {
                     : inventoryRepository.findByStoreStoreId(storeId, pageable);
         } else {
             page = hasQ
-                    ? inventoryRepository.findByStoreStoreIdAndItemNameContainingIgnoreCaseAndStatus(storeId, q.trim(), status, pageable)
+                    ? inventoryRepository.findByStoreStoreIdAndItemNameContainingIgnoreCaseAndStatus(storeId, q.trim(),
+                            status, pageable)
                     : inventoryRepository.findByStoreStoreIdAndStatus(storeId, status, pageable);
         }
 
-        return page.map(this::toDTO);
+        return page.map(inventoryMapper::toResponse);
     }
 
     @Transactional
@@ -76,17 +71,9 @@ public class InventoryService {
         Inventory inv = inventoryRepository.findByItemIdAndStoreStoreId(itemId, storeId)
                 .orElseThrow(() -> new EntityNotFoundException("INVENTORY_NOT_FOUND"));
 
-        inv.setItemName(req.getItemName().trim());
-        inv.setItemType(req.getItemType().trim());
-        inv.setStockType(req.getStockType().trim());
-        inv.setStockQty(nonNull(req.getStockQty()));
-        inv.setSafetyQty(nonNull(req.getSafetyQty()));
+        inventoryMapper.updateFromDto(req, inv);
 
-        if (req.getStatus() != null) {
-            inv.setStatus(req.getStatus());
-        }
-
-        return toDTO(inv);
+        return inventoryMapper.toResponse(inv);
     }
 
     @Transactional
@@ -101,24 +88,5 @@ public class InventoryService {
         Inventory inv = inventoryRepository.findByItemIdAndStoreStoreId(itemId, storeId)
                 .orElseThrow(() -> new EntityNotFoundException("INVENTORY_NOT_FOUND"));
         inv.setStatus(ActiveStatus.ACTIVE);
-    }
-    
-    /* ========= 헬퍼 ========= */
-    private BigDecimal nonNull(BigDecimal v) {
-        return v == null ? BigDecimal.ZERO : v;
-    }
-
-    private InventoryResponse toDTO(Inventory inventory) {
-        return InventoryResponse.builder()
-                .itemId(inventory.getItemId())
-                .storeId(inventory.getStore().getStoreId())
-                .itemName(inventory.getItemName())
-                .itemType(inventory.getItemType())
-                .stockType(inventory.getStockType())
-                .stockQty(nonNull(inventory.getStockQty()))
-                .safetyQty(nonNull(inventory.getSafetyQty()))
-                .lastUnitCost(nonNull(inventory.getLastUnitCost()))
-                .status(inventory.getStatus())
-                .build();
     }
 }

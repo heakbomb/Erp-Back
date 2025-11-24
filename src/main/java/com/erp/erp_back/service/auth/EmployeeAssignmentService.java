@@ -10,6 +10,7 @@ import com.erp.erp_back.dto.auth.EmployeeAssignmentResponse;
 import com.erp.erp_back.entity.auth.EmployeeAssignment;
 import com.erp.erp_back.entity.store.Store;
 import com.erp.erp_back.entity.user.Employee;
+import com.erp.erp_back.mapper.EmployeeAssignmentMapper;
 import com.erp.erp_back.repository.auth.EmployeeAssignmentRepository;
 import com.erp.erp_back.repository.store.StoreRepository;
 import com.erp.erp_back.repository.user.EmployeeRepository;
@@ -24,6 +25,7 @@ public class EmployeeAssignmentService {
     private final EmployeeAssignmentRepository assignmentRepo;
     private final EmployeeRepository employeeRepo;
     private final StoreRepository storeRepo;
+    private final EmployeeAssignmentMapper assignmentMapper;
 
     /**
      * 직원이 사업장 코드(storeId)로 근무 신청
@@ -57,13 +59,7 @@ public class EmployeeAssignmentService {
 
         saved = assignmentRepo.save(saved);
 
-        return EmployeeAssignmentResponse.builder()
-                .assignmentId(saved.getAssignmentId())
-                .employeeId(emp.getEmployeeId())
-                .storeId(store.getStoreId())
-                .role(saved.getRole())
-                .status(saved.getStatus())
-                .build();
+        return assignmentMapper.toResponse(saved);
     }
 
     /**
@@ -78,13 +74,7 @@ public class EmployeeAssignmentService {
         List<EmployeeAssignment> rows = assignmentRepo.findPendingByStoreId(storeId);
 
         return rows.stream()
-                .map(a -> EmployeeAssignmentResponse.builder()
-                        .assignmentId(a.getAssignmentId())
-                        .employeeId(a.getEmployee().getEmployeeId())
-                        .storeId(a.getStore().getStoreId())
-                        .role(a.getRole())
-                        .status(a.getStatus())
-                        .build())
+                .map(assignmentMapper::toResponse)
                 .toList();
     }
 
@@ -101,15 +91,8 @@ public class EmployeeAssignmentService {
         }
         
         a.setStatus("APPROVED");
-        // @Transactional 덕분에 save 호출 없이도 자동 반영됨
 
-        return EmployeeAssignmentResponse.builder()
-                .assignmentId(a.getAssignmentId())
-                .employeeId(a.getEmployee().getEmployeeId())
-                .storeId(a.getStore().getStoreId())
-                .role(a.getRole())
-                .status(a.getStatus())
-                .build();
+        return assignmentMapper.toResponse(a);
     }
 
     /**
@@ -125,14 +108,7 @@ public class EmployeeAssignmentService {
         }
         
         a.setStatus("REJECTED");
-        // @Transactional 덕분에 save 호출 없이도 자동 반영됨
-
-        return EmployeeAssignmentResponse.builder()
-                .assignmentId(a.getAssignmentId())
-                .employeeId(a.getEmployee().getEmployeeId())
-                .storeId(a.getStore().getStoreId())
-                .role(a.getRole())
-                .status(a.getStatus())
-                .build();
+        
+        return assignmentMapper.toResponse(a);
     }
 }

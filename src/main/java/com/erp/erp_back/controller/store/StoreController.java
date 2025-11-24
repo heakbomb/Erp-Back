@@ -3,7 +3,6 @@ package com.erp.erp_back.controller.store;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,7 +22,6 @@ import com.erp.erp_back.service.store.StoreService;
 
 @RestController
 @RequestMapping("/store")
-@CrossOrigin(origins = "*")
 public class StoreController {
 
     private final StoreService storeService;

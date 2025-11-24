@@ -2,13 +2,17 @@ package com.erp.erp_back.dto.subscription;
 
 import java.time.LocalDate;
 
-import com.erp.erp_back.entity.subscripition.OwnerSubscription;
-
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
+@Setter
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class AdminOwnerSubscriptionResponse {
     // OwnerSubscription 기본 정보
     private Long ownerSubId;
@@ -23,18 +27,4 @@ public class AdminOwnerSubscriptionResponse {
     // Subscription 정보
     private Long subId;
     private String subName;
-
-    // DTO 변환 헬퍼
-    public static AdminOwnerSubscriptionResponse from(OwnerSubscription os) {
-        return AdminOwnerSubscriptionResponse.builder()
-                .ownerSubId(os.getOwnerSubId())
-                .startDate(os.getStartDate())
-                .expiryDate(os.getExpiryDate())
-                .ownerId(os.getOwner().getOwnerId())
-                .ownerName(os.getOwner().getUsername())
-                .ownerEmail(os.getOwner().getEmail())
-                .subId(os.getSubscription().getSubId())
-                .subName(os.getSubscription().getSubName())
-                .build();
-    }
 }
