@@ -50,13 +50,13 @@ public class MenuItemService {
         }
 
         // ✅ 각 메뉴별 최신가 기준 원가 계산 후 DTO에 set
-        return page.map(this::toResponseWithLatestCost);
+        return page.map(this::toDTO);
     }
 
     public MenuItemResponse getMenu(Long storeId, Long menuId) {
         MenuItem menu = menuItemRepository.findByMenuIdAndStoreStoreId(menuId, storeId)
                 .orElseThrow(() -> new EntityNotFoundException("MENU_NOT_FOUND"));
-        return toResponseWithLatestCost(menu);
+        return toDTO(menu);
     }
 
     @Transactional
@@ -76,7 +76,7 @@ public class MenuItemService {
                         .status(ActiveStatus.ACTIVE)
                         .build()
         );
-        return toResponseWithLatestCost(saved);
+        return toDTO(saved);
     }
 
     @Transactional
@@ -92,7 +92,7 @@ public class MenuItemService {
 
         menu.setMenuName(newName);
         menu.setPrice(req.getPrice());
-        return toResponseWithLatestCost(menu);
+        return toDTO(menu);
     }
 
     @Transactional
@@ -126,7 +126,7 @@ public class MenuItemService {
 
     /* ===== Helper ===== */
 
-    private MenuItemResponse toResponseWithLatestCost(MenuItem menu) {
+    private MenuItemResponse toDTO(MenuItem menu) {
         BigDecimal latestCost = computeMenuCostByLatest(menu.getMenuId());
         return menuItemMapper.toResponse(menu, latestCost);
     }
@@ -169,6 +169,23 @@ public void recalcByInventory(Long storeId, Long itemId) {
             menu.setCalculatedCost(cost);
         }
     }
+}
+
+@Transactional(readOnly = true)
+public List<MenuItemResponse> listActiveMenusForPos(Long storeId) {
+
+    storeRepository.findById(storeId)
+            .orElseThrow(() -> new EntityNotFoundException("STORE_NOT_FOUND"));
+
+    Page<MenuItem> page = menuItemRepository.findByStoreStoreIdAndStatus(
+            storeId,
+            ActiveStatus.ACTIVE,
+            Pageable.unpaged()
+    );
+
+    return page.getContent().stream()
+            .map(this::toDTO)  
+            .toList();
 }
 
 @Transactional(readOnly = true)

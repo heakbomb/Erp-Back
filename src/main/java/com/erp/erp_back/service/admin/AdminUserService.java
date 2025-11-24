@@ -79,7 +79,7 @@ public class AdminUserService {
 
             // 2-2. (집계) 당월 매출
             BigDecimal totalSalesMonth = salesTransactionRepository
-                    .sumSalesAmountByStoreIdBetween(storeId, startOfMonth, now);
+                    .sumTotalAmountByStoreIdBetween(storeId, startOfMonth, now);
             
             // 2-3. (집계) 최근 매출일 (findTopByStoreStoreId... 카멜케이스 사용)
             LocalDateTime lastSalesDate = salesTransactionRepository
