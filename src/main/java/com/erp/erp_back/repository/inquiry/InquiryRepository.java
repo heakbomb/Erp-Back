@@ -11,6 +11,8 @@ import com.erp.erp_back.entity.enums.InquiryStatus;
 import com.erp.erp_back.entity.inquiry.Inquiry;
 
 public interface InquiryRepository extends JpaRepository<Inquiry, Long> {
+    // 상태별 카운트 조회
+    long countByStatus(InquiryStatus status);
 
     // 사장님용 (Owner Fetch)
     @Query("SELECT i FROM Inquiry i " +
