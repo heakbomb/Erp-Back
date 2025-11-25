@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.erp.erp_back.dto.user.OwnerResponse;
 import com.erp.erp_back.entity.user.Owner;
+import com.erp.erp_back.mapper.OwnerMapper;
 import com.erp.erp_back.repository.user.OwnerRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 public class OwnerService {
 
     private final OwnerRepository ownerRepository;
+    private final OwnerMapper ownerMapper;
 
     /**
      * (Admin) 사장님 계정 페이징 및 검색 조회
@@ -28,8 +30,7 @@ public class OwnerService {
         // 1. Repository에서 Page<Owner> 조회
         Page<Owner> ownerPage = ownerRepository.findAdminOwners(effectiveQuery, pageable);
         
-        // 2. Page<Owner> -> Page<OwnerResponse>로 변환
-        return ownerPage.map(this::toDto);
+        return ownerPage.map(ownerMapper::toResponse);
     }
 
     /**
@@ -39,7 +40,7 @@ public class OwnerService {
     public OwnerResponse getOwnerById(Long id) {
         Owner owner = ownerRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사장님(ID=" + id + ")을 찾을 수 없습니다."));
-        return toDto(owner);
+        return ownerMapper.toResponse(owner);
     }
 
     /**
@@ -50,19 +51,6 @@ public class OwnerService {
         if (!ownerRepository.existsById(id)) {
             throw new IllegalArgumentException("해당 사장님(ID=" + id + ")을 찾을 수 없습니다.");
         }
-        // 
         ownerRepository.deleteById(id);
-    }
-
-    /**
-     * Entity -> DTO 변환
-     */
-    private OwnerResponse toDto(Owner o) {
-        return OwnerResponse.builder()
-                .ownerId(o.getOwnerId())
-                .username(o.getUsername())
-                .email(o.getEmail())
-                .createdAt(o.getCreatedAt())
-                .build();
     }
 }
