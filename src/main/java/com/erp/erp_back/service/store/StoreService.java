@@ -26,6 +26,7 @@ import com.erp.erp_back.repository.log.AttendanceQrTokenRepository;
 import com.erp.erp_back.repository.store.BusinessNumberRepository;
 import com.erp.erp_back.repository.store.StoreGpsRepository;
 import com.erp.erp_back.repository.store.StoreRepository;
+import com.erp.erp_back.dto.store.BusinessNumberResponse; 
 
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -191,11 +192,16 @@ public class StoreService {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("삭제 대상 사업장이 존재하지 않습니다."));
         boolean hasChildren = assignmentRepository.existsByStore_StoreId(storeId);
+
+            // ✅ 근무배정 / 직원 연결이 조금이라도 있으면 삭제 막기
         if (hasChildren && !force) {
             throw new IllegalStateException("해당 사업장에 연결된 근무 신청/배정이 있어 삭제할 수 없습니다.");
         }
         if (hasChildren) {
-            assignmentRepository.deleteByStore_StoreId(storeId);
+            throw new IllegalStateException(
+                    "이 사업장에는 근무배정(직원 연결) 정보가 있어 삭제할 수 없습니다. " +
+                    "근무 기록 보호를 위해 관리자에게 삭제를 요청해 주세요."
+            );
         }
         attendanceQrTokenRepository.deleteByStore_StoreId(storeId);
         storeRepository.delete(store);
@@ -245,4 +251,20 @@ public class StoreService {
         // Mapper 사용 (수정됨)
         return storeMapper.toQrResponse(savedQr);
     }
+
+        // ⭐ ownerId 기준 사업자번호 목록 조회 (폐업자 제외 + 인증된 것만)
+    @Transactional(readOnly = true)
+    public List<BusinessNumberResponse> getBusinessNumbersByOwner(Long ownerId) {
+        return businessNumberRepository
+                .findByOwner_OwnerIdAndCertifiedAtIsNotNullAndOpenStatusNot(ownerId, "폐업자")
+                .stream()
+                .map(bn -> new BusinessNumberResponse(
+                        bn.getBizId(),
+                        (bn.getOwner() != null ? bn.getOwner().getOwnerId() : null),
+                        bn.getPhone(),
+                        bn.getBizNum()
+                ))
+                .collect(Collectors.toList());
+    }
+
 }

@@ -28,7 +28,7 @@ public class OwnerInquiryController {
     private final InquiryService inquiryService;
 
     // 1. 문의 등록
-    // TODO: 실제 환경에서는 @AuthenticationPrincipal 등을 통해 토큰에서 ownerId 추출
+    
     @PostMapping
     public ResponseEntity<Void> createInquiry(@RequestParam Long ownerId,
                                               @Valid @RequestBody InquiryRequestDto.Create request) {
