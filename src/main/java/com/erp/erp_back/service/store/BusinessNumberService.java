@@ -46,10 +46,11 @@ public class BusinessNumberService {
         if (phone.isBlank()) {
             throw new IllegalArgumentException("전화번호는 필수 입력입니다.");
         }
+
         // ✅ --- 수정된 지점 ---
         // 1. DB에서 먼저 조회
         Optional<BusinessNumber> existing = businessRepo.findByBizNum(bno);
-        
+
         // 2. 이미 존재하면 예외 발생
         if (existing.isPresent()) {
             throw new IllegalArgumentException("이미 등록된 사업자번호입니다.");
@@ -104,5 +105,21 @@ public class BusinessNumberService {
     @Transactional(readOnly = true)
     public List<BusinessNumber> list() {
         return businessRepo.findAll();
+    }
+
+    // ✅✅ 여기부터 새로 추가된 부분
+    // 특정 사장(ownerId)의 '계속사업자'만 조회 (폐업자는 제외)
+    @Transactional(readOnly = true)
+    public List<BusinessNumber> listActiveByOwner(Long ownerId) {
+        return businessRepo.findByOwner_OwnerId(ownerId).stream()
+                // openStatus 가 "폐업자" 인 것만 필터링해서 제거
+                .filter(bn -> !"폐업자".equals(bn.getOpenStatus()))
+                .toList();
+    }
+
+    // 로그인 붙이기 전까지 기본 owner_id=1에 대해서만 쓰고 싶다면, 이 헬퍼도 사용할 수 있음
+    @Transactional(readOnly = true)
+    public List<BusinessNumber> listActiveForDefaultOwner() {
+        return listActiveByOwner(defaultOwnerId);
     }
 }

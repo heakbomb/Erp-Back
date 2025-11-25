@@ -24,12 +24,14 @@ public class StoreResponse {
     private LocalDateTime approvedAt;
     private Double latitude;
     private Double longitude;
+    private String bizNum;
 
     // ✅ 기존 방식: GPS 없이 Store만으로 만들 때
     public static StoreResponse from(Store store) {
         return StoreResponse.builder()
                 .storeId(store.getStoreId())
                 .bizId(store.getBusinessNumber() != null ? store.getBusinessNumber().getBizId() : null)
+                .bizNum(store.getBusinessNumber() != null ? store.getBusinessNumber().getBizNum() : null)
                 .storeName(store.getStoreName())
                 .industry(store.getIndustry())
                 .posVendor(store.getPosVendor())
@@ -43,6 +45,7 @@ public class StoreResponse {
         return StoreResponse.builder()
                 .storeId(store.getStoreId())
                 .bizId(store.getBusinessNumber() != null ? store.getBusinessNumber().getBizId() : null)
+                .bizNum(store.getBusinessNumber() != null ? store.getBusinessNumber().getBizNum() : null)
                 .storeName(store.getStoreName())
                 .industry(store.getIndustry())
                 .posVendor(store.getPosVendor())

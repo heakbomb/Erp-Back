@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
+import com.erp.erp_back.dto.store.BusinessNumberResponse;
 import com.erp.erp_back.dto.log.StoreQrResponse;
 import com.erp.erp_back.dto.store.StoreCreateRequest;
 import com.erp.erp_back.dto.store.StoreResponse;
@@ -66,6 +66,13 @@ public class StoreController {
     @GetMapping("/by-owner/{ownerId}")
     public ResponseEntity<List<StoreSimpleResponse>> getStoresByOwner(@PathVariable Long ownerId) {
         return ResponseEntity.ok(storeService.getStoresByOwner(ownerId));
+    }
+    // ✅ 새로 추가: ownerId 기준 사업자번호 목록 조회
+    @GetMapping("/business-numbers/by-owner/{ownerId}")
+    public ResponseEntity<List<BusinessNumberResponse>> getBusinessNumbersByOwner(
+            @PathVariable Long ownerId
+    ) {
+        return ResponseEntity.ok(storeService.getBusinessNumbersByOwner(ownerId));
     }
 
     // ✅ QR 조회/재발급

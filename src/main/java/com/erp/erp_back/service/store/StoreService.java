@@ -24,6 +24,7 @@ import com.erp.erp_back.repository.log.AttendanceQrTokenRepository;
 import com.erp.erp_back.repository.store.BusinessNumberRepository;
 import com.erp.erp_back.repository.store.StoreGpsRepository;
 import com.erp.erp_back.repository.store.StoreRepository;
+import com.erp.erp_back.dto.store.BusinessNumberResponse; 
 
 import jakarta.persistence.criteria.Predicate;
 @Service
@@ -98,6 +99,18 @@ public class StoreService {
         Store updatedStore = storeRepository.save(store);
         
         return StoreResponse.from(updatedStore);
+    }
+    @Transactional(readOnly = true)
+    public List<BusinessNumberResponse> getBusinessNumbersByOwner(Long ownerId) {
+        List<BusinessNumber> bizList =
+        businessNumberRepository.findByOwner_OwnerIdAndCertifiedAtIsNotNullAndOpenStatusNot(
+                ownerId,
+                "폐업자"
+        );
+
+        return bizList.stream()
+                .map(BusinessNumberResponse::fromEntity)
+                .collect(Collectors.toList());
     }
 
     // 사업장 등록 (Admin/Owner 공용 사용 가능)
@@ -191,15 +204,15 @@ public class StoreService {
 
         boolean hasChildren = assignmentRepository.existsByStore_StoreId(storeId);
 
-        if (hasChildren && !force) {
-            throw new IllegalStateException("해당 사업장에 연결된 근무 신청/배정이 있어 삭제할 수 없습니다. (force=true로 강제 삭제 가능)");
-        }
-
+            // ✅ 근무배정 / 직원 연결이 조금이라도 있으면 삭제 막기
         if (hasChildren) {
-            assignmentRepository.deleteByStore_StoreId(storeId);
+            throw new IllegalStateException(
+                    "이 사업장에는 근무배정(직원 연결) 정보가 있어 삭제할 수 없습니다. " +
+                    "근무 기록 보호를 위해 관리자에게 삭제를 요청해 주세요."
+            );
         }
 
-        // GPS는 FK ON DELETE CASCADE로 해두면 자동으로 지워짐
+        // ✅ 연결이 전혀 없을 때만 삭제
         storeRepository.deleteById(storeId);
     }
 
