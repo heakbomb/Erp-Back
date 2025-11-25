@@ -4,12 +4,13 @@ package com.erp.erp_back.dto.erp;
 import java.math.BigDecimal;
 
 import com.erp.erp_back.entity.enums.ActiveStatus;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Getter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
 
-@Getter
+@Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor

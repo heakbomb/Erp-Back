@@ -1,17 +1,16 @@
 package com.erp.erp_back.dto.store;
 
 import java.time.LocalDateTime;
-
-import com.erp.erp_back.entity.store.Store;
-import com.erp.erp_back.entity.store.StoreGps;
+import java.util.List;
 
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
-@Builder
+@Setter
+
 @NoArgsConstructor
 @AllArgsConstructor
 public class StoreResponse {
@@ -24,35 +23,27 @@ public class StoreResponse {
     private LocalDateTime approvedAt;
     private Double latitude;
     private Double longitude;
-    private String bizNum;
 
-    // ✅ 기존 방식: GPS 없이 Store만으로 만들 때
-    public static StoreResponse from(Store store) {
-        return StoreResponse.builder()
-                .storeId(store.getStoreId())
-                .bizId(store.getBusinessNumber() != null ? store.getBusinessNumber().getBizId() : null)
-                .bizNum(store.getBusinessNumber() != null ? store.getBusinessNumber().getBizNum() : null)
-                .storeName(store.getStoreName())
-                .industry(store.getIndustry())
-                .posVendor(store.getPosVendor())
-                .status(store.getStatus())
-                .approvedAt(store.getApprovedAt())
-                .build();
-    }
+    // --- 상세 정보 필드 ---
+    private String ownerName;
+    private String ownerEmail;
+    private String bizNum; 
+    private String openStatus; 
+    private String taxType; 
+    private String startDt; 
+    private String phone;
 
-    // ✅ 새 방식: Store + StoreGps 두 개를 합쳐서 응답
-    public static StoreResponse of(Store store, StoreGps gps) {
-        return StoreResponse.builder()
-                .storeId(store.getStoreId())
-                .bizId(store.getBusinessNumber() != null ? store.getBusinessNumber().getBizId() : null)
-                .bizNum(store.getBusinessNumber() != null ? store.getBusinessNumber().getBizNum() : null)
-                .storeName(store.getStoreName())
-                .industry(store.getIndustry())
-                .posVendor(store.getPosVendor())
-                .status(store.getStatus())
-                .approvedAt(store.getApprovedAt())
-                .latitude(gps != null ? gps.getLatitude() : null)
-                .longitude(gps != null ? gps.getLongitude() : null)
-                .build();
+    // --- 직원 목록 리스트 ---
+    private List<StoreEmployeeDto> employees;
+
+    // ⭐️ [수정] Inner Class에도 생성자 어노테이션 추가
+    @Getter
+    @Setter 
+    @NoArgsConstructor  // 추가: 기본 생성자
+    @AllArgsConstructor // 추가: 모든 필드 생성자 (public으로 생성됨)
+    public static class StoreEmployeeDto {
+        private String name;
+        private String role;
+        private String status;
     }
 }

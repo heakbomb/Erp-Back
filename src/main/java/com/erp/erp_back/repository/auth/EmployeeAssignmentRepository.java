@@ -12,32 +12,36 @@ import com.erp.erp_back.entity.auth.EmployeeAssignment;
 
 public interface EmployeeAssignmentRepository extends JpaRepository<EmployeeAssignment, Long> {
 
-    Optional<EmployeeAssignment> findFirstByEmployee_EmployeeIdAndStore_StoreIdAndStatusIn(
-            Long employeeId, Long storeId, Collection<String> statuses);
+  Optional<EmployeeAssignment> findFirstByEmployee_EmployeeIdAndStore_StoreIdAndStatusIn(
+      Long employeeId, Long storeId, Collection<String> statuses);
 
-    @Query("""
-           select a 
-           from EmployeeAssignment a 
-           join fetch a.employee e 
-           where a.store.storeId = :storeId 
-             and a.status = 'PENDING'
-           """)
-    List<EmployeeAssignment> findPendingByStoreId(@Param("storeId") Long storeId);
+  @Query("""
+      select a
+      from EmployeeAssignment a
+      join fetch a.employee e
+      where a.store.storeId = :storeId
+        and a.status = 'PENDING'
+      """)
+  List<EmployeeAssignment> findPendingByStoreId(@Param("storeId") Long storeId);
 
-    boolean existsByStore_StoreId(Long storeId);
+  boolean existsByStore_StoreId(Long storeId);
 
-    void deleteByStore_StoreId(Long storeId);
+  void deleteByStore_StoreId(Long storeId);
 
-    @Query("""
-        select count(a) > 0
-        from EmployeeAssignment a
-        where a.employee.employeeId = :employeeId
-          and a.store.storeId = :storeId
-          and a.status = 'APPROVED'
-    """)
-    boolean existsApprovedByEmployeeAndStore(@Param("employeeId") Long employeeId,
-                                             @Param("storeId") Long storeId);
-                                             
-    // ⭐️ [수정] (Store_StoreId -> StoreStoreId) 카멜 케이스로 변경
-    long countByStoreStoreIdAndStatus(Long storeId, String status);
+  @Query("""
+          select count(a) > 0
+          from EmployeeAssignment a
+          where a.employee.employeeId = :employeeId
+            and a.store.storeId = :storeId
+            and a.status = 'APPROVED'
+      """)
+  boolean existsApprovedByEmployeeAndStore(@Param("employeeId") Long employeeId,
+      @Param("storeId") Long storeId);
+
+  long countByStoreStoreIdAndStatus(Long storeId, String status);
+
+  // ⭐️ [신규 추가] 특정 매장의 '모든' 직원 목록 조회 (상태 무관)
+  // N+1 문제 방지를 위해 JOIN FETCH 사용
+  @Query("SELECT ea FROM EmployeeAssignment ea JOIN FETCH ea.employee WHERE ea.store.storeId = :storeId")
+  List<EmployeeAssignment> findAllByStoreId(@Param("storeId") Long storeId);
 }

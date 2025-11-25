@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.erp.erp_back.dto.subscription.SubscriptionRequest;
 import com.erp.erp_back.dto.subscription.SubscriptionResponse;
 import com.erp.erp_back.entity.subscripition.Subscription;
+import com.erp.erp_back.mapper.SubscriptionMapper;
 import com.erp.erp_back.repository.subscripition.SubscriptionRepository;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -18,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 public class SubscriptionService {
 
     private final SubscriptionRepository subscriptionRepository;
+    private final SubscriptionMapper subscriptionMapper;
 
     /**
      * 1. (Admin) 구독 상품 목록 조회 (GET /admin/subscriptions)
@@ -29,7 +31,7 @@ public class SubscriptionService {
         Page<Subscription> subPage = subscriptionRepository.findAdminSubscriptions(status, q, pageable);
         
         // ⭐️ Entity Page -> DTO Page 변환
-        return subPage.map(SubscriptionResponse::fromEntity);
+        return subPage.map(subscriptionMapper::toResponse);
     }
 
     /**
@@ -39,7 +41,7 @@ public class SubscriptionService {
     public SubscriptionResponse getSubscriptionById(Long id) {
         Subscription sub = subscriptionRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("구독 상품을 찾을 수 없습니다. ID: " + id));
-        return SubscriptionResponse.fromEntity(sub);
+        return subscriptionMapper.toResponse(sub);
     }
 
     /**
@@ -53,7 +55,7 @@ public class SubscriptionService {
         newSub.setActive(request.getIsActive());
         
         Subscription saved = subscriptionRepository.save(newSub);
-        return SubscriptionResponse.fromEntity(saved);
+        return subscriptionMapper.toResponse(saved);
     }
 
     /**
@@ -69,7 +71,7 @@ public class SubscriptionService {
         sub.setActive(request.getIsActive());
         
         Subscription updated = subscriptionRepository.save(sub);
-        return SubscriptionResponse.fromEntity(updated);
+        return subscriptionMapper.toResponse(updated);
     }
 
     /**

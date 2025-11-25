@@ -17,6 +17,7 @@ import com.erp.erp_back.entity.log.AttendanceLog;
 import com.erp.erp_back.entity.log.AttendanceQrToken;
 import com.erp.erp_back.entity.store.Store;
 import com.erp.erp_back.entity.user.Employee;
+import com.erp.erp_back.mapper.AttendanceLogMapper;
 import com.erp.erp_back.repository.auth.EmployeeAssignmentRepository;
 import com.erp.erp_back.repository.log.AttendanceLogRepository;
 import com.erp.erp_back.repository.log.AttendanceQrTokenRepository;
@@ -35,6 +36,7 @@ public class AttendancelogService {
     private final EmployeeRepository employeeRepo;
     private final StoreRepository storeRepo;
     private final AttendanceQrTokenRepository attendanceQrTokenRepository;
+    private final AttendanceLogMapper attendanceLogMapper;
 
     /**
      * 출퇴근 기록 저장
@@ -124,14 +126,7 @@ public class AttendancelogService {
 
         saved = attendanceRepo.save(saved);
 
-        return AttendanceLogResponse.builder()
-                .logId(saved.getLogId())
-                .employeeId(emp.getEmployeeId())
-                .storeId(store.getStoreId())
-                .recordTime(saved.getRecordTime())
-                .recordType(saved.getRecordType())
-                .clientIp(saved.getClientIp())
-                .build();
+        return attendanceLogMapper.toResponse(saved);
     }
 
     /** 특정 직원+매장 최근 기록 */
@@ -143,14 +138,7 @@ public class AttendancelogService {
                 .findByEmployee_EmployeeIdAndStore_StoreIdOrderByRecordTimeDesc(employeeId, storeId, pr);
 
         return page.getContent().stream()
-                .map(a -> AttendanceLogResponse.builder()
-                        .logId(a.getLogId())
-                        .employeeId(a.getEmployee().getEmployeeId())
-                        .storeId(a.getStore().getStoreId())
-                        .recordTime(a.getRecordTime())
-                        .recordType(a.getRecordType())
-                        .clientIp(a.getClientIp())
-                        .build())
+                .map(attendanceLogMapper::toResponse)
                 .toList();
     }
 
@@ -166,14 +154,7 @@ public class AttendancelogService {
                         employeeId, storeId, start, end);
 
         return rows.stream()
-                .map(a -> AttendanceLogResponse.builder()
-                        .logId(a.getLogId())
-                        .employeeId(a.getEmployee().getEmployeeId())
-                        .storeId(a.getStore().getStoreId())
-                        .recordTime(a.getRecordTime())
-                        .recordType(a.getRecordType())
-                        .clientIp(a.getClientIp())
-                        .build())
+                .map(attendanceLogMapper::toResponse)
                 .toList();
     }
 
@@ -192,14 +173,7 @@ public class AttendancelogService {
                 : attendanceRepo.findByEmployee_EmployeeIdAndStore_StoreIdOrderByRecordTimeDesc(employeeId, storeId, pr);
 
         return page.getContent().stream()
-                .map(a -> AttendanceLogResponse.builder()
-                        .logId(a.getLogId())
-                        .employeeId(a.getEmployee().getEmployeeId())
-                        .storeId(a.getStore().getStoreId())
-                        .recordTime(a.getRecordTime())
-                        .recordType(a.getRecordType())
-                        .clientIp(a.getClientIp())
-                        .build())
+                .map(attendanceLogMapper::toResponse)
                 .toList();
     }
 
@@ -216,14 +190,7 @@ public class AttendancelogService {
                         employeeId, storeId, start, end);
 
         return rows.stream()
-                .map(a -> AttendanceLogResponse.builder()
-                        .logId(a.getLogId())
-                        .employeeId(a.getEmployee().getEmployeeId())
-                        .storeId(a.getStore().getStoreId())
-                        .recordTime(a.getRecordTime())
-                        .recordType(a.getRecordType())
-                        .clientIp(a.getClientIp())
-                        .build())
+                .map(attendanceLogMapper::toResponse)
                 .toList();
     }
 }
