@@ -16,6 +16,7 @@ import com.erp.erp_back.entity.enums.ActiveStatus;
 import com.erp.erp_back.entity.erp.Inventory;
 import com.erp.erp_back.entity.erp.MenuItem;
 import com.erp.erp_back.entity.erp.RecipeIngredient;
+import com.erp.erp_back.mapper.RecipeIngredientMapper;
 import com.erp.erp_back.repository.erp.InventoryRepository;
 import com.erp.erp_back.repository.erp.MenuItemRepository;
 import com.erp.erp_back.repository.erp.RecipeIngredientRepository;
@@ -30,7 +31,8 @@ public class RecipeIngredientService {
     private final RecipeIngredientRepository recipeIngredientRepository;
     private final MenuItemRepository menuItemRepository;
     private final InventoryRepository inventoryRepository;
-    private final MenuItemService menuItemService; // 메뉴 원가 재계산 호출
+    private final MenuItemService menuItemService; 
+    private final RecipeIngredientMapper recipeIngredientMapper;
 
     /** 메뉴별 레시피 목록 */
     @Transactional(readOnly = true)
@@ -42,7 +44,7 @@ public class RecipeIngredientService {
 
         return recipeIngredientRepository.findByMenuItemMenuId(menuId)
                 .stream()
-                .map(this::toDTO)
+                .map(recipeIngredientMapper::toResponse)
                 .toList();
     }
 
@@ -88,7 +90,7 @@ public class RecipeIngredientService {
         // ✅ 레시피가 바뀌었으니 해당 메뉴 원가 재계산 + 저장
         menuItemService.recalcAndSave(menu.getStore().getStoreId(), menu.getMenuId());
 
-        return toDTO(saved);
+        return recipeIngredientMapper.toResponse(saved);
     }
 
     /** 레시피 수정(소모 수량만) */
@@ -118,7 +120,7 @@ public class RecipeIngredientService {
         // ✅ 변경 즉시 해당 메뉴 원가 재계산 + 저장
         menuItemService.recalcAndSave(menu.getStore().getStoreId(), menu.getMenuId());
 
-        return toDTO(entity);
+        return recipeIngredientMapper.toResponse(entity);
     }
 
     /** 레시피 삭제 */
@@ -138,13 +140,4 @@ public class RecipeIngredientService {
         menuItemService.recalcAndSave(storeId, menuId);
     }
 
-    /** 엔티티 → DTO 변환 */
-    private RecipeIngredientResponse toDTO(RecipeIngredient e) {
-        return RecipeIngredientResponse.builder()
-                .recipeId(e.getRecipeId())
-                .menuId(e.getMenuItem().getMenuId())
-                .itemId(e.getInventory().getItemId())
-                .consumptionQty(e.getConsumptionQty())
-                .build();
-    }
 }

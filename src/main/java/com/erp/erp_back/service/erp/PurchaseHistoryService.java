@@ -14,11 +14,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.erp.erp_back.dto.erp.PurchaseHistoryRequest;
-import com.erp.erp_back.dto.erp.PurchaseHistoryUpdateRequest;
 import com.erp.erp_back.dto.erp.PurchaseHistoryResponse;
+import com.erp.erp_back.dto.erp.PurchaseHistoryUpdateRequest;
 import com.erp.erp_back.entity.erp.Inventory;
 import com.erp.erp_back.entity.erp.PurchaseHistory;
 import com.erp.erp_back.entity.store.Store;
+import com.erp.erp_back.mapper.PurchaseHistoryMapper;
 import com.erp.erp_back.repository.erp.InventoryRepository;
 import com.erp.erp_back.repository.erp.PurchaseHistoryRepository;
 import com.erp.erp_back.repository.store.StoreRepository;
@@ -33,7 +34,8 @@ public class PurchaseHistoryService {
     private final PurchaseHistoryRepository purchaseHistoryRepository;
     private final InventoryRepository inventoryRepository;
     private final StoreRepository storeRepository;
-    private final MenuItemService menuItemService; // ⭐ [추가] 메뉴 원가 전파를 위해 주입
+    private final MenuItemService menuItemService;
+    private final PurchaseHistoryMapper purchaseHistoryMapper;
 
     /* ====== 목록 (Specification로 통합 필터) ====== */
     @Transactional(readOnly = true)
@@ -50,7 +52,7 @@ public class PurchaseHistoryService {
         );
 
         Page<PurchaseHistory> page = purchaseHistoryRepository.findAll(spec, pageable);
-        return page.map(this::toDTO);
+        return page.map(purchaseHistoryMapper::toResponse);
     }
 
     private static Specification<PurchaseHistory> byStoreId(Long storeId) {
@@ -80,15 +82,8 @@ public class PurchaseHistoryService {
         }
 
         // 1) 매입 저장
-        PurchaseHistory saved = purchaseHistoryRepository.save(
-                PurchaseHistory.builder()
-                        .store(store)
-                        .inventory(item)
-                        .purchaseQty(nz(req.getPurchaseQty()))
-                        .unitPrice(nz(req.getUnitPrice()))
-                        .purchaseDate(req.getPurchaseDate())
-                        .build()
-        );
+        PurchaseHistory purchase = purchaseHistoryMapper.toEntity(req, store, item);
+        PurchaseHistory saved = purchaseHistoryRepository.save(purchase);
 
         // 2) 재고 수량 증가만 반영
         BigDecimal prevQty  = nz(item.getStockQty());
@@ -101,7 +96,7 @@ public class PurchaseHistoryService {
         // ⭐ [추가] 원가 변경을 메뉴 서비스에 전파
         menuItemService.propagateCostUpdate(item.getItemId());
 
-        return toDTO(saved);
+        return purchaseHistoryMapper.toResponse(saved);
     }
 
     /* ====== 단건 조회 ====== */
@@ -109,7 +104,7 @@ public class PurchaseHistoryService {
     public PurchaseHistoryResponse getPurchase(Long purchaseId) {
         PurchaseHistory purchase = purchaseHistoryRepository.findById(purchaseId)
                 .orElseThrow(() -> new EntityNotFoundException("PURCHASE_NOT_FOUND"));
-        return toDTO(purchase);
+        return purchaseHistoryMapper.toResponse(purchase);
     }
 
     /* ====== 수정 ====== */
@@ -142,7 +137,7 @@ public class PurchaseHistoryService {
         // ⭐ [추가] 원가 변경을 메뉴 서비스에 전파
         menuItemService.propagateCostUpdate(item.getItemId());
 
-        return toDTO(purchase);
+        return purchaseHistoryMapper.toResponse(purchase);
     }
 
     /* ====== 내부: 최신단가만 재계산 ====== */
@@ -165,18 +160,6 @@ public class PurchaseHistoryService {
                 .orElse(all.get(0));
 
         inventory.setLastUnitCost(nz(latest.getUnitPrice()));
-    }
-
-    /* ====== DTO 매핑 ====== */
-    private PurchaseHistoryResponse toDTO(PurchaseHistory purchase) {
-        return PurchaseHistoryResponse.builder()
-                .purchaseId(purchase.getPurchaseId())
-                .storeId(purchase.getStore().getStoreId())
-                .itemId(purchase.getInventory().getItemId())
-                .purchaseQty(purchase.getPurchaseQty())
-                .unitPrice(purchase.getUnitPrice())
-                .purchaseDate(purchase.getPurchaseDate())
-                .build();
     }
 
     private static BigDecimal nz(BigDecimal v) {

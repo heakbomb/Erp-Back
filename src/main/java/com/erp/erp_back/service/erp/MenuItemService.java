@@ -7,6 +7,7 @@ import com.erp.erp_back.dto.erp.MenuStatsResponse;
 import com.erp.erp_back.entity.erp.Inventory;
 import com.erp.erp_back.entity.erp.MenuItem;
 import com.erp.erp_back.entity.erp.RecipeIngredient;
+import com.erp.erp_back.mapper.MenuItemMapper;
 import com.erp.erp_back.entity.enums.ActiveStatus;
 import com.erp.erp_back.repository.erp.MenuItemRepository;
 import com.erp.erp_back.repository.erp.RecipeIngredientRepository;
@@ -32,6 +33,7 @@ public class MenuItemService {
     private final MenuItemRepository menuItemRepository;
     private final StoreRepository storeRepository;
     private final RecipeIngredientRepository recipeIngredientRepository;
+    private final MenuItemMapper menuItemMapper;
 
     public Page<MenuItemResponse> getMenuPage(Long storeId, String q, ActiveStatus status, Pageable pageable) {
         Page<MenuItem> page;
@@ -126,15 +128,7 @@ public class MenuItemService {
 
     private MenuItemResponse toDTO(MenuItem menu) {
         BigDecimal latestCost = computeMenuCostByLatest(menu.getMenuId());
-        return MenuItemResponse.builder()
-                .menuId(menu.getMenuId())
-                .storeId(menu.getStore().getStoreId())
-                .menuName(menu.getMenuName())
-                .price(menu.getPrice())
-                .status(menu.getStatus())
-                // ✅ 백엔드에서 계산해 넣어줌
-                .calculatedCost(latestCost)
-                .build();
+        return menuItemMapper.toResponse(menu, latestCost);
     }
 
     // Σ(소모량 × 재고.lastUnitCost). 비활성 재고는 제외(원하면 포함으로 바꿔도 됨)
@@ -162,7 +156,6 @@ public void recalcAndSave(Long storeId, Long menuId) {
             .orElseThrow(() -> new EntityNotFoundException("MENU_NOT_FOUND"));
     BigDecimal cost = computeMenuCostByLatest(menuId);
     menu.setCalculatedCost(cost);
-    // menuItemRepository.save(menu); // JPA dirty checking으로 flush
 }
 
 /** 특정 재고(itemId)를 쓰는 모든 메뉴 재계산 */

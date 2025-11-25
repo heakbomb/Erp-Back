@@ -10,6 +10,7 @@ import com.erp.erp_back.dto.auth.EmployeeAssignmentResponse;
 import com.erp.erp_back.entity.auth.EmployeeAssignment;
 import com.erp.erp_back.entity.store.Store;
 import com.erp.erp_back.entity.user.Employee;
+import com.erp.erp_back.mapper.EmployeeAssignmentMapper;
 import com.erp.erp_back.repository.auth.EmployeeAssignmentRepository;
 import com.erp.erp_back.repository.store.StoreRepository;
 import com.erp.erp_back.repository.user.EmployeeRepository;
@@ -24,13 +25,14 @@ public class EmployeeAssignmentService {
     private final EmployeeAssignmentRepository assignmentRepo;
     private final EmployeeRepository employeeRepo;
     private final StoreRepository storeRepo;
+    private final EmployeeAssignmentMapper assignmentMapper;
 
     /**
      * 직원이 사업장 코드(storeId)로 근무 신청
      * - 중복(PENDING/APPROVED) 신청 방지
      * - 기본 상태는 PENDING
      */
-    public EmployeeAssignmentResponse apply(EmployeeAssignmentRequest req) {
+    public EmployeeAssignmentResponse apply( EmployeeAssignmentRequest req) {
         // 직원/매장 존재 확인
         Employee emp = employeeRepo.findById(req.getEmployeeId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 직원입니다."));
@@ -44,24 +46,20 @@ public class EmployeeAssignmentService {
             throw new IllegalStateException("이미 신청 중이거나 승인된 상태입니다.");
         });
 
-        // 저장
+        // 저장 (신규 생성이므로 save 필수)
         EmployeeAssignment saved = new EmployeeAssignment();
         saved.setEmployee(emp);
         saved.setStore(store);
         saved.setRole(req.getRole());
+        
+        // 엔티티에 @PrePersist가 있지만 안전하게 기본값 설정
         if (saved.getStatus() == null || saved.getStatus().isBlank()) {
-            saved.setStatus("PENDING"); // 엔티티에 기본값 없다면 명시
+            saved.setStatus("PENDING"); 
         }
 
         saved = assignmentRepo.save(saved);
 
-        return EmployeeAssignmentResponse.builder()
-                .assignmentId(saved.getAssignmentId())
-                .employeeId(emp.getEmployeeId())
-                .storeId(store.getStoreId())
-                .role(saved.getRole())
-                .status(saved.getStatus())
-                .build();
+        return assignmentMapper.toResponse(saved);
     }
 
     /**
@@ -76,54 +74,41 @@ public class EmployeeAssignmentService {
         List<EmployeeAssignment> rows = assignmentRepo.findPendingByStoreId(storeId);
 
         return rows.stream()
-                .map(a -> EmployeeAssignmentResponse.builder()
-                        .assignmentId(a.getAssignmentId())
-                        .employeeId(a.getEmployee().getEmployeeId())
-                        .storeId(a.getStore().getStoreId())
-                        .role(a.getRole())
-                        .status(a.getStatus())
-                        .build())
+                .map(assignmentMapper::toResponse)
                 .toList();
     }
 
     /**
      * 사장 측: 신청 승인
+     * - Dirty Checking으로 자동 UPDATE
      */
     public EmployeeAssignmentResponse approve(Long assignmentId) {
         EmployeeAssignment a = assignmentRepo.findById(assignmentId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 신청입니다."));
+        
         if (!"PENDING".equals(a.getStatus())) {
             throw new IllegalStateException("대기 상태가 아닌 신청은 승인할 수 없습니다.");
         }
+        
         a.setStatus("APPROVED");
-        // 필요 시 직원-사업장 실제 연결 로직 추가
 
-        return EmployeeAssignmentResponse.builder()
-                .assignmentId(a.getAssignmentId())
-                .employeeId(a.getEmployee().getEmployeeId())
-                .storeId(a.getStore().getStoreId())
-                .role(a.getRole())
-                .status(a.getStatus())
-                .build();
+        return assignmentMapper.toResponse(a);
     }
 
     /**
      * 사장 측: 신청 거절
+     * - Dirty Checking으로 자동 UPDATE
      */
     public EmployeeAssignmentResponse reject(Long assignmentId) {
         EmployeeAssignment a = assignmentRepo.findById(assignmentId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 신청입니다."));
+        
         if (!"PENDING".equals(a.getStatus())) {
             throw new IllegalStateException("대기 상태가 아닌 신청은 거절할 수 없습니다.");
         }
+        
         a.setStatus("REJECTED");
-
-        return EmployeeAssignmentResponse.builder()
-                .assignmentId(a.getAssignmentId())
-                .employeeId(a.getEmployee().getEmployeeId())
-                .storeId(a.getStore().getStoreId())
-                .role(a.getRole())
-                .status(a.getStatus())
-                .build();
+        
+        return assignmentMapper.toResponse(a);
     }
 }

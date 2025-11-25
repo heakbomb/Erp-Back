@@ -11,7 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.erp.erp_back.dto.admin.DashboardStatsResponse;
 import com.erp.erp_back.dto.log.AuditLogResponse;
+import com.erp.erp_back.entity.enums.InquiryStatus;
 import com.erp.erp_back.entity.log.AuditLog;
+import com.erp.erp_back.repository.inquiry.InquiryRepository;
 import com.erp.erp_back.repository.log.AuditLogRepository;
 import com.erp.erp_back.repository.store.StoreRepository;
 import com.erp.erp_back.repository.subscripition.OwnerSubscriptionRepository;
@@ -28,8 +30,9 @@ public class DashboardService {
     private final StoreRepository storeRepository;
     private final OwnerRepository ownerRepository;
     private final EmployeeRepository employeeRepository;
-    private final OwnerSubscriptionRepository ownerSubscriptionRepository; // ✅ 추가
-    private final AuditLogRepository auditLogRepository; // ✅ 추가
+    private final OwnerSubscriptionRepository ownerSubscriptionRepository; 
+    private final AuditLogRepository auditLogRepository; 
+    private final InquiryRepository inquiryRepository;
 
     public DashboardStatsResponse getDashboardStats() {
         
@@ -54,13 +57,16 @@ public class DashboardService {
                 .map(this::toAuditLogDto)
                 .collect(Collectors.toList());
 
+        long pendingInquiryCount = inquiryRepository.countByStatus(InquiryStatus.PENDING);
+
         // DTO 조립
         return DashboardStatsResponse.builder()
                 .totalStores(totalStores)
                 .totalUsers(totalUsers)
-                .activeSubscriptions(activeSubscriptions) // ✅ 수정
-                .pendingStoreCount(pendingStoreCount) // ✅ 수정
-                .recentActivities(recentActivities) // ✅ 수정
+                .activeSubscriptions(activeSubscriptions) 
+                .pendingStoreCount(pendingStoreCount)
+                .recentActivities(recentActivities) 
+                .pendingInquiryCount(pendingInquiryCount)
                 .build();
     }
     
