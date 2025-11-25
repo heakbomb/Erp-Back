@@ -1,5 +1,27 @@
 package com.erp.erp_back.service.erp;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.erp.erp_back.dto.erp.PosOrderRequest;
 import com.erp.erp_back.dto.erp.PosOrderResponse;
 import com.erp.erp_back.dto.erp.RecentTransactionResponse;
@@ -14,28 +36,16 @@ import com.erp.erp_back.entity.erp.RecipeIngredient;
 import com.erp.erp_back.entity.erp.SalesLineItem;
 import com.erp.erp_back.entity.erp.SalesTransaction;
 import com.erp.erp_back.entity.store.Store;
+import com.erp.erp_back.mapper.SalesMapper;
 import com.erp.erp_back.repository.erp.InventoryRepository;
 import com.erp.erp_back.repository.erp.MenuItemRepository;
 import com.erp.erp_back.repository.erp.RecipeIngredientRepository;
 import com.erp.erp_back.repository.erp.SalesLineItemRepository;
 import com.erp.erp_back.repository.erp.SalesTransactionRepository;
 import com.erp.erp_back.repository.store.StoreRepository;
+
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.DayOfWeek;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.YearMonth;
-import java.time.format.DateTimeFormatter;
-import java.time.temporal.TemporalAdjusters;
-import java.time.temporal.WeekFields;
-import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -47,6 +57,7 @@ public class SalesService {
     private final InventoryRepository inventoryRepository;
     private final SalesTransactionRepository salesTransactionRepository;
     private final SalesLineItemRepository salesLineItemRepository;
+    private final SalesMapper salesMapper;
 
     private static final DateTimeFormatter TX_TIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
@@ -60,7 +71,7 @@ public class SalesService {
                     .filter(tx -> req.getIdempotencyKey().equals(tx.getIdempotencyKey()));
 
             if (existing.isPresent()) {
-                return toDTO(existing.get());
+                return salesMapper.toPosOrderResponse(existing.get());
             }
         }
 
@@ -118,7 +129,7 @@ public class SalesService {
 
         SalesTransaction saved = salesTransactionRepository.save(tx);
 
-        return toDTO(saved);
+        return salesMapper.toPosOrderResponse(saved);
     }
 
     private void consumeInventoryByRecipe(Long menuId, int soldQty) {
@@ -169,7 +180,6 @@ public class SalesService {
 
         // 1) 일자별로 먼저 가져옴
         List<Map<String, Object>> rows = salesTransactionRepository.findDailySalesStats(storeId, startDate, endDate);
-
         String normalized = (period == null) ? "DAY" : period.toUpperCase(Locale.ROOT);
 
         if ("DAY".equals(normalized)) {
@@ -256,35 +266,12 @@ public class SalesService {
         LocalDateTime end = today.plusDays(1).atStartOfDay();
 
         List<SalesTransaction> txs = salesTransactionRepository.findRecentTransactions(storeId, start, end);
-
-        DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("HH:mm");
-
-        List<RecentTransactionResponse> result = new ArrayList<>();
-        int limit = Math.min(20, txs.size());
-
-        for (int i = 0; i < limit; i++) {
-            SalesTransaction tx = txs.get(i);
-
-            String timeStr = tx.getTransactionTime() != null
-                    ? tx.getTransactionTime().format(timeFmt)
-                    : "";
-
-            String itemsSummary = "";
-            if (tx.getLineItems() != null && !tx.getLineItems().isEmpty()) {
-                itemsSummary = tx.getLineItems().stream()
-                        .map(li -> li.getMenuItem().getMenuName() + " x " + li.getQuantity())
-                        .collect(Collectors.joining(", "));
-            }
-
-            result.add(RecentTransactionResponse.builder()
-                    .id(tx.getTransactionId())
-                    .time(timeStr)
-                    .items(itemsSummary)
-                    .amount(tx.getTotalAmount())
-                    .build());
-        }
-
-        return result;
+        
+        // ⭐️ Mapper 사용 (stream 변환)
+        return txs.stream()
+                .limit(20)
+                .map(salesMapper::toRecentTransactionResponse)
+                .toList();
     }
 
     /**
@@ -458,73 +445,26 @@ public class SalesService {
     public List<RecentTransactionResponse> getRecentTransactions(Long storeId) {
         List<SalesTransaction> txList = salesTransactionRepository
                 .findTop20ByStoreStoreIdOrderByTransactionTimeDesc(storeId);
-
-        List<RecentTransactionResponse> result = new ArrayList<>();
-
-        for (SalesTransaction tx : txList) {
-            String items = "";
-            if (tx.getLineItems() != null && !tx.getLineItems().isEmpty()) {
-                items = tx.getLineItems().stream()
-                        .map(li -> li.getMenuItem().getMenuName() + " x " + li.getQuantity())
-                        .reduce((a, b) -> a + ", " + b)
-                        .orElse("");
-            }
-
-            String timeLabel = "";
-            if (tx.getTransactionTime() != null) {
-                timeLabel = tx.getTransactionTime().format(TX_TIME_FMT);
-            }
-
-            result.add(new RecentTransactionResponse(
-                    tx.getTransactionId(),
-                    timeLabel,
-                    items,
-                    tx.getTotalAmount()));
-        }
-
-        return result;
+        
+        // ⭐️ Mapper 사용 (stream 변환)
+        return txList.stream()
+                .map(salesMapper::toRecentTransactionResponse)
+                .toList();
     }
-
     @Transactional(readOnly = true)
-    public List<SalesTransactionSummaryResponse> getTransactionsByRange(
-            Long storeId,
-            LocalDate from,
-            LocalDate to) {
+    public List<SalesTransactionSummaryResponse> getTransactionsByRange(Long storeId, LocalDate from, LocalDate to) {
         LocalDateTime start = from.atStartOfDay();
-        LocalDateTime end = to.plusDays(1).atStartOfDay(); // to 날짜의 23:59:59까지 포함
+        LocalDateTime end = to.plusDays(1).atStartOfDay();
 
         List<SalesTransaction> list = salesTransactionRepository
-                .findByStoreStoreIdAndTransactionTimeBetweenOrderByTransactionTimeDesc(
-                        storeId, start, end);
+                .findByStoreStoreIdAndTransactionTimeBetweenOrderByTransactionTimeDesc(storeId, start, end);
 
+        // ⭐️ Mapper 사용 (stream 변환 - toSummaryDTO 제거됨)
         return list.stream()
-                .map(this::toSummaryDTO)
+                .map(salesMapper::toSummaryResponse)
                 .collect(Collectors.toList());
     }
 
-    private SalesTransactionSummaryResponse toSummaryDTO(SalesTransaction tx) {
-        // 메뉴명 x 수량 한 줄로 요약
-        String itemsSummary = "";
-        if (tx.getLineItems() != null && !tx.getLineItems().isEmpty()) {
-            itemsSummary = tx.getLineItems().stream()
-                    .map(li -> li.getMenuItem().getMenuName() + " x " + li.getQuantity())
-                    .collect(Collectors.joining(", "));
-        }
-
-        String timeLabel = "";
-        if (tx.getTransactionTime() != null) {
-            timeLabel = tx.getTransactionTime().format(TX_TIME_FMT); // ⭐ 예: 2025-11-21 16:20
-        }
-
-        return new SalesTransactionSummaryResponse(
-                tx.getTransactionId(),
-                timeLabel,
-                tx.getPaymentMethod(),
-                tx.getStatus(),
-                tx.getTotalAmount(),
-                tx.getTotalDiscount(),
-                itemsSummary);
-    }
 
     @Transactional(readOnly = true)
     public SalesSummaryResponse getSalesSummary(Long storeId) {
@@ -571,33 +511,6 @@ public class SalesService {
                 .monthSalesChangeRate(monthRate)
                 .avgTicket(thisMonthAvg)
                 .avgTicketChangeRate(avgRate)
-                .build();
-    }
-
-    private PosOrderResponse toDTO(SalesTransaction tx) {
-        List<PosOrderResponse.LineSummary> lineSummaries = new ArrayList<>();
-        if (tx.getLineItems() != null) {
-            for (SalesLineItem line : tx.getLineItems()) {
-                lineSummaries.add(PosOrderResponse.LineSummary.builder()
-                        .lineId(line.getLineId())
-                        .menuId(line.getMenuItem().getMenuId())
-                        .menuName(line.getMenuItem().getMenuName())
-                        .quantity(line.getQuantity())
-                        .unitPrice(line.getUnitPrice())
-                        .lineAmount(line.getLineAmount())
-                        .build());
-            }
-        }
-
-        return PosOrderResponse.builder()
-                .transactionId(tx.getTransactionId())
-                .storeId(tx.getStore().getStoreId())
-                .transactionTime(tx.getTransactionTime())
-                .totalAmount(tx.getTotalAmount())
-                .totalDiscount(tx.getTotalDiscount())
-                .status(tx.getStatus())
-                .paymentMethod(tx.getPaymentMethod())
-                .lines(lineSummaries)
                 .build();
     }
 

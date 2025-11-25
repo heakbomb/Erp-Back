@@ -24,6 +24,7 @@ import com.erp.erp_back.entity.hr.EmployeeDocument;
 import com.erp.erp_back.entity.store.Store;
 import com.erp.erp_back.exception.FileNotFoundException;
 import com.erp.erp_back.exception.FileStorageException;
+import com.erp.erp_back.mapper.DocumentMapper;
 import com.erp.erp_back.repository.hr.EmployeeDocumentRepository;
 import com.erp.erp_back.repository.store.StoreRepository;
 
@@ -36,15 +37,18 @@ public class EmployeeDocumentServiceImpl implements EmployeeDocumentService {
     private final Path fileStorageLocation;
     private final EmployeeDocumentRepository documentRepository;
     private final StoreRepository storeRepository;
+    private final DocumentMapper documentMapper;
 
     public EmployeeDocumentServiceImpl(
             @Value("${file.upload-dir}") String uploadDir,
             EmployeeDocumentRepository documentRepository,
-            StoreRepository storeRepository) {
+            StoreRepository storeRepository,
+            DocumentMapper documentMapper) {
 
         this.fileStorageLocation = Paths.get(uploadDir).toAbsolutePath().normalize();
         this.documentRepository = documentRepository;
         this.storeRepository = storeRepository;
+        this.documentMapper = documentMapper;
 
         try {
             Files.createDirectories(this.fileStorageLocation);
@@ -92,20 +96,14 @@ public class EmployeeDocumentServiceImpl implements EmployeeDocumentService {
 
         EmployeeDocument savedDoc = documentRepository.save(document);
 
-        return FileUploadResponse.builder()
-                .documentId(savedDoc.getDocumentId())
-                .docType(savedDoc.getDocType())
-                .originalFilename(savedDoc.getOriginalFilename())
-                .filePath(savedDoc.getFilePath())
-                .retentionEndDate(savedDoc.getRetentionEndDate())
-                .build();
+        return documentMapper.toUploadResponse(savedDoc);
     }
 
     @Override
     public Resource loadFileAsResource(Long documentId) {
         try {
             EmployeeDocument document = getDocument(documentId);
-            
+
             // [신규] 다운로드 시점에도 만료일 체크
             LocalDate today = LocalDate.now();
             if (document.getRetentionEndDate().isBefore(today)) {
@@ -138,8 +136,9 @@ public class EmployeeDocumentServiceImpl implements EmployeeDocumentService {
     @Override
     @Transactional(readOnly = true)
     // [수정] search 파라미터 추가
-    public Page<DocumentListResponseDto> getDocumentsByStore(Long storeId, String status, String search, Pageable pageable) {
-        
+    public Page<DocumentListResponseDto> getDocumentsByStore(Long storeId, String status, String search,
+            Pageable pageable) {
+
         Page<EmployeeDocument> documentsPage;
         LocalDate today = LocalDate.now();
 
@@ -150,29 +149,27 @@ public class EmployeeDocumentServiceImpl implements EmployeeDocumentService {
         if (!hasSearchTerm) {
             // 1. 검색어가 없으면 (기존 로직)
             if ("EXPIRED".equalsIgnoreCase(status)) {
-                documentsPage = documentRepository.findAllByStore_StoreIdAndRetentionEndDateBefore(storeId, today, pageable);
+                documentsPage = documentRepository.findAllByStore_StoreIdAndRetentionEndDateBefore(storeId, today,
+                        pageable);
             } else if ("ACTIVE".equalsIgnoreCase(status)) {
-                documentsPage = documentRepository.findAllByStore_StoreIdAndRetentionEndDateGreaterThanEqual(storeId, today, pageable);
+                documentsPage = documentRepository.findAllByStore_StoreIdAndRetentionEndDateGreaterThanEqual(storeId,
+                        today, pageable);
             } else {
                 documentsPage = documentRepository.findAllByStore_StoreId(storeId, pageable);
             }
         } else {
             // 2. 검색어가 있으면 (신규 @Query 로직)
             if ("EXPIRED".equalsIgnoreCase(status)) {
-                documentsPage = documentRepository.findByStoreIdAndExpiredAndSearch(storeId, today, searchTerm, pageable);
+                documentsPage = documentRepository.findByStoreIdAndExpiredAndSearch(storeId, today, searchTerm,
+                        pageable);
             } else if ("ACTIVE".equalsIgnoreCase(status)) {
-                documentsPage = documentRepository.findByStoreIdAndActiveAndSearch(storeId, today, searchTerm, pageable);
+                documentsPage = documentRepository.findByStoreIdAndActiveAndSearch(storeId, today, searchTerm,
+                        pageable);
             } else { // "ALL"
                 documentsPage = documentRepository.findByStoreIdAndSearch(storeId, searchTerm, pageable);
             }
         }
-        
-        // ... (Entity Page -> DTO Page 변환 로직은 동일)
-        return documentsPage.map(doc -> DocumentListResponseDto.builder()
-                .documentId(doc.getDocumentId())
-                .docType(doc.getDocType())      
-                .originalFilename(doc.getOriginalFilename())
-                .retentionEndDate(doc.getRetentionEndDate())
-                .build());
+
+        return documentsPage.map(documentMapper::toListResponse);
     }
 }

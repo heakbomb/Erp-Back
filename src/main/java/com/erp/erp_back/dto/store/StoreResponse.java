@@ -4,14 +4,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
 @Setter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class StoreResponse {
@@ -40,7 +38,6 @@ public class StoreResponse {
     // ⭐️ [수정] Inner Class에도 생성자 어노테이션 추가
     @Getter
     @Setter 
-    @Builder
     @NoArgsConstructor  // 추가: 기본 생성자
     @AllArgsConstructor // 추가: 모든 필드 생성자 (public으로 생성됨)
     public static class StoreEmployeeDto {
