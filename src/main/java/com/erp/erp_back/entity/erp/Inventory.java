@@ -3,22 +3,19 @@ package com.erp.erp_back.entity.erp;
 
 import java.math.BigDecimal;
 
+import com.erp.erp_back.common.ErrorCodes;
 import com.erp.erp_back.entity.enums.ActiveStatus;
 import com.erp.erp_back.entity.store.Store;
 import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(
-    name = "Inventory",
-    uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"store_id", "item_name"})
-    },
-    indexes = {
+@Table(name = "Inventory", uniqueConstraints = {
+        @UniqueConstraint(columnNames = { "store_id", "item_name" })
+}, indexes = {
         @Index(name = "ix_inventory_store", columnList = "store_id"),
         @Index(name = "ix_inventory_name", columnList = "item_name")
-    }
-)
+})
 @Getter
 @Setter
 @Builder
@@ -57,5 +54,25 @@ public class Inventory {
 
     @Builder.Default
     @Column(precision = 19, scale = 4, nullable = false)
-    private BigDecimal lastUnitCost = BigDecimal.ZERO; 
+    private BigDecimal lastUnitCost = BigDecimal.ZERO;
+
+    /**
+     * - 수량을 더하거나 뺌 (delta가 음수면 감소)
+     * - 음수 재고 방지 로직 포함
+     */
+    public void adjustStock(BigDecimal delta) {
+        // null 방어 로직 (기존 nz 메서드 로직 내장 혹은 유틸 사용)
+        BigDecimal current = this.stockQty != null ? this.stockQty : BigDecimal.ZERO;
+        BigDecimal change = delta != null ? delta : BigDecimal.ZERO;
+
+        BigDecimal nextStock = current.add(change);
+
+        // 도메인 규칙: 재고는 음수가 될 수 없다.
+        if (nextStock.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException(ErrorCodes.NEGATIVE_STOCK_NOT_ALLOWED);
+        }
+
+        // 내부 상태 변경
+        this.stockQty = nextStock;
+    }
 }

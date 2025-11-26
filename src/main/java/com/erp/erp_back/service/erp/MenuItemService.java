@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,7 +17,6 @@ import com.erp.erp_back.dto.erp.MenuItemRequest;
 import com.erp.erp_back.dto.erp.MenuItemResponse;
 import com.erp.erp_back.dto.erp.MenuStatsResponse;
 import com.erp.erp_back.entity.enums.ActiveStatus;
-import com.erp.erp_back.entity.erp.Inventory;
 import com.erp.erp_back.entity.erp.MenuItem;
 import com.erp.erp_back.entity.erp.RecipeIngredient;
 import com.erp.erp_back.entity.store.Store;
@@ -24,11 +24,10 @@ import com.erp.erp_back.mapper.MenuItemMapper;
 import com.erp.erp_back.repository.erp.MenuItemRepository;
 import com.erp.erp_back.repository.erp.RecipeIngredientRepository;
 import com.erp.erp_back.repository.store.StoreRepository;
-
+import com.erp.erp_back.service.erp.component.MenuCostCalculator;
+import static com.erp.erp_back.repository.specification.MenuItemSpecification.*;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-
-import static com.erp.erp_back.util.BigDecimalUtils.nz;
 
 @Service
 @RequiredArgsConstructor
@@ -40,24 +39,25 @@ public class MenuItemService {
     private final RecipeIngredientRepository recipeIngredientRepository;
     private final MenuItemMapper menuItemMapper;
 
-    public Page<MenuItemResponse> getMenuPage(Long storeId, String q, ActiveStatus status, Pageable pageable) {
-        Page<MenuItem> page;
-        boolean hasQ = q != null && !q.isBlank();
+    private final MenuCostCalculator menuCostCalculator;
 
-        if (status == null) {
-            page = hasQ
-                    ? menuItemRepository.findByStoreStoreIdAndMenuNameContainingIgnoreCase(storeId, q.trim(), pageable)
-                    : menuItemRepository.findByStoreStoreId(storeId, pageable);
-        } else {
-            page = hasQ
-                    ? menuItemRepository.findByStoreStoreIdAndMenuNameContainingIgnoreCaseAndStatus(
-                            storeId,
-                            q.trim(),
-                            status,
-                            pageable
-                    )
-                    : menuItemRepository.findByStoreStoreIdAndStatus(storeId, status, pageable);
+    public Page<MenuItemResponse> getMenuPage(Long storeId, String q, ActiveStatus status, Pageable pageable) {
+        
+        // 1. 기본 조건: storeId (Specification.where 없이 바로 대입)
+        Specification<MenuItem> spec = byStoreId(storeId);
+
+        // 2. 검색어(q)가 있으면 AND 조건 조립
+        if (q != null && !q.isBlank()) {
+            spec = spec.and(menuNameContains(q.trim()));
         }
+
+        // 3. 상태(status)가 있으면 AND 조건 조립
+        if (status != null) {
+            spec = spec.and(hasStatus(status));
+        }
+
+        // 4. 조회 (Repository에 JpaSpecificationExecutor 상속 필수!)
+        Page<MenuItem> page = menuItemRepository.findAll(spec, pageable);
 
         return page.map(this::toDTO);
     }
@@ -134,56 +134,32 @@ public class MenuItemService {
                 .map(r -> r.getMenuItem().getMenuId())
                 .collect(Collectors.toSet());
 
-        menuIdsToUpdate.forEach(this::computeMenuCostByLatest);
+        if (menuIdsToUpdate.isEmpty()) return;
+
+        List<MenuItem> menus = menuItemRepository.findAllById(menuIdsToUpdate);
+
+        for (MenuItem menu : menus) {
+            BigDecimal newCost = menuCostCalculator.calculate(menu.getMenuId());
+            menu.setCalculatedCost(newCost);
+        }
     }
 
     /* ===== Helper ===== */
 
     private MenuItemResponse toDTO(MenuItem menu) {
         // 원가는 DB에 저장된 값이 아니라, 현재 시점의 재고 단가 기준으로 계산해서 보여줌
-        BigDecimal latestCost = computeMenuCostByLatest(menu.getMenuId());
+        BigDecimal latestCost = menuCostCalculator.calculate(menu.getMenuId());
         return menuItemMapper.toResponse(menu, latestCost);
     }
 
-    private BigDecimal computeMenuCostByLatest(Long menuId) {
-        List<RecipeIngredient> ingredients = recipeIngredientRepository.findByMenuItemMenuId(menuId);
-        BigDecimal sum = BigDecimal.ZERO;
-
-        for (RecipeIngredient ri : ingredients) {
-            Inventory inv = ri.getInventory();
-            if (inv == null) continue;
-            if (inv.getStatus() == ActiveStatus.INACTIVE) continue; // 비활성 재고 제외
-
-            BigDecimal qty = nz(ri.getConsumptionQty());
-            BigDecimal last = nz(inv.getLastUnitCost());
-            sum = sum.add(qty.multiply(last));
-        }
-        return sum;
-    }
-
-    /** 단일 메뉴 재계산 + 저장 */
     @Transactional
     public void recalcAndSave(Long storeId, Long menuId) {
         MenuItem menu = menuItemRepository.findByMenuIdAndStoreStoreId(menuId, storeId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.MENU_NOT_FOUND));
-        BigDecimal cost = computeMenuCostByLatest(menuId);
+        BigDecimal cost = menuCostCalculator.calculate(menuId);
         menu.setCalculatedCost(cost);
     }
 
-    /** 특정 재고(itemId)를 쓰는 모든 메뉴 재계산 */
-    @Transactional
-    public void recalcByInventory(Long storeId, Long itemId) {
-        List<RecipeIngredient> used = recipeIngredientRepository.findByInventoryItemId(itemId);
-        for (RecipeIngredient ri : used) {
-            MenuItem menu = ri.getMenuItem();
-            if (menu != null && Objects.equals(menu.getStore().getStoreId(), storeId)) {
-                BigDecimal cost = computeMenuCostByLatest(menu.getMenuId());
-                menu.setCalculatedCost(cost);
-            }
-        }
-    }
-
-    @Transactional(readOnly = true)
     public List<MenuItemResponse> listActiveMenusForPos(Long storeId) {
         storeRepository.findById(storeId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.STORE_NOT_FOUND));
@@ -199,7 +175,6 @@ public class MenuItemService {
                 .toList();
     }
 
-    @Transactional(readOnly = true)
     public MenuStatsResponse getMenuStats(Long storeId) {
         long total = menuItemRepository.countByStoreStoreId(storeId);
         long inactive = menuItemRepository.countByStoreStoreIdAndStatus(storeId, ActiveStatus.INACTIVE);

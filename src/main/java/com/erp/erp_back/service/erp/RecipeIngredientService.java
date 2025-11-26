@@ -38,7 +38,6 @@ public class RecipeIngredientService {
     private final RecipeIngredientMapper recipeIngredientMapper;
 
     /** 메뉴별 레시피 목록 */
-    @Transactional(readOnly = true)
     public List<RecipeIngredientResponse> listByMenu(Long menuId) {
         Objects.requireNonNull(menuId, ErrorCodes.MENU_ID_MUST_NOT_BE_NULL);
 
