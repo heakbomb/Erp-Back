@@ -23,12 +23,16 @@ import com.erp.erp_back.mapper.PurchaseHistoryMapper;
 import com.erp.erp_back.repository.erp.InventoryRepository;
 import com.erp.erp_back.repository.erp.PurchaseHistoryRepository;
 import com.erp.erp_back.repository.store.StoreRepository;
+import com.erp.erp_back.common.ErrorCodes;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 
+import static com.erp.erp_back.util.BigDecimalUtils.nz;
+
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true) 
 public class PurchaseHistoryService {
 
     private final PurchaseHistoryRepository purchaseHistoryRepository;
@@ -42,7 +46,7 @@ public class PurchaseHistoryService {
     public Page<PurchaseHistoryResponse> listPurchase(
             Long storeId, Long itemId, LocalDate from, LocalDate to, Pageable pageable) {
 
-        Objects.requireNonNull(storeId, "STORE_ID_MUST_NOT_BE_NULL");
+        Objects.requireNonNull(storeId, ErrorCodes.STORE_ID_MUST_NOT_BE_NULL);
 
         Specification<PurchaseHistory> spec = Specification.allOf(
                 byStoreId(storeId),
@@ -72,13 +76,13 @@ public class PurchaseHistoryService {
     @Transactional
     public PurchaseHistoryResponse createPurchase(PurchaseHistoryRequest req) {
         Store store = storeRepository.findById(req.getStoreId())
-                .orElseThrow(() -> new EntityNotFoundException("STORE_NOT_FOUND"));
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.STORE_NOT_FOUND));
 
         Inventory item = inventoryRepository.findById(req.getItemId())
-                .orElseThrow(() -> new EntityNotFoundException("INVENTORY_ITEM_NOT_FOUND"));
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_ITEM_NOT_FOUND));
 
         if (!Objects.equals(item.getStore().getStoreId(), store.getStoreId())) {
-            throw new IllegalArgumentException("ITEM_NOT_BELONG_TO_STORE");
+            throw new IllegalArgumentException(ErrorCodes.ITEM_NOT_BELONG_TO_STORE);
         }
 
         // 1) 매입 저장
@@ -103,7 +107,7 @@ public class PurchaseHistoryService {
     @Transactional(readOnly = true)
     public PurchaseHistoryResponse getPurchase(Long purchaseId) {
         PurchaseHistory purchase = purchaseHistoryRepository.findById(purchaseId)
-                .orElseThrow(() -> new EntityNotFoundException("PURCHASE_NOT_FOUND"));
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.PURCHASE_NOT_FOUND));
         return purchaseHistoryMapper.toResponse(purchase);
     }
 
@@ -111,7 +115,7 @@ public class PurchaseHistoryService {
     @Transactional
     public PurchaseHistoryResponse updatePurchase(Long purchaseId, PurchaseHistoryUpdateRequest req) {
         PurchaseHistory purchase = purchaseHistoryRepository.findById(purchaseId)
-                .orElseThrow(() -> new EntityNotFoundException("PURCHASE_NOT_FOUND"));
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.PURCHASE_NOT_FOUND));
 
         Inventory item = purchase.getInventory();
 
@@ -122,7 +126,7 @@ public class PurchaseHistoryService {
 
         BigDecimal newStock = nz(item.getStockQty()).add(delta);
         if (newStock.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException("NEGATIVE_STOCK_NOT_ALLOWED");
+            throw new IllegalArgumentException(ErrorCodes.NEGATIVE_STOCK_NOT_ALLOWED);
         }
         item.setStockQty(newStock);
 
@@ -143,7 +147,7 @@ public class PurchaseHistoryService {
     /* ====== 내부: 최신단가만 재계산 ====== */
     private void recomputeLatestCostFromHistory(Long itemId) {
         Inventory inventory = inventoryRepository.findById(itemId)
-                .orElseThrow(() -> new EntityNotFoundException("INVENTORY_NOT_FOUND"));
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_NOT_FOUND));
 
         List<PurchaseHistory> all = purchaseHistoryRepository.findByInventoryItemId(itemId);
         if (all.isEmpty()) {
@@ -162,7 +166,4 @@ public class PurchaseHistoryService {
         inventory.setLastUnitCost(nz(latest.getUnitPrice()));
     }
 
-    private static BigDecimal nz(BigDecimal v) {
-        return v == null ? BigDecimal.ZERO : v;
-    }
 }

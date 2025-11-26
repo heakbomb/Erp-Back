@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.erp.erp_back.common.ErrorCodes;
 import com.erp.erp_back.dto.erp.PosOrderRequest;
 import com.erp.erp_back.dto.erp.PosOrderResponse;
 import com.erp.erp_back.dto.erp.RecentTransactionResponse;
@@ -76,17 +77,17 @@ public class SalesService {
         }
 
         Store store = storeRepository.findById(req.getStoreId())
-                .orElseThrow(() -> new EntityNotFoundException("STORE_NOT_FOUND"));
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.STORE_NOT_FOUND));
 
         List<SalesLineItem> lineItems = new ArrayList<>();
         BigDecimal totalAmount = BigDecimal.ZERO;
 
         for (PosOrderRequest.PosOrderLine lineReq : req.getItems()) {
             MenuItem menu = menuItemRepository.findById(lineReq.getMenuId())
-                    .orElseThrow(() -> new EntityNotFoundException("MENU_NOT_FOUND"));
+                    .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.MENU_NOT_FOUND));
 
             if (!Objects.equals(menu.getStore().getStoreId(), store.getStoreId())) {
-                throw new IllegalArgumentException("MENU_STORE_MISMATCH");
+                throw new IllegalArgumentException(ErrorCodes.MENU_STORE_MISMATCH);
             }
 
             BigDecimal qty = BigDecimal.valueOf(lineReq.getQuantity());

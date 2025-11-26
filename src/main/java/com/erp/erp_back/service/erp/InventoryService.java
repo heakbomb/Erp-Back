@@ -15,6 +15,7 @@ import com.erp.erp_back.mapper.InventoryMapper;
 import com.erp.erp_back.repository.erp.InventoryRepository;
 import com.erp.erp_back.repository.store.StoreRepository;
 
+import com.erp.erp_back.common.ErrorCodes;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 
@@ -31,7 +32,7 @@ public class InventoryService {
     @Transactional
     public InventoryResponse createInventory(InventoryRequest req) {
         Store store = storeRepository.findById(req.getStoreId())
-                .orElseThrow(() -> new EntityNotFoundException("STORE_NOT_FOUND"));
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.STORE_NOT_FOUND));
 
         Inventory inv = inventoryMapper.toEntity(req, store);
 
@@ -44,7 +45,7 @@ public class InventoryService {
      */
     public InventoryResponse getInventory(Long storeId, Long itemId) {
         Inventory inv = inventoryRepository.findByItemIdAndStoreStoreId(itemId, storeId)
-                .orElseThrow(() -> new EntityNotFoundException("INVENTORY_NOT_FOUND"));
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_NOT_FOUND));
         return inventoryMapper.toResponse(inv);
     }
 
@@ -69,7 +70,7 @@ public class InventoryService {
     @Transactional
     public InventoryResponse updateInventory(Long storeId, Long itemId, InventoryRequest req) {
         Inventory inv = inventoryRepository.findByItemIdAndStoreStoreId(itemId, storeId)
-                .orElseThrow(() -> new EntityNotFoundException("INVENTORY_NOT_FOUND"));
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_NOT_FOUND));
 
         inventoryMapper.updateFromDto(req, inv);
 
@@ -79,14 +80,14 @@ public class InventoryService {
     @Transactional
     public void deactivate(Long storeId, Long itemId) {
         Inventory inv = inventoryRepository.findByItemIdAndStoreStoreId(itemId, storeId)
-                .orElseThrow(() -> new EntityNotFoundException("INVENTORY_NOT_FOUND"));
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_NOT_FOUND));
         inv.setStatus(ActiveStatus.INACTIVE);
     }
 
     @Transactional
     public void reactivate(Long storeId, Long itemId) {
         Inventory inv = inventoryRepository.findByItemIdAndStoreStoreId(itemId, storeId)
-                .orElseThrow(() -> new EntityNotFoundException("INVENTORY_NOT_FOUND"));
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_NOT_FOUND));
         inv.setStatus(ActiveStatus.ACTIVE);
     }
 }
