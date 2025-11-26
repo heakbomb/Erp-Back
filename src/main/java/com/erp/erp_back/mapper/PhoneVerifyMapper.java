@@ -19,9 +19,10 @@ public interface PhoneVerifyMapper {
     /**
      * 인증 요청 생성 (Service에서 계산된 값들을 받아 Entity 생성)
      * - status는 항상 PENDING으로 시작
+     * - [수정] id, createdAt은 Builder 생성자에 포함되지 않으므로 ignore 설정도 제거해야 함
      */
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "createdAt", ignore = true)
+    // @Mapping(target = "id", ignore = true)        <-- 삭제
+    // @Mapping(target = "createdAt", ignore = true) <-- 삭제
     @Mapping(target = "phoneNumber", source = "phoneNumber")
     @Mapping(target = "authCode", source = "authCode")
     @Mapping(target = "expiresAt", source = "expiresAt")
@@ -30,7 +31,6 @@ public interface PhoneVerifyMapper {
 
     /**
      * 인증 상태 응답 (Enum -> DTO)
-     * - DTO 생성자 로직(Enum.toString()) 활용을 위해 default 메서드 사용
      */
     default PhoneVerifyStatusDto toStatusDto(VerificationStatus status) {
         return new PhoneVerifyStatusDto(status);
@@ -38,7 +38,6 @@ public interface PhoneVerifyMapper {
 
     /**
      * 인증 상태 응답 (String -> DTO)
-     * - "NOT_FOUND" 등 커스텀 문자열 처리용
      */
     default PhoneVerifyStatusDto toStatusDto(String status) {
         return new PhoneVerifyStatusDto(status);
