@@ -1,7 +1,7 @@
 package com.erp.erp_back.mapper;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -10,57 +10,84 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
 import org.mapstruct.ReportingPolicy;
 
+import com.erp.erp_back.dto.erp.PosOrderRequest;
 import com.erp.erp_back.dto.erp.PosOrderResponse;
 import com.erp.erp_back.dto.erp.RecentTransactionResponse;
+import com.erp.erp_back.dto.erp.SalesSummaryResponse;
 import com.erp.erp_back.dto.erp.SalesTransactionSummaryResponse;
+import com.erp.erp_back.dto.erp.TopMenuStatsResponse;
+import com.erp.erp_back.entity.erp.MenuItem;
 import com.erp.erp_back.entity.erp.SalesLineItem;
 import com.erp.erp_back.entity.erp.SalesTransaction;
+import com.erp.erp_back.entity.store.Store;
 
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING,
         unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface SalesMapper {
 
     // ===========================================
-    // 1. POS 주문 응답 (PosOrderResponse)
+    // 1. Entity 생성 (PosOrderRequest -> Entity)
     // ===========================================
+    
+    // SalesTransaction 생성 (총액은 계산된 값을 받음)
+    @Mapping(target = "transactionId", ignore = true)
+    @Mapping(target = "store", source = "store")
+    @Mapping(target = "transactionTime", expression = "java(java.time.LocalDateTime.now())")
+    @Mapping(target = "totalAmount", source = "totalAmount") // 계산된 총액 주입
+    @Mapping(target = "totalDiscount", source = "req.totalDiscount", defaultValue = "0")
+    @Mapping(target = "paymentMethod", source = "req.paymentMethod")
+    @Mapping(target = "status", constant = "PAID")
+    @Mapping(target = "idempotencyKey", source = "req.idempotencyKey")
+    @Mapping(target = "lineItems", ignore = true) // 별도 설정
+    SalesTransaction toEntity(PosOrderRequest req, Store store, BigDecimal totalAmount);
+
+    // SalesLineItem 생성 (단가/금액 계산된 값 받음)
+    @Mapping(target = "lineId", ignore = true)
+    @Mapping(target = "salesTransaction", ignore = true) // 나중에 연관관계 설정
+    @Mapping(target = "menuItem", source = "menuItem")
+    @Mapping(target = "quantity", source = "req.quantity")
+    @Mapping(target = "unitPrice", source = "req.unitPrice")
+    @Mapping(target = "lineAmount", source = "lineAmount")
+    SalesLineItem toLineItem(PosOrderRequest.PosOrderLine req, MenuItem menuItem, BigDecimal lineAmount);
+
+
+    // ===========================================
+    // 2. 조회 응답 (DTO 생성)
+    // ===========================================
+
     @Mapping(source = "store.storeId", target = "storeId")
-    @Mapping(source = "lineItems", target = "lines") // List<SalesLineItem> -> List<LineSummary> 자동 매핑
+    @Mapping(source = "lineItems", target = "lines")
     PosOrderResponse toPosOrderResponse(SalesTransaction entity);
 
-    // 내부 라인 아이템 매핑
     @Mapping(source = "menuItem.menuId", target = "menuId")
     @Mapping(source = "menuItem.menuName", target = "menuName")
     PosOrderResponse.LineSummary toLineSummary(SalesLineItem entity);
 
-
-    // ===========================================
-    // 2. 거래 내역 요약 (SalesTransactionSummaryResponse)
-    // ===========================================
     @Mapping(source = "transactionId", target = "transactionId")
-    @Mapping(source = "totalAmount", target = "totalAmount")
-    @Mapping(source = "totalDiscount", target = "totalDiscount")
     @Mapping(source = "transactionTime", target = "transactionTime", dateFormat = "yyyy-MM-dd HH:mm")
-    @Mapping(source = "paymentMethod", target = "paymentMethod")
-    @Mapping(source = "status", target = "status")
-    @Mapping(target = "itemsSummary", expression = "java(makeItemsSummary(entity.getLineItems()))") // 커스텀 로직
+    @Mapping(target = "itemsSummary", expression = "java(makeItemsSummary(entity.getLineItems()))")
     SalesTransactionSummaryResponse toSummaryResponse(SalesTransaction entity);
 
-
-    // ===========================================
-    // 3. 최근 거래 (RecentTransactionResponse)
-    // ===========================================
     @Mapping(source = "transactionId", target = "id")
     @Mapping(source = "totalAmount", target = "amount")
-    @Mapping(target = "time", expression = "java(formatTime(entity.getTransactionTime()))") // HH:mm 포맷
-    @Mapping(target = "items", expression = "java(makeItemsSummary(entity.getLineItems()))") // 커스텀 로직
+    @Mapping(target = "time", expression = "java(formatTime(entity.getTransactionTime()))")
+    @Mapping(target = "items", expression = "java(makeItemsSummary(entity.getLineItems()))")
     RecentTransactionResponse toRecentTransactionResponse(SalesTransaction entity);
 
+    // ⭐️ [추가] TopMenuStatsResponse 생성 (개별 필드 -> DTO)
+    TopMenuStatsResponse toTopMenuStats(Long menuId, String name, long quantity, BigDecimal revenue, double growth);
+
+    // ⭐️ [추가] SalesSummaryResponse 생성 (8개 필드 -> DTO)
+    SalesSummaryResponse toSalesSummary(BigDecimal todaySales, BigDecimal todaySalesChangeRate,
+                                        BigDecimal weekSales, BigDecimal weekSalesChangeRate,
+                                        BigDecimal monthSales, BigDecimal monthSalesChangeRate,
+                                        BigDecimal avgTicket, BigDecimal avgTicketChangeRate);
+
 
     // ===========================================
-    // 4. 공통 헬퍼 메서드 (Java Expression용)
+    // 3. 헬퍼 메서드
     // ===========================================
 
-    // 메뉴명 x 수량, ... 형태로 요약 문자열 생성
     default String makeItemsSummary(List<SalesLineItem> items) {
         if (items == null || items.isEmpty()) {
             return "";
@@ -70,9 +97,8 @@ public interface SalesMapper {
                 .collect(Collectors.joining(", "));
     }
 
-    // 시간 포맷팅 (HH:mm)
     default String formatTime(LocalDateTime time) {
         if (time == null) return "";
-        return time.format(DateTimeFormatter.ofPattern("HH:mm"));
+        return java.time.format.DateTimeFormatter.ofPattern("HH:mm").format(time);
     }
 }

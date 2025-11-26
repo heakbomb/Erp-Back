@@ -1,4 +1,3 @@
-// src/main/java/com/erp/erp_back/service/erp/RecipeIngredientService.java
 package com.erp.erp_back.service.erp;
 
 import java.math.BigDecimal;
@@ -79,15 +78,10 @@ public class RecipeIngredientService {
             throw new DuplicateKeyException("INGREDIENT_ALREADY_EXISTS_FOR_MENU");
         }
 
-        RecipeIngredient saved = recipeIngredientRepository.save(
-                RecipeIngredient.builder()
-                        .menuItem(menu)
-                        .inventory(inv)
-                        .consumptionQty(req.getConsumptionQty())
-                        .build()
-        );
+        RecipeIngredient recipeIngredient = recipeIngredientMapper.toEntity(req, menu, inv);
+        RecipeIngredient saved = recipeIngredientRepository.save(recipeIngredient);
 
-        // ✅ 레시피가 바뀌었으니 해당 메뉴 원가 재계산 + 저장
+        // 원가 재계산
         menuItemService.recalcAndSave(menu.getStore().getStoreId(), menu.getMenuId());
 
         return recipeIngredientMapper.toResponse(saved);
@@ -115,9 +109,9 @@ public class RecipeIngredientService {
             throw new IllegalStateException("CANNOT_USE_INACTIVE_INVENTORY_IN_RECIPE");
         }
 
-        entity.setConsumptionQty(req.getConsumptionQty()); // 변경감지만
+        recipeIngredientMapper.updateFromDto(req, entity);
 
-        // ✅ 변경 즉시 해당 메뉴 원가 재계산 + 저장
+        // 원가 재계산
         menuItemService.recalcAndSave(menu.getStore().getStoreId(), menu.getMenuId());
 
         return recipeIngredientMapper.toResponse(entity);
@@ -136,8 +130,7 @@ public class RecipeIngredientService {
 
         recipeIngredientRepository.delete(entity);
 
-        // ✅ 삭제 후에도 해당 메뉴 원가 재계산 + 저장
+        // 삭제 후에도 원가 재계산
         menuItemService.recalcAndSave(storeId, menuId);
     }
-
 }

@@ -4,11 +4,17 @@ import java.util.List;
 
 import com.erp.erp_back.dto.log.AuditLogResponse;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
+@Setter
 @Builder
+@AllArgsConstructor 
+@NoArgsConstructor
 public class DashboardStatsResponse {
     // 1. 카드 4개
     private long totalStores;
