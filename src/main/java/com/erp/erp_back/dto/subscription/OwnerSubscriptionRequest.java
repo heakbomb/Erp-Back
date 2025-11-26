@@ -1,16 +1,15 @@
 package com.erp.erp_back.dto.subscription;
 
-import jakarta.validation.constraints.NotNull;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.Data;
 
-@Getter
-@Setter
-@NoArgsConstructor
+@Data
 public class OwnerSubscriptionRequest {
-    // ownerId는 인증 토큰에서 추출
+    private Long subId;          // 구독할 상품
 
-    @NotNull(message = "구독 상품 ID(subId)는 필수입니다.")
-    private Long subId;
+    // [Case A] 기존 카드 선택 시
+    private Long paymentMethodId; 
+
+    // [Case B] 새 카드 입력 시 (빌링키 즉시 발급됨)
+    private String customerUid;   
+    private String newCardName;   // (선택) 카드 별칭
 }
