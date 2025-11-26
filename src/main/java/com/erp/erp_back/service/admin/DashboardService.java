@@ -2,7 +2,6 @@ package com.erp.erp_back.service.admin;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -12,7 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.erp.erp_back.dto.admin.DashboardStatsResponse;
 import com.erp.erp_back.dto.log.AuditLogResponse;
 import com.erp.erp_back.entity.enums.InquiryStatus;
-import com.erp.erp_back.entity.log.AuditLog;
+import com.erp.erp_back.mapper.AuditLogMapper;
+import com.erp.erp_back.mapper.DashboardMapper;
 import com.erp.erp_back.repository.inquiry.InquiryRepository;
 import com.erp.erp_back.repository.log.AuditLogRepository;
 import com.erp.erp_back.repository.store.StoreRepository;
@@ -21,7 +21,6 @@ import com.erp.erp_back.repository.user.EmployeeRepository;
 import com.erp.erp_back.repository.user.OwnerRepository;
 
 import lombok.RequiredArgsConstructor;
-
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -33,52 +32,45 @@ public class DashboardService {
     private final OwnerSubscriptionRepository ownerSubscriptionRepository; 
     private final AuditLogRepository auditLogRepository; 
     private final InquiryRepository inquiryRepository;
+    
+    private final AuditLogMapper auditLogMapper;
+    private final DashboardMapper dashboardMapper;
 
     public DashboardStatsResponse getDashboardStats() {
         
-        // 1. 사업장 수 (유지)
+        // 1. 사업장 수
         long totalStores = storeRepository.count();
 
-        // 2. 전체 사용자 수 (유지)
+        // 2. 전체 사용자 수
         long totalOwners = ownerRepository.count();
         long totalEmployees = employeeRepository.count();
         long totalUsers = totalOwners + totalEmployees;
 
-        // 3.  활성 구독 수 (오늘 날짜 기준)
+        // 3. 활성 구독 수
         long activeSubscriptions = ownerSubscriptionRepository.countActiveSubscriptions(LocalDate.now());
 
-        // 4.  승인 대기 사업장 수
+        // 4. 승인 대기 사업장 수
         long pendingStoreCount = storeRepository.countByStatus("PENDING");
         
-        // 5.  최근 활동 (최근 5건)
-        PageRequest pageRequest = PageRequest.of(0, 5, Sort.by(Sort.Direction.DESC, "createdAt"));
-        List<AuditLogResponse> recentActivities = auditLogRepository.findAllByOrderByCreatedAtDesc(pageRequest)
-                .stream()
-                .map(this::toAuditLogDto)
-                .collect(Collectors.toList());
-
+        // 5. 대기 문의 수
         long pendingInquiryCount = inquiryRepository.countByStatus(InquiryStatus.PENDING);
 
-        // DTO 조립
-        return DashboardStatsResponse.builder()
-                .totalStores(totalStores)
-                .totalUsers(totalUsers)
-                .activeSubscriptions(activeSubscriptions) 
-                .pendingStoreCount(pendingStoreCount)
-                .recentActivities(recentActivities) 
-                .pendingInquiryCount(pendingInquiryCount)
-                .build();
-    }
-    
-    // AuditLog DTO 변환
-    private AuditLogResponse toAuditLogDto(AuditLog log) {
-        return AuditLogResponse.builder()
-                .auditId(log.getAuditId())
-                .userId(log.getUserId())
-                .userType(log.getUserType())
-                .actionType(log.getActionType())
-                .targetTable(log.getTargetTable())
-                .createdAt(log.getCreatedAt())
-                .build();
+        // 6. 최근 활동 (최근 5건)
+        PageRequest pageRequest = PageRequest.of(0, 5, Sort.by(Sort.Direction.DESC, "createdAt"));
+        
+        // ✅ Mapper 사용 (stream 변환)
+        List<AuditLogResponse> recentActivities = auditLogRepository.findAllByOrderByCreatedAtDesc(pageRequest)
+                .stream()
+                .map(auditLogMapper::toResponse) 
+                .toList();
+
+        return dashboardMapper.toResponse(
+                totalStores,
+                totalUsers,
+                activeSubscriptions,
+                pendingStoreCount,
+                pendingInquiryCount,
+                recentActivities
+        );
     }
 }

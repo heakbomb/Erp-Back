@@ -15,7 +15,8 @@ import com.erp.erp_back.dto.erp.MenuItemResponse;
 import com.erp.erp_back.entity.erp.MenuItem;
 import com.erp.erp_back.entity.store.Store;
 
-@Mapper(componentModel = MappingConstants.ComponentModel.SPRING, unmappedTargetPolicy = ReportingPolicy.IGNORE)
+@Mapper(componentModel = MappingConstants.ComponentModel.SPRING, 
+        unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface MenuItemMapper {
 
     // Entity + 계산된 원가(calculatedCost) -> DTO
@@ -27,15 +28,19 @@ public interface MenuItemMapper {
     @Mapping(source = "cost", target = "calculatedCost")
     MenuItemResponse toResponse(MenuItem menu, BigDecimal cost);
 
-    // 생성용
+    // 생성용 (Request -> Entity)
     @Mapping(target = "menuId", ignore = true)
     @Mapping(target = "store", source = "store")
-    @Mapping(source = "req.status", target = "status") 
+    // ✅ [수정] 상태값이 없으면 기본값 ACTIVE 설정
+    @Mapping(source = "req.status", target = "status", defaultValue = "ACTIVE")
+    @Mapping(target = "calculatedCost", expression = "java(java.math.BigDecimal.ZERO)") // 초기 원가는 0
+    @Mapping(target = "price", source = "req.price")
     MenuItem toEntity(MenuItemRequest req, Store store);
 
-    // 수정용
+    // 수정용 (Request -> Entity Partial Update)
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "menuId", ignore = true)
     @Mapping(target = "store", ignore = true)
+    @Mapping(target = "calculatedCost", ignore = true) // 원가는 레시피 변경 시에만 재계산
     void updateFromDto(MenuItemRequest req, @MappingTarget MenuItem menu);
 }

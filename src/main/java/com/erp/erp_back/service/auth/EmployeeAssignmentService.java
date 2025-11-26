@@ -46,19 +46,9 @@ public class EmployeeAssignmentService {
             throw new IllegalStateException("이미 신청 중이거나 승인된 상태입니다.");
         });
 
-        // 저장 (신규 생성이므로 save 필수)
-        EmployeeAssignment saved = new EmployeeAssignment();
-        saved.setEmployee(emp);
-        saved.setStore(store);
-        saved.setRole(req.getRole());
-        
-        // 엔티티에 @PrePersist가 있지만 안전하게 기본값 설정
-        if (saved.getStatus() == null || saved.getStatus().isBlank()) {
-            saved.setStatus("PENDING"); 
-        }
+        EmployeeAssignment saved = assignmentMapper.toEntity(req, emp, store);
 
         saved = assignmentRepo.save(saved);
-
         return assignmentMapper.toResponse(saved);
     }
 
