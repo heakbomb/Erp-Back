@@ -16,10 +16,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.erp.erp_back.dto.log.AttendanceLogRequest;
 import com.erp.erp_back.dto.log.AttendanceLogResponse;
+import com.erp.erp_back.dto.log.EmployeeAttendanceSummary;
 import com.erp.erp_back.service.log.AttendancelogService;
-import com.erp.erp_back.support.web.IpUtils;
 
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -32,10 +31,9 @@ public class AttendancelogController {
 
     /** 출퇴근 기록 */
     @PostMapping("/punch")
-    public ResponseEntity<AttendanceLogResponse> punch(@RequestBody AttendanceLogRequest req,
-                                                       HttpServletRequest http) {
-        String ip = IpUtils.getClientIp(http);
-        return ResponseEntity.ok(service.punch(req, ip));
+    public ResponseEntity<AttendanceLogResponse> punch(@RequestBody AttendanceLogRequest req) {
+        // 👉 IP 사용 안 하고, QR 기반만 사용하므로 바로 서비스 호출
+        return ResponseEntity.ok(service.punch(req));
     }
 
     /** 최근 기록 (직원+매장 기준) */
@@ -81,7 +79,7 @@ public class AttendancelogController {
     }
 
     // =========================
-    // ✅ 사장페이지용 - 매장 출퇴근 로그 조회
+    // 사장페이지용 - 매장 출퇴근 로그 조회
     // =========================
     @GetMapping("/owner/logs")
     public ResponseEntity<List<AttendanceLogResponse>> ownerLogs(
@@ -95,6 +93,7 @@ public class AttendancelogController {
         );
     }
 
+    /** 단일 날짜 편의용 (기존 기능 유지) */
     @GetMapping("/logs")
     public ResponseEntity<List<AttendanceLogResponse>> logsByDate(
             @RequestParam Long storeId,
@@ -103,6 +102,21 @@ public class AttendancelogController {
     ) {
         return ResponseEntity.ok(
                 service.findLogsForOwner(storeId, date, date, employeeId)
+        );
+    }
+
+    // =========================
+    // 사장페이지용 - 직원 출결 "월간 요약" 조회
+    // =========================
+    @GetMapping("/owner/summary")
+    public ResponseEntity<List<EmployeeAttendanceSummary>> ownerMonthlySummary(
+            @RequestParam Long storeId,
+            // month: "2025-11" 형식
+            @RequestParam String month,
+            @RequestParam(required = false) Long employeeId
+    ) {
+        return ResponseEntity.ok(
+                service.findMonthlySummary(storeId, month, employeeId)
         );
     }
 

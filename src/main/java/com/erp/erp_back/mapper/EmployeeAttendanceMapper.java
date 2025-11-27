@@ -16,7 +16,13 @@ import com.erp.erp_back.entity.user.Employee;
 public class EmployeeAttendanceMapper {
 
     /**
-     * 한 직원의 "하루" 출결 로그들을 요약해서 DTO로 변환
+     * 한 직원의 "하루" 출결 로그들을
+     * - 근무일수(이 날 근무했으면 1, 아니면 0)
+     * - 근무시간(시간 단위)
+     * 로 변환해서 월간 요약 DTO 형태로 만들어줌.
+     *
+     * 이 메서드는 하루 단위로 합산된 값을 리턴하고,
+     * 월간 합산은 Service 쪽에서 여러 날을 더하는 식으로 사용하면 됨.
      */
     public EmployeeAttendanceSummary toSummary(
             Employee employee,
@@ -24,64 +30,47 @@ public class EmployeeAttendanceMapper {
             LocalDate date,
             List<AttendanceLog> logsForDay
     ) {
-        EmployeeAttendanceSummary dto = new EmployeeAttendanceSummary();
+        // 기본값: 근무 안 한 날
+        int workDays = 0;
+        double workHours = 0.0;
 
+        if (logsForDay != null && !logsForDay.isEmpty()) {
+            workDays = 1; // 이 날짜에 로그가 한 개라도 있으면 근무일 1일
+
+            // 시간 순 정렬이 되어있다고 가정하지만, 혹시 몰라 정렬 한 번 더
+            logsForDay.sort((a, b) -> a.getRecordTime().compareTo(b.getRecordTime()));
+
+            LocalDateTime firstIn = null;
+            LocalDateTime lastOut = null;
+
+            for (AttendanceLog log : logsForDay) {
+                if ("IN".equalsIgnoreCase(log.getRecordType())) {
+                    if (firstIn == null) {
+                        firstIn = log.getRecordTime();
+                    }
+                }
+                if ("OUT".equalsIgnoreCase(log.getRecordType())) {
+                    lastOut = log.getRecordTime();
+                }
+            }
+
+            long minutes = 0L;
+            if (firstIn != null && lastOut != null) {
+                minutes = Duration.between(firstIn, lastOut).toMinutes();
+            }
+            workHours = minutes / 60.0;
+        }
+
+        // 이제 하루치 요약을 EmployeeAttendanceSummary 형태로 반환
+        EmployeeAttendanceSummary dto = new EmployeeAttendanceSummary();
         dto.setEmployeeId(employee.getEmployeeId());
         dto.setEmployeeName(employee.getName());
         dto.setStoreId(store.getStoreId());
         dto.setStoreName(store.getStoreName());
-        dto.setDate(date);
 
-        dto.setLogCount((long) logsForDay.size());
+        dto.setWorkDaysThisMonth(workDays);
+        dto.setWorkHoursThisMonth(workHours);
 
-        if (logsForDay.isEmpty()) {
-            dto.setStatus("ABSENT");
-            dto.setFirstIn(null);
-            dto.setLastOut(null);
-            dto.setWorkedMinutes(0L);
-            return dto;
-        }
-
-        // 시간 순 정렬이 되어있다고 가정(Repository에서 order by)하지만
-        // 혹시 몰라 한번 더 정렬해도 됨
-        logsForDay.sort((a, b) -> a.getRecordTime().compareTo(b.getRecordTime()));
-
-        LocalDateTime firstIn = null;
-        LocalDateTime lastOut = null;
-
-        for (AttendanceLog log : logsForDay) {
-            if ("IN".equalsIgnoreCase(log.getRecordType())) {
-                if (firstIn == null) {
-                    firstIn = log.getRecordTime();
-                }
-            }
-            if ("OUT".equalsIgnoreCase(log.getRecordType())) {
-                lastOut = log.getRecordTime();
-            }
-        }
-
-        dto.setFirstIn(firstIn);
-        dto.setLastOut(lastOut);
-
-        // 상태 계산 (지금은 간단하게)
-        // - 로그 없음       : ABSENT (위에서 처리)
-        // - 마지막 로그가 IN : WORKING
-        // - 마지막 로그가 OUT: OUT
-        AttendanceLog lastLog = logsForDay.get(logsForDay.size() - 1);
-        if ("IN".equalsIgnoreCase(lastLog.getRecordType())) {
-            dto.setStatus("WORKING");
-        } else {
-            dto.setStatus("OUT");
-        }
-
-        // 근무 시간(분) 대략 계산: 첫 IN ~ 마지막 OUT
-        Long minutes = 0L;
-        if (firstIn != null && lastOut != null) {
-            minutes = Duration.between(firstIn, lastOut).toMinutes();
-        }
-        dto.setWorkedMinutes(minutes);
-
-        // 지각 여부는 추후 로직 추가 예정
         return dto;
     }
 }

@@ -19,5 +19,4 @@ public class AttendanceLogResponse {
     private Long storeId;
     private LocalDateTime recordTime;
     private String recordType;
-    private String clientIp;
 }
