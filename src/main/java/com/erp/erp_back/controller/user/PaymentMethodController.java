@@ -63,7 +63,7 @@ public class PaymentMethodController {
         return ResponseEntity.ok("카드가 등록되었습니다.");
     }
 
-    // ✅ [수정됨] 3. 카드 이름(별칭) 수정
+    // ✅ 3. 카드 이름(별칭) 수정
     @PutMapping("/{paymentId}")
     @Transactional
     public ResponseEntity<String> updateCardName(
@@ -85,5 +85,25 @@ public class PaymentMethodController {
         paymentMethodRepository.save(pm);
 
         return ResponseEntity.ok("카드 이름이 변경되었습니다.");
+    }
+    // ✅ 4. 카드 삭제
+    @DeleteMapping("/{paymentId}")
+    @Transactional
+    public ResponseEntity<String> deleteCard(
+        @PathVariable Long paymentId
+    ) {
+        Long ownerId = 1L; // 테스트용 고정 ID
+
+        PaymentMethod pm = paymentMethodRepository.findById(paymentId)
+            .orElseThrow(() -> new RuntimeException("Card not found"));
+
+        // 내 카드가 맞는지 확인
+        if (!pm.getOwner().getOwnerId().equals(ownerId)) {
+            return ResponseEntity.status(403).body("권한이 없습니다.");
+        }
+
+        paymentMethodRepository.delete(pm);
+
+        return ResponseEntity.ok("카드가 삭제되었습니다.");
     }
 }

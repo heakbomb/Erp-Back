@@ -46,6 +46,4 @@ public class AttendanceLog {
     @Column(name = "record_type", nullable = false, length = 20) // "IN" | "OUT"
     private String recordType;
 
-    @Column(name = "client_ip", length = 40)
-    private String clientIp;
 }

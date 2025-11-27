@@ -122,7 +122,6 @@ public class AttendancelogService {
         saved.setStore(store);
         saved.setRecordTime(LocalDateTime.now(ZoneId.of("Asia/Seoul")));
         saved.setRecordType(type);
-        saved.setClientIp(clientIp);    // ← 그냥 남겨두는 용도
 
         saved = attendanceRepo.save(saved);
 
