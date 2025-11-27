@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.erp.erp_back.dto.user.EmployeeResponse;
 import com.erp.erp_back.entity.user.Employee;
-import com.erp.erp_back.mapper.UserMapper;
+import com.erp.erp_back.mapper.EmployeeMapper;
 import com.erp.erp_back.repository.user.EmployeeRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -20,21 +20,21 @@ import lombok.RequiredArgsConstructor;
 public class EmployeeService {
 
     private final EmployeeRepository employeeRepository;
-    private final UserMapper userMapper;
+    private final EmployeeMapper employeeMapper;
 
     /** (Admin) 직원 계정 페이징 및 검색 조회 */
     @Transactional(readOnly = true)
     public Page<EmployeeResponse> getEmployeesForAdmin(String q, Pageable pageable) {
         String effectiveQuery = (q == null) ? "" : q.trim();
         return employeeRepository.findAdminEmployees(effectiveQuery, pageable)
-                .map(userMapper::toEmployeeResponse);
+                .map(employeeMapper::toResponse);
     }
 
     /** 직원 전체 목록 조회 */
     @Transactional(readOnly = true)
     public List<EmployeeResponse> getAllEmployees() {
         return employeeRepository.findAll().stream()
-                .map(userMapper::toEmployeeResponse)
+                .map(employeeMapper::toResponse)
                 .toList();
     }
 
@@ -43,7 +43,7 @@ public class EmployeeService {
     public EmployeeResponse getEmployeeById(Long id) {
         Employee emp = employeeRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 직원(ID=" + id + ")을 찾을 수 없습니다."));
-        return toDto(emp);
+        return employeeMapper.toResponse(emp);
     }
 
     /** 직원 정보 수정 */
@@ -51,10 +51,10 @@ public class EmployeeService {
         Employee emp = employeeRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 직원(ID=" + id + ")을 찾을 수 없습니다."));
 
-       userMapper.updateEmployeeFromDto(req, emp);
+        employeeMapper.updateFromDto(req, emp);
 
         Employee updated = employeeRepository.save(emp);
-        return userMapper.toEmployeeResponse(updated);
+        return employeeMapper.toResponse(updated);
     }
 
     /** 직원 삭제 */
@@ -63,17 +63,5 @@ public class EmployeeService {
             throw new IllegalArgumentException("해당 직원(ID=" + id + ")을 찾을 수 없습니다.");
         }
         employeeRepository.deleteById(id);
-    }
-
-    /** Entity → DTO 변환 */
-    private EmployeeResponse toDto(Employee e) {
-        return EmployeeResponse.builder()
-                .employeeId(e.getEmployeeId())
-                .name(e.getName())
-                .email(e.getEmail())
-                .phone(e.getPhone())
-                .provider(e.getProvider())
-                .createdAt(e.getCreatedAt())
-                .build();
     }
 }

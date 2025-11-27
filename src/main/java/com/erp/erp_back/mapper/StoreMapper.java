@@ -11,6 +11,7 @@ import org.mapstruct.NullValuePropertyMappingStrategy;
 import org.mapstruct.ReportingPolicy;
 
 import com.erp.erp_back.dto.log.StoreQrResponse;
+import com.erp.erp_back.dto.store.BusinessNumberResponse;
 import com.erp.erp_back.dto.store.StoreCreateRequest;
 import com.erp.erp_back.dto.store.StoreResponse;
 import com.erp.erp_back.dto.store.StoreSimpleResponse;
@@ -88,4 +89,8 @@ public interface StoreMapper {
      */
     @Mapping(source = "employee.name", target = "name")
     StoreResponse.StoreEmployeeDto toEmployeeDto(EmployeeAssignment assignment);
+
+    // ✅ 추가: BusinessNumber -> DTO 변환
+    @Mapping(source = "owner.ownerId", target = "ownerId")
+    BusinessNumberResponse toBusinessNumberResponse(BusinessNumber entity);
 }

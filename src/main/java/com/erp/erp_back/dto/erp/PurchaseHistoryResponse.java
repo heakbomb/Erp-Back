@@ -18,6 +18,7 @@ public class PurchaseHistoryResponse {
     private Long purchaseId;
     private Long storeId;
     private Long itemId;
+    private String itemName;
     private BigDecimal purchaseQty;
     private BigDecimal unitPrice;
     private LocalDate purchaseDate;

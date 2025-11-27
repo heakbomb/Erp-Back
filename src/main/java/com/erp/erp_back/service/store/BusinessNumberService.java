@@ -1,25 +1,25 @@
 package com.erp.erp_back.service.store;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.HttpClientErrorException;   // ✅ 추가
+import org.springframework.web.client.HttpClientErrorException;
 
 import com.erp.erp_back.entity.store.BusinessNumber;
 import com.erp.erp_back.entity.user.Owner;
 import com.erp.erp_back.infra.nts.NtsOpenApiClient;
 import com.erp.erp_back.infra.nts.dto.NtsStatusItem;
 import com.erp.erp_back.infra.nts.dto.NtsStatusResponse;
+import com.erp.erp_back.mapper.BusinessNumberMapper;
 import com.erp.erp_back.repository.store.BusinessNumberRepository;
 import com.erp.erp_back.repository.user.OwnerRepository;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;   // ✅ 추가
+import lombok.extern.slf4j.Slf4j; 
 
-@Slf4j  // ✅ 경고 로그 찍으려고 추가
+@Slf4j // ✅ 경고 로그 찍으려고 추가
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -28,6 +28,7 @@ public class BusinessNumberService {
     private final NtsOpenApiClient ntsClient;
     private final BusinessNumberRepository businessRepo;
     private final OwnerRepository ownerRepository;
+    private final BusinessNumberMapper businessNumberMapper;
 
     private final Long defaultOwnerId = 1L;
 
@@ -47,22 +48,17 @@ public class BusinessNumberService {
             throw new IllegalArgumentException("전화번호는 필수 입력입니다.");
         }
 
-        // ✅ --- 수정된 지점 ---
-        // 1. DB에서 먼저 조회
+        // 1. DB에서 먼저 조회 및 중복 체크
         Optional<BusinessNumber> existing = businessRepo.findByBizNum(bno);
-
-        // 2. 이미 존재하면 예외 발생
         if (existing.isPresent()) {
             throw new IllegalArgumentException("이미 등록된 사업자번호입니다.");
         }
-        // --- 수정 완료 ---
 
-        // ✅ 외부 API 호출만 안전하게 감싼다
+        // 2. 외부 API 호출
         NtsStatusResponse res;
         try {
             res = ntsClient.status(List.of(bno));
         } catch (HttpClientErrorException e) {
-            // 국세청이 400을 주면 여기서만 잡고 우리식으로 응답
             log.warn("국세청 사업자 상태 조회 실패. bizNo={}, status={}, body={}",
                     bno, e.getStatusCode(), e.getResponseBodyAsString());
             throw new IllegalArgumentException("국세청에서 사업자번호를 확인할 수 없습니다. 번호를 다시 확인해주세요.");
@@ -74,30 +70,22 @@ public class BusinessNumberService {
 
         NtsStatusItem item = res.data().get(0);
 
-        String stt = item.bStt(); // 예: "계속사업자"
+        String stt = item.bStt();
         if (stt == null || stt.isBlank() || stt.contains("등록되지")) {
             throw new IllegalArgumentException("유효하지 않은 사업자번호입니다.");
         }
 
-        // 4. (신규일 때만) 객체 생성
-        BusinessNumber bn = BusinessNumber.builder()
-                .bizNum(bno)
-                .build();
+        // ✅ 추가: 폐업자인 경우 인증 및 등록 막기
+        if (stt.contains("폐업")) { // "폐업자", "폐업" 등 문자열 포함 체크
+            throw new IllegalArgumentException("폐업 상태의 사업자번호는 인증 및 등록할 수 없습니다.");
+        }
 
-        // ✅ 임시 Owner (로그인 기능 도입 전까지 기본 owner_id=1)
+        // 3. Owner 조회
         Owner defaultOwner = ownerRepository.findById(defaultOwnerId)
                 .orElseThrow(() -> new IllegalStateException("기본 Owner가 존재하지 않습니다. (owner_id=1)"));
-        bn.setOwner(defaultOwner);
 
-        // ✅ phone 저장
-        bn.setPhone(phone);
-
-        // ✅ 외부 API 결과 반영
-        bn.setOpenStatus(item.bStt());
-        bn.setTaxType(item.taxType());
-        bn.setStartDt(item.startDt());
-        bn.setEndDt(item.endDt());
-        bn.setCertifiedAt(LocalDateTime.now());
+        // 4. Mapper를 사용하여 Entity 생성 (수동 Builder 제거)
+        BusinessNumber bn = businessNumberMapper.toEntity(bno, phone, item, defaultOwner);
 
         return businessRepo.save(bn);
     }
@@ -107,17 +95,13 @@ public class BusinessNumberService {
         return businessRepo.findAll();
     }
 
-    // ✅✅ 여기부터 새로 추가된 부분
-    // 특정 사장(ownerId)의 '계속사업자'만 조회 (폐업자는 제외)
     @Transactional(readOnly = true)
     public List<BusinessNumber> listActiveByOwner(Long ownerId) {
         return businessRepo.findByOwner_OwnerId(ownerId).stream()
-                // openStatus 가 "폐업자" 인 것만 필터링해서 제거
                 .filter(bn -> !"폐업자".equals(bn.getOpenStatus()))
                 .toList();
     }
 
-    // 로그인 붙이기 전까지 기본 owner_id=1에 대해서만 쓰고 싶다면, 이 헬퍼도 사용할 수 있음
     @Transactional(readOnly = true)
     public List<BusinessNumber> listActiveForDefaultOwner() {
         return listActiveByOwner(defaultOwnerId);

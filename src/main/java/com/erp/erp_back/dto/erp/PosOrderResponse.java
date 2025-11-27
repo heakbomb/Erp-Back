@@ -1,8 +1,10 @@
 // src/main/java/com/erp/erp_back/dto/erp/PosOrderResponse.java
 package com.erp.erp_back.dto.erp;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -10,6 +12,8 @@ import java.util.List;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class PosOrderResponse {
 
     private Long transactionId;
@@ -26,6 +30,8 @@ public class PosOrderResponse {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class LineSummary {
         private Long lineId;
         private Long menuId;

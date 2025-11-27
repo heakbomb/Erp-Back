@@ -80,6 +80,32 @@ public class AttendancelogController {
         return ResponseEntity.ok(service.myRange(employeeId, from, to, storeId));
     }
 
+    // =========================
+    // ✅ 사장페이지용 - 매장 출퇴근 로그 조회
+    // =========================
+    @GetMapping("/owner/logs")
+    public ResponseEntity<List<AttendanceLogResponse>> ownerLogs(
+            @RequestParam Long storeId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) Long employeeId
+    ) {
+        return ResponseEntity.ok(
+                service.findLogsForOwner(storeId, from, to, employeeId)
+        );
+    }
+
+    @GetMapping("/logs")
+    public ResponseEntity<List<AttendanceLogResponse>> logsByDate(
+            @RequestParam Long storeId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) Long employeeId
+    ) {
+        return ResponseEntity.ok(
+                service.findLogsForOwner(storeId, date, date, employeeId)
+        );
+    }
+
     // 공통 에러 응답
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<String> badRequest(IllegalArgumentException e) {

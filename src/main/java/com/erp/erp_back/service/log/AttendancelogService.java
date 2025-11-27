@@ -193,4 +193,35 @@ public class AttendancelogService {
                 .map(attendanceLogMapper::toResponse)
                 .toList();
     }
+
+    // =========================
+    // ✅ 사장페이지용 - 매장 로그 리스트 조회
+    // =========================
+    @Transactional(readOnly = true)
+    public List<AttendanceLogResponse> findLogsForOwner(
+            Long storeId,
+            LocalDate from,
+            LocalDate to,
+            Long employeeId
+    ) {
+        // [from 00:00, to 다음날 00:00) 범위로 조회
+        LocalDateTime start = from.atStartOfDay();
+        LocalDateTime end = to.plusDays(1).atStartOfDay();
+
+        // 매장 전체 로그 가져오기 (직원/시간 정렬은 쿼리에서 이미 처리)
+        List<AttendanceLog> rows =
+                attendanceRepo.findByStoreAndDateTimeRange(storeId, start, end);
+
+        // employeeId 가 있으면 해당 직원 로그만 필터링
+        if (employeeId != null) {
+            rows = rows.stream()
+                    .filter(l -> l.getEmployee() != null
+                            && employeeId.equals(l.getEmployee().getEmployeeId()))
+                    .toList();
+        }
+
+        return rows.stream()
+                .map(attendanceLogMapper::toResponse)
+                .toList();
+    }
 }

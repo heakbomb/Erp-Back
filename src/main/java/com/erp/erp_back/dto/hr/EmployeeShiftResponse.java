@@ -3,9 +3,11 @@ package com.erp.erp_back.dto.hr;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
-import com.erp.erp_back.entity.hr.EmployeeShift;
-
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
 @Setter
@@ -23,18 +25,4 @@ public class EmployeeShiftResponse {
     private LocalTime endTime;
     private Boolean isFixed;
     private Integer breakMinutes;
-
-    public static EmployeeShiftResponse from(EmployeeShift s) {
-        return EmployeeShiftResponse.builder()
-                .shiftId(s.getShiftId())
-                .storeId(s.getStore().getStoreId())
-                .employeeId(s.getEmployee().getEmployeeId())
-                .employeeName(s.getEmployee().getName()) // Employee 엔티티에 name 있다고 가정
-                .shiftDate(s.getShiftDate())
-                .startTime(s.getStartTime())
-                .endTime(s.getEndTime())
-                .isFixed(s.getIsFixed())
-                .breakMinutes(s.getBreakMinutes())
-                .build();
-    }
 }
