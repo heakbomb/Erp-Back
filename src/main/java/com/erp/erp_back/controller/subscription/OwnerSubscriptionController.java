@@ -32,14 +32,24 @@ public class OwnerSubscriptionController {
      */
     @PostMapping
     public ResponseEntity<OwnerSubscriptionResponse> createSubscription(
-            //  [인증] 실제로는 @AuthenticationPrincipal Owner owner 로 받아야 함
-            //  임시로 ownerId=1L (기본 사장님) 사용
             @Valid @RequestBody OwnerSubscriptionRequest request
     ) {
+        // [로그 추가] 요청이 여기까지 들어오는지 확인
+        System.out.println("==================================================");
+        System.out.println("[DEBUG] createSubscription 요청 도착!");
+        System.out.println("[DEBUG] SubId: " + request.getSubId());
+        System.out.println("[DEBUG] CustomerUid(BillingKey): " + request.getCustomerUid());
+        System.out.println("==================================================");
         Long tempOwnerId = 1L; 
-        
-        OwnerSubscriptionResponse response = ownerSubService.createSubscription(tempOwnerId, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        try {
+            OwnerSubscriptionResponse response = ownerSubService.createSubscription(tempOwnerId, request);
+            System.out.println("[DEBUG] 서비스 처리 완료: " + response);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (Exception e) {
+            System.out.println("[DEBUG] 에러 발생: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
     }
     /**
      * ⭐️ [신규] (Owner) 현재 구독 상태 조회

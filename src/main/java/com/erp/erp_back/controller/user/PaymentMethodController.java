@@ -7,7 +7,7 @@ import com.erp.erp_back.entity.user.Owner;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.*; // PutMapping, PathVariable 등 포함됨
 
 import java.util.List;
 import java.util.Map;
@@ -24,11 +24,11 @@ public class PaymentMethodController {
     // 1. 내 카드 목록 조회
     @GetMapping
     public ResponseEntity<List<Map<String, Object>>> getMyCards() {
-        Long ownerId = 1L; // (토큰에서 추출 예정)
+        Long ownerId = 1L; // ✅ 테스트용 고정 ID (로그인 구현 전까지 유지)
         
         List<Map<String, Object>> cards = paymentMethodRepository.findAllByOwner_OwnerId(ownerId)
             .stream()
-            .map(pm -> Map.<String, Object>of( // ✅ 수정: 타입을 명시적으로 지정
+            .map(pm -> Map.<String, Object>of(
                 "paymentId", pm.getPaymentId(),
                 "cardName", pm.getCardName() != null ? pm.getCardName() : "신용카드",
                 "cardNumber", pm.getCardNumber() != null ? pm.getCardNumber() : "****",
@@ -39,11 +39,11 @@ public class PaymentMethodController {
         return ResponseEntity.ok(cards);
     }
 
-    // 2. 카드 추가 (빌링키 등록)
+    // 2. 카드 추가 (빌링키 저장)
     @PostMapping
     @Transactional
     public ResponseEntity<String> addCard(@RequestBody Map<String, String> request) {
-        Long ownerId = 1L;
+        Long ownerId = 1L; // ✅ 테스트용 고정 ID
         String billingKey = request.get("customerUid");
         String cardName = request.getOrDefault("cardName", "새 카드");
         
@@ -54,11 +54,36 @@ public class PaymentMethodController {
         pm.setOwner(owner);
         pm.setBillingKey(billingKey);
         pm.setCardName(cardName);
+        pm.setProvider("PORTONE"); 
         
         boolean hasDefault = paymentMethodRepository.findFirstByOwner_OwnerIdAndIsDefaultTrue(ownerId).isPresent();
         pm.setDefault(!hasDefault);
 
         paymentMethodRepository.save(pm);
         return ResponseEntity.ok("카드가 등록되었습니다.");
+    }
+
+    // ✅ [수정됨] 3. 카드 이름(별칭) 수정
+    @PutMapping("/{paymentId}")
+    @Transactional
+    public ResponseEntity<String> updateCardName(
+        @PathVariable Long paymentId, // URL의 {paymentId}를 받음
+        @RequestBody Map<String, String> request
+    ) {
+        Long ownerId = 1L; // ✅ 테스트용 고정 ID (보안 어노테이션 제거함)
+        String newName = request.get("cardName");
+
+        PaymentMethod pm = paymentMethodRepository.findById(paymentId)
+            .orElseThrow(() -> new RuntimeException("Card not found"));
+
+        // 내 카드가 맞는지 확인
+        if (!pm.getOwner().getOwnerId().equals(ownerId)) {
+            return ResponseEntity.status(403).body("권한이 없습니다.");
+        }
+
+        pm.setCardName(newName);
+        paymentMethodRepository.save(pm);
+
+        return ResponseEntity.ok("카드 이름이 변경되었습니다.");
     }
 }
