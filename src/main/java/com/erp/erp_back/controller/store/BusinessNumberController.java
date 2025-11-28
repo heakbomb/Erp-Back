@@ -27,7 +27,7 @@ public class BusinessNumberController {
      * 요청 바디 예) { "bizNo": "123-45-67890", "phone": "010-1234-5678" }
      * 응답 예) { "bizId": 1, "bizNo": "1234567890", "openStatus": "계속사업자", "taxType": "부가가치세 일반과세자" }
      */
-    @PostMapping("/verify") // ✅ POST /api/business-number/verify
+    @PostMapping("/verify") // ✅ POST /business-number/verify
     public ResponseEntity<Map<String, Object>> verify(@RequestBody Map<String, String> body) {
         String bizNo = body.get("bizNo");
         String phone = body.getOrDefault("phone", "").trim(); // ✅ 추가: phone도 받음(필수)
@@ -47,7 +47,7 @@ public class BusinessNumberController {
      * 드롭다운용 목록
      * 응답 예) [ { "bizId":1, "bizNo":"1234567890", "openStatus":"계속사업자" }, ... ]
      */
-    @GetMapping // ✅ GET /api/business-number
+    @GetMapping // ✅ GET /business-number
     public ResponseEntity<List<Map<String, Object>>> list() {
         var items = service.list().stream()
                 .map(b -> Map.<String, Object>of(
