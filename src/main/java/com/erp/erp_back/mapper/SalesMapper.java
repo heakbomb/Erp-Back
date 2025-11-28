@@ -16,39 +16,43 @@ import com.erp.erp_back.dto.erp.RecentTransactionResponse;
 import com.erp.erp_back.dto.erp.SalesSummaryResponse;
 import com.erp.erp_back.dto.erp.SalesTransactionSummaryResponse;
 import com.erp.erp_back.dto.erp.TopMenuStatsResponse;
+import com.erp.erp_back.entity.enums.TransactionStatus; // ✅ Enum Import 필수
 import com.erp.erp_back.entity.erp.MenuItem;
 import com.erp.erp_back.entity.erp.SalesLineItem;
 import com.erp.erp_back.entity.erp.SalesTransaction;
 import com.erp.erp_back.entity.store.Store;
 
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING,
-        unmappedTargetPolicy = ReportingPolicy.IGNORE)
+        unmappedTargetPolicy = ReportingPolicy.IGNORE,
+        imports = {TransactionStatus.class, LocalDateTime.class}) // ✅ imports 추가
 public interface SalesMapper {
 
     // ===========================================
     // 1. Entity 생성 (PosOrderRequest -> Entity)
     // ===========================================
     
-    // SalesTransaction 생성 (총액은 계산된 값을 받음)
+    // SalesTransaction 생성
     @Mapping(target = "transactionId", ignore = true)
     @Mapping(target = "store", source = "store")
-    @Mapping(target = "transactionTime", expression = "java(java.time.LocalDateTime.now())")
-    @Mapping(target = "totalAmount", source = "totalAmount") // 계산된 총액 주입
+    @Mapping(target = "transactionTime", expression = "java(LocalDateTime.now())")
+    @Mapping(target = "totalAmount", source = "totalAmount")
     @Mapping(target = "totalDiscount", source = "req.totalDiscount", defaultValue = "0")
     @Mapping(target = "paymentMethod", source = "req.paymentMethod")
-    @Mapping(target = "status", constant = "PAID")
     @Mapping(target = "idempotencyKey", source = "req.idempotencyKey")
-    @Mapping(target = "lineItems", ignore = true) // 별도 설정
+    @Mapping(target = "lineItems", ignore = true)
+    @Mapping(target = "cancelReason", ignore = true) // 생성 시점엔 취소 사유 없음
+    // ✅ [변경] 문자열 "PAID" -> Enum Type으로 매핑
+    @Mapping(target = "status", expression = "java(TransactionStatus.PAID)") 
     SalesTransaction toEntity(PosOrderRequest req, Store store, BigDecimal totalAmount);
 
-    // SalesLineItem 생성 (단가/금액 계산된 값 받음)
+    // SalesLineItem 생성
     @Mapping(target = "lineId", ignore = true)
-    @Mapping(target = "salesTransaction", ignore = true) // 나중에 연관관계 설정
+    @Mapping(target = "salesTransaction", ignore = true)
     @Mapping(target = "menuItem", source = "menuItem")
     @Mapping(target = "quantity", source = "req.quantity")
-    @Mapping(target = "unitPrice", source = "req.unitPrice")
+    @Mapping(target = "unitPrice", source = "realUnitPrice") 
     @Mapping(target = "lineAmount", source = "lineAmount")
-    SalesLineItem toLineItem(PosOrderRequest.PosOrderLine req, MenuItem menuItem, BigDecimal lineAmount);
+    SalesLineItem toLineItem(PosOrderRequest.PosOrderLine req, MenuItem menuItem, BigDecimal realUnitPrice, BigDecimal lineAmount);
 
 
     // ===========================================
@@ -57,6 +61,7 @@ public interface SalesMapper {
 
     @Mapping(source = "store.storeId", target = "storeId")
     @Mapping(source = "lineItems", target = "lines")
+    @Mapping(source = "status", target = "status") // Enum 그대로 내보내거나 String으로 변환됨
     PosOrderResponse toPosOrderResponse(SalesTransaction entity);
 
     @Mapping(source = "menuItem.menuId", target = "menuId")
@@ -72,16 +77,20 @@ public interface SalesMapper {
     @Mapping(source = "totalAmount", target = "amount")
     @Mapping(target = "time", expression = "java(formatTime(entity.getTransactionTime()))")
     @Mapping(target = "items", expression = "java(makeItemsSummary(entity.getLineItems()))")
+    @Mapping(source = "status", target = "status") // 상태값 추가 (취소 여부 확인용)
     RecentTransactionResponse toRecentTransactionResponse(SalesTransaction entity);
 
-    // ⭐️ [추가] TopMenuStatsResponse 생성 (개별 필드 -> DTO)
-    TopMenuStatsResponse toTopMenuStats(Long menuId, String name, long quantity, BigDecimal revenue, double growth);
+    // TopMenuStatsResponse 생성
+    TopMenuStatsResponse toTopMenuStats(Long menuId, String menuName, long quantity, BigDecimal revenue, double growth);
 
-    // ⭐️ [추가] SalesSummaryResponse 생성 (8개 필드 -> DTO)
-    SalesSummaryResponse toSalesSummary(BigDecimal todaySales, BigDecimal todaySalesChangeRate,
-                                        BigDecimal weekSales, BigDecimal weekSalesChangeRate,
-                                        BigDecimal monthSales, BigDecimal monthSalesChangeRate,
-                                        BigDecimal avgTicket, BigDecimal avgTicketChangeRate);
+    // ✅ [변경] SalesSummaryResponse 생성 (증감률 제거 -> 비교군 데이터 추가)
+    // 파라미터 이름과 DTO 필드명이 같으면 @Mapping 생략 가능 (자동 매핑됨)
+    SalesSummaryResponse toSalesSummary(
+            BigDecimal todaySales, BigDecimal yesterdaySales,
+            BigDecimal thisWeekSales, BigDecimal lastWeekSales,
+            BigDecimal thisMonthSales, BigDecimal lastMonthSales,
+            BigDecimal avgTicket, BigDecimal prevAvgTicket
+    );
 
 
     // ===========================================

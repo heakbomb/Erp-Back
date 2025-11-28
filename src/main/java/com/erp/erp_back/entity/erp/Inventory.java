@@ -56,12 +56,7 @@ public class Inventory {
     @Column(precision = 19, scale = 4, nullable = false)
     private BigDecimal lastUnitCost = BigDecimal.ZERO;
 
-    /**
-     * - 수량을 더하거나 뺌 (delta가 음수면 감소)
-     * - 음수 재고 방지 로직 포함
-     */
     public void adjustStock(BigDecimal delta) {
-        // null 방어 로직 (기존 nz 메서드 로직 내장 혹은 유틸 사용)
         BigDecimal current = this.stockQty != null ? this.stockQty : BigDecimal.ZERO;
         BigDecimal change = delta != null ? delta : BigDecimal.ZERO;
 

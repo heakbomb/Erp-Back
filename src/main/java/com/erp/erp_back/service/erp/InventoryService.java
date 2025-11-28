@@ -1,12 +1,21 @@
 // src/main/java/com/erp/erp_back/service/erp/InventoryService.java
 package com.erp.erp_back.service.erp;
 
+import static com.erp.erp_back.repository.specification.InventorySpecification.byStoreId;
+import static com.erp.erp_back.repository.specification.InventorySpecification.hasStatus;
+import static com.erp.erp_back.repository.specification.InventorySpecification.itemNameContains;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.erp.erp_back.common.ErrorCodes;
 import com.erp.erp_back.dto.erp.InventoryRequest;
 import com.erp.erp_back.dto.erp.InventoryResponse;
 import com.erp.erp_back.entity.enums.ActiveStatus;
@@ -16,11 +25,8 @@ import com.erp.erp_back.mapper.InventoryMapper;
 import com.erp.erp_back.repository.erp.InventoryRepository;
 import com.erp.erp_back.repository.store.StoreRepository;
 
-import com.erp.erp_back.common.ErrorCodes;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-
-import static com.erp.erp_back.repository.specification.InventorySpecification.*;
 
 @Service
 @RequiredArgsConstructor
@@ -89,5 +95,34 @@ public class InventoryService {
         Inventory inv = inventoryRepository.findByItemIdAndStoreStoreId(itemId, storeId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_NOT_FOUND));
         inv.setStatus(ActiveStatus.ACTIVE);
+    }
+
+    @Transactional
+    public void decreaseStock(Map<Long, BigDecimal> requirements) {
+        if (requirements.isEmpty()) return;
+
+        List<Inventory> inventories = inventoryRepository.findAllByIdInWithLock(requirements.keySet());
+
+        for (Inventory inv : inventories) {
+            BigDecimal needed = requirements.get(inv.getItemId());
+            BigDecimal after = inv.getStockQty().subtract(needed);
+            
+            if (after.compareTo(BigDecimal.ZERO) < 0) {
+                throw new IllegalStateException("재고 부족: " + inv.getItemName());
+            }
+            inv.setStockQty(after);
+        }
+    }
+
+    @Transactional
+    public void increaseStock(Map<Long, BigDecimal> requirements) {
+        if (requirements.isEmpty()) return;
+
+        List<Inventory> inventories = inventoryRepository.findAllByIdInWithLock(requirements.keySet());
+
+        for (Inventory inv : inventories) {
+            BigDecimal addQty = requirements.get(inv.getItemId());
+            inv.setStockQty(inv.getStockQty().add(addQty));
+        }
     }
 }

@@ -29,4 +29,6 @@ public final class ErrorCodes {
     public static final String CANNOT_ATTACH_INGREDIENT_TO_INACTIVE_MENU = "CANNOT_ATTACH_INGREDIENT_TO_INACTIVE_MENU";
     public static final String CANNOT_MODIFY_RECIPE_OF_INACTIVE_MENU = "CANNOT_MODIFY_RECIPE_OF_INACTIVE_MENU";
     public static final String CANNOT_USE_INACTIVE_INVENTORY_IN_RECIPE = "CANNOT_USE_INACTIVE_INVENTORY_IN_RECIPE";
+
+    public static final String UNSUPPORTED_PERIOD = "Unsupported period";
 }

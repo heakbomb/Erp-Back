@@ -1,11 +1,29 @@
 package com.erp.erp_back.repository.erp;
 
-import com.erp.erp_back.entity.erp.Inventory;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import java.util.Optional;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import com.erp.erp_back.entity.erp.Inventory;
+
+import jakarta.persistence.LockModeType;
 
 public interface InventoryRepository extends JpaRepository<Inventory, Long>, JpaSpecificationExecutor<Inventory> {
 
     Optional<Inventory> findByItemIdAndStoreStoreId(Long itemId, Long storeId);
+
+    // 🔒 [비관적 락] 재고 차감/증가 시 동시성 충돌 방지 + 일괄 조회
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT i FROM Inventory i WHERE i.itemId IN :ids")
+    List<Inventory> findAllByIdInWithLock(@Param("ids") Collection<Long> ids);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT i FROM Inventory i WHERE i.itemId = :id")
+    Optional<Inventory> findByIdWithLock(@Param("id") Long id);
 }

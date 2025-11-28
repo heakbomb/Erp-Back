@@ -1,13 +1,16 @@
 package com.erp.erp_back.service.erp;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.erp.erp_back.common.ErrorCodes;
 import com.erp.erp_back.dto.erp.RecipeIngredientRequest;
 import com.erp.erp_back.dto.erp.RecipeIngredientResponse;
 import com.erp.erp_back.dto.erp.RecipeIngredientUpdateRequest;
@@ -19,7 +22,6 @@ import com.erp.erp_back.mapper.RecipeIngredientMapper;
 import com.erp.erp_back.repository.erp.InventoryRepository;
 import com.erp.erp_back.repository.erp.MenuItemRepository;
 import com.erp.erp_back.repository.erp.RecipeIngredientRepository;
-import com.erp.erp_back.common.ErrorCodes;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -135,5 +137,26 @@ public class RecipeIngredientService {
 
         // 삭제 후에도 원가 재계산
         menuItemService.recalcAndSave(storeId, menuId);
+    }
+
+    @Transactional
+    public Map<Long, BigDecimal> calculateRequiredIngredients(Map<Long, Integer> soldMenus) {
+        if (soldMenus.isEmpty()) return new HashMap<>();
+
+        // N+1 방지: 모든 레시피 한 번에 조회
+        List<RecipeIngredient> recipes = recipeIngredientRepository.findByMenuItemMenuIdIn(soldMenus.keySet());
+        Map<Long, BigDecimal> requirements = new HashMap<>();
+
+        for (RecipeIngredient ri : recipes) {
+            Long menuId = ri.getMenuItem().getMenuId();
+            Integer count = soldMenus.get(menuId);
+            
+            if (count == null || count == 0) continue;
+            if (ri.getInventory().getStatus() == ActiveStatus.INACTIVE) continue;
+
+            BigDecimal totalNeed = ri.getConsumptionQty().multiply(BigDecimal.valueOf(count));
+            requirements.merge(ri.getInventory().getItemId(), totalNeed, BigDecimal::add);
+        }
+        return requirements;
     }
 }

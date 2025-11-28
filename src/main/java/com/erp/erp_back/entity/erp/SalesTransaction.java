@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.erp.erp_back.entity.enums.TransactionStatus;
 import com.erp.erp_back.entity.store.Store;
 
 import jakarta.persistence.*;
@@ -33,22 +34,23 @@ public class SalesTransaction {
     @Column(name = "transaction_time", nullable = false)
     private LocalDateTime transactionTime;
 
-    // [변경] 메뉴별 금액이 아닌, 주문 전체 총액
     @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount;
 
     @Column(name = "total_discount", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalDiscount;
 
-    // [신규] 결제 상태 (PAID, CANCELLED 등)
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     @Builder.Default
-    private String status = "PAID";
+    private TransactionStatus status = TransactionStatus.PAID;
 
-    // [신규] 결제 수단 (CARD, CASH 등)
     @Column(name = "payment_method", length = 20)
     @Builder.Default
     private String paymentMethod = "CARD";
+
+    @Column(name = "cancel_reason", length = 255)
+    private String cancelReason;
 
     // [신규] 양방향 관계 설정 (영수증 하나에 여러 상세 품목)
     @OneToMany(mappedBy = "salesTransaction", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -59,5 +61,13 @@ public class SalesTransaction {
     public void addLineItem(SalesLineItem item) {
         this.lineItems.add(item);
         item.setSalesTransaction(this);
+    }
+
+    public void cancel(String reason) {
+        if (this.status == TransactionStatus.CANCELED) {
+            throw new IllegalStateException("이미 취소된 거래입니다.");
+        }
+        this.status = TransactionStatus.CANCELED;
+        this.cancelReason = reason;
     }
 }

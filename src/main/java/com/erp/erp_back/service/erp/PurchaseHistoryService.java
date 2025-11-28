@@ -67,8 +67,8 @@ public class PurchaseHistoryService {
         Store store = storeRepository.findById(req.getStoreId())
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.STORE_NOT_FOUND));
 
-        Inventory item = inventoryRepository.findById(req.getItemId())
-                .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_ITEM_NOT_FOUND));
+        Inventory item = inventoryRepository.findByIdWithLock(req.getItemId())
+            .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_ITEM_NOT_FOUND));
 
         if (!Objects.equals(item.getStore().getStoreId(), store.getStoreId())) {
             throw new IllegalArgumentException(ErrorCodes.ITEM_NOT_BELONG_TO_STORE);
@@ -99,8 +99,11 @@ public class PurchaseHistoryService {
         PurchaseHistory purchase = purchaseHistoryRepository.findById(purchaseId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.PURCHASE_NOT_FOUND));
 
-        Inventory item = purchase.getInventory();
+        Long itemId = purchase.getInventory().getItemId();
 
+        Inventory item = inventoryRepository.findByIdWithLock(itemId)
+            .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_ITEM_NOT_FOUND));
+            
         BigDecimal prevQty = nz(purchase.getPurchaseQty()); // 기존 매입량
         BigDecimal nextQty = nz(req.getPurchaseQty()); // 수정된 매입량
         BigDecimal delta = nextQty.subtract(prevQty); // 차이 (예: +2 or -5)
@@ -111,10 +114,28 @@ public class PurchaseHistoryService {
         purchase.setUnitPrice(nz(req.getUnitPrice()));
         purchase.setPurchaseDate(req.getPurchaseDate());
 
-        recomputeLatestCostFromHistory(item);
-        menuItemService.propagateCostUpdate(item.getItemId());
+        onPurchaseChanged(item);
 
         return purchaseHistoryMapper.toResponse(purchase);
+    }
+
+    @Transactional
+    public void deletePurchase(Long purchaseId) {
+        PurchaseHistory purchase = purchaseHistoryRepository.findById(purchaseId)
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.PURCHASE_NOT_FOUND));
+
+        Long itemId = purchase.getInventory().getItemId();
+
+        Inventory item = inventoryRepository.findByIdWithLock(itemId)
+            .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_ITEM_NOT_FOUND));
+        
+        // 재고 원복 (매입했던 수량을 다시 뺌)
+        item.adjustStock(purchase.getPurchaseQty().negate());
+
+        purchaseHistoryRepository.delete(purchase);
+
+        // 원가 재계산
+        onPurchaseChanged(item);
     }
 
     /* ====== 내부: 최신단가만 재계산 ====== */
@@ -127,5 +148,10 @@ public class PurchaseHistoryService {
 
         inventory.setLastUnitCost(latestPrice);
     }
+
+    private void onPurchaseChanged(Inventory item) {
+        recomputeLatestCostFromHistory(item);
+        menuItemService.propagateCostUpdate(item.getItemId());
+}
 
 }
