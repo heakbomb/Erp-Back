@@ -121,6 +121,7 @@ public class AttendancelogService {
         saved.setRecordTime(LocalDateTime.now(ZoneId.of("Asia/Seoul")));
         saved.setRecordType(type);
 
+
         saved = attendanceRepo.save(saved);
 
         return attendanceLogMapper.toResponse(saved);

@@ -1,12 +1,13 @@
 // src/main/java/com/erp/erp_back/repository/erp/PurchaseHistoryRepository.java
 package com.erp.erp_back.repository.erp;
 
-import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+
 import com.erp.erp_back.entity.erp.PurchaseHistory;
 
 public interface PurchaseHistoryRepository extends JpaRepository<PurchaseHistory, Long>, JpaSpecificationExecutor<PurchaseHistory> {
 
-   List<PurchaseHistory> findByInventoryItemId(Long itemId);
+   Optional<PurchaseHistory> findTop1ByInventoryItemIdOrderByPurchaseDateDescPurchaseIdDesc(Long itemId);
 }

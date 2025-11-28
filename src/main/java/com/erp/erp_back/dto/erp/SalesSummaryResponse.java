@@ -10,19 +10,19 @@ import java.math.BigDecimal;
 @Builder
 public class SalesSummaryResponse {
 
-    // 오늘 매출 & 전일 대비 증감률(%)
-    private BigDecimal todaySales;
-    private BigDecimal todaySalesChangeRate;
+    /* 1. 일간 데이터 (오늘 vs 어제) */
+    private BigDecimal todaySales;      // 오늘 매출
+    private BigDecimal yesterdaySales;  // 어제 매출 (비교용)
 
-    // 이번 주 매출 & 전주 대비 증감률(%)
-    private BigDecimal weekSales;
-    private BigDecimal weekSalesChangeRate;
+    /* 2. 주간 데이터 (이번주 vs 지난주) */
+    private BigDecimal thisWeekSales;   // 이번 주 매출
+    private BigDecimal lastWeekSales;   // 지난 주 매출 (비교용)
 
-    // 이번 달 매출 & 전월 대비 증감률(%)
-    private BigDecimal monthSales;
-    private BigDecimal monthSalesChangeRate;
+    /* 3. 월간 데이터 (이번달 vs 지난달) */
+    private BigDecimal thisMonthSales;  // 이번 달 매출
+    private BigDecimal lastMonthSales;  // 지난 달 매출 (비교용)
 
-    // 오늘 기준 평균 객단가 & 전일 대비 증감률(%)
-    private BigDecimal avgTicket;
-    private BigDecimal avgTicketChangeRate;
+    /* 4. 객단가 데이터 (이번달 평균 vs 지난달 평균) */
+    private BigDecimal avgTicket;       // 이번 달 객단가
+    private BigDecimal prevAvgTicket;   // 지난 달 객단가 (비교용)
 }

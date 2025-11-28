@@ -10,6 +10,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.erp.erp_back.entity.enums.TransactionStatus;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -23,7 +25,7 @@ public class PosOrderResponse {
     private BigDecimal totalAmount;
     private BigDecimal totalDiscount;
 
-    private String status;         // PAID, CANCELLED 등
+    private TransactionStatus status;
     private String paymentMethod;  // CARD, CASH 등
 
     private List<LineSummary> lines;

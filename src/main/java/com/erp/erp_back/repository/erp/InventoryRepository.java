@@ -1,25 +1,29 @@
 package com.erp.erp_back.repository.erp;
 
-import com.erp.erp_back.entity.erp.Inventory;
-import com.erp.erp_back.entity.enums.ActiveStatus;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
-
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-public interface InventoryRepository extends JpaRepository<Inventory, Long> {
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import com.erp.erp_back.entity.erp.Inventory;
+
+import jakarta.persistence.LockModeType;
+
+public interface InventoryRepository extends JpaRepository<Inventory, Long>, JpaSpecificationExecutor<Inventory> {
 
     Optional<Inventory> findByItemIdAndStoreStoreId(Long itemId, Long storeId);
-    boolean existsByItemIdAndStoreStoreId(Long itemId, Long storeId);
-    List<Inventory> findByItemIdInAndStoreStoreId(List<Long> itemIds, Long storeId);
 
-    Page<Inventory> findByStoreStoreId(Long storeId, Pageable pageable);
-    Page<Inventory> findByStoreStoreIdAndStatus(Long storeId, ActiveStatus status, Pageable pageable);
+    // 🔒 [비관적 락] 재고 차감/증가 시 동시성 충돌 방지 + 일괄 조회
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT i FROM Inventory i WHERE i.itemId IN :ids")
+    List<Inventory> findAllByIdInWithLock(@Param("ids") Collection<Long> ids);
 
-    Page<Inventory> findByStoreStoreIdAndItemNameContainingIgnoreCase(
-            Long storeId, String q, Pageable pageable);
-    Page<Inventory> findByStoreStoreIdAndItemNameContainingIgnoreCaseAndStatus(
-            Long storeId, String q, ActiveStatus status, Pageable pageable);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT i FROM Inventory i WHERE i.itemId = :id")
+    Optional<Inventory> findByIdWithLock(@Param("id") Long id);
 }

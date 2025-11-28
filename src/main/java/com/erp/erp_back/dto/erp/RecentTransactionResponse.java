@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
+import com.erp.erp_back.entity.enums.TransactionStatus;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -17,4 +19,5 @@ public class RecentTransactionResponse {
     private String time;    // "HH:mm" 형식 시간
     private String items;   // "아메리카노 x2, 라떼 x1" 같은 요약
     private BigDecimal amount; // 총 금액
+    private TransactionStatus status;
 }

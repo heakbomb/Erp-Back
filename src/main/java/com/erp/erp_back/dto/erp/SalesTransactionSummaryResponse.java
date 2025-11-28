@@ -1,6 +1,7 @@
 package com.erp.erp_back.dto.erp;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -12,7 +13,7 @@ import lombok.NoArgsConstructor;
 public class SalesTransactionSummaryResponse {
 
     private Long transactionId;
-    private String transactionTime;
+    private LocalDateTime transactionTime;
     private String paymentMethod;
     private String status;
     private BigDecimal totalAmount;

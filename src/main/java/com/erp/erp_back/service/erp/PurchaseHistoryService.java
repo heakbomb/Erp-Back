@@ -3,8 +3,6 @@ package com.erp.erp_back.service.erp;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Comparator;
-import java.util.List;
 import java.util.Objects;
 
 import org.springframework.data.domain.Page;
@@ -23,12 +21,17 @@ import com.erp.erp_back.mapper.PurchaseHistoryMapper;
 import com.erp.erp_back.repository.erp.InventoryRepository;
 import com.erp.erp_back.repository.erp.PurchaseHistoryRepository;
 import com.erp.erp_back.repository.store.StoreRepository;
+import com.erp.erp_back.common.ErrorCodes;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 
+import static com.erp.erp_back.util.BigDecimalUtils.nz;
+import static com.erp.erp_back.repository.specification.PurchaseHistorySpecification.*;
+
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class PurchaseHistoryService {
 
     private final PurchaseHistoryRepository purchaseHistoryRepository;
@@ -38,72 +41,55 @@ public class PurchaseHistoryService {
     private final PurchaseHistoryMapper purchaseHistoryMapper;
 
     /* ====== 목록 (Specification로 통합 필터) ====== */
-    @Transactional(readOnly = true)
     public Page<PurchaseHistoryResponse> listPurchase(
             Long storeId, Long itemId, LocalDate from, LocalDate to, Pageable pageable) {
 
-        Objects.requireNonNull(storeId, "STORE_ID_MUST_NOT_BE_NULL");
+        Objects.requireNonNull(storeId, ErrorCodes.STORE_ID_MUST_NOT_BE_NULL);
 
-        Specification<PurchaseHistory> spec = Specification.allOf(
-                byStoreId(storeId),
-                itemId != null ? byItemId(itemId) : null,
-                from   != null ? dateGte(from)   : null,
-                to     != null ? dateLte(to)     : null
-        );
+        Specification<PurchaseHistory> spec = byStoreId(storeId);
+
+        if (itemId != null) {
+            spec = spec.and(byItemId(itemId));
+        }
+        if (from != null) {
+            spec = spec.and(dateGte(from));
+        }
+        if (to != null) {
+            spec = spec.and(dateLte(to));
+        }
 
         Page<PurchaseHistory> page = purchaseHistoryRepository.findAll(spec, pageable);
         return page.map(purchaseHistoryMapper::toResponse);
     }
 
-    private static Specification<PurchaseHistory> byStoreId(Long storeId) {
-        return (root, query, cb) -> cb.equal(root.get("store").get("storeId"), storeId);
-    }
-    private static Specification<PurchaseHistory> byItemId(Long itemId) {
-        return (root, query, cb) -> cb.equal(root.get("inventory").get("itemId"), itemId);
-    }
-    private static Specification<PurchaseHistory> dateGte(LocalDate from) {
-        return (root, query, cb) -> cb.greaterThanOrEqualTo(root.get("purchaseDate"), from);
-    }
-    private static Specification<PurchaseHistory> dateLte(LocalDate to) {
-        return (root, query, cb) -> cb.lessThanOrEqualTo(root.get("purchaseDate"), to);
-    }
-
-    /* ====== 생성 ====== */
     @Transactional
     public PurchaseHistoryResponse createPurchase(PurchaseHistoryRequest req) {
         Store store = storeRepository.findById(req.getStoreId())
-                .orElseThrow(() -> new EntityNotFoundException("STORE_NOT_FOUND"));
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.STORE_NOT_FOUND));
 
-        Inventory item = inventoryRepository.findById(req.getItemId())
-                .orElseThrow(() -> new EntityNotFoundException("INVENTORY_ITEM_NOT_FOUND"));
+        Inventory item = inventoryRepository.findByIdWithLock(req.getItemId())
+            .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_ITEM_NOT_FOUND));
 
         if (!Objects.equals(item.getStore().getStoreId(), store.getStoreId())) {
-            throw new IllegalArgumentException("ITEM_NOT_BELONG_TO_STORE");
+            throw new IllegalArgumentException(ErrorCodes.ITEM_NOT_BELONG_TO_STORE);
         }
 
-        // 1) 매입 저장
         PurchaseHistory purchase = purchaseHistoryMapper.toEntity(req, store, item);
         PurchaseHistory saved = purchaseHistoryRepository.save(purchase);
 
-        // 2) 재고 수량 증가만 반영
-        BigDecimal prevQty  = nz(item.getStockQty());
-        BigDecimal addQty   = nz(req.getPurchaseQty());
-        item.setStockQty(prevQty.add(addQty));
+        item.adjustStock(nz(req.getPurchaseQty()));
 
-        // 3) 최신단가만 재산출
-        recomputeLatestCostFromHistory(item.getItemId());
-        
-        // ⭐ [추가] 원가 변경을 메뉴 서비스에 전파
+        recomputeLatestCostFromHistory(item);
         menuItemService.propagateCostUpdate(item.getItemId());
 
         return purchaseHistoryMapper.toResponse(saved);
+
     }
 
     /* ====== 단건 조회 ====== */
-    @Transactional(readOnly = true)
     public PurchaseHistoryResponse getPurchase(Long purchaseId) {
         PurchaseHistory purchase = purchaseHistoryRepository.findById(purchaseId)
-                .orElseThrow(() -> new EntityNotFoundException("PURCHASE_NOT_FOUND"));
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.PURCHASE_NOT_FOUND));
         return purchaseHistoryMapper.toResponse(purchase);
     }
 
@@ -111,58 +97,61 @@ public class PurchaseHistoryService {
     @Transactional
     public PurchaseHistoryResponse updatePurchase(Long purchaseId, PurchaseHistoryUpdateRequest req) {
         PurchaseHistory purchase = purchaseHistoryRepository.findById(purchaseId)
-                .orElseThrow(() -> new EntityNotFoundException("PURCHASE_NOT_FOUND"));
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.PURCHASE_NOT_FOUND));
 
-        Inventory item = purchase.getInventory();
+        Long itemId = purchase.getInventory().getItemId();
 
-        // 1) 재고 수량 보정 (Δ)
-        BigDecimal prevQty = nz(purchase.getPurchaseQty());
-        BigDecimal nextQty = nz(req.getPurchaseQty());
-        BigDecimal delta   = nextQty.subtract(prevQty);
+        Inventory item = inventoryRepository.findByIdWithLock(itemId)
+            .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_ITEM_NOT_FOUND));
+            
+        BigDecimal prevQty = nz(purchase.getPurchaseQty()); // 기존 매입량
+        BigDecimal nextQty = nz(req.getPurchaseQty()); // 수정된 매입량
+        BigDecimal delta = nextQty.subtract(prevQty); // 차이 (예: +2 or -5)
+        
+        item.adjustStock(delta);
 
-        BigDecimal newStock = nz(item.getStockQty()).add(delta);
-        if (newStock.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException("NEGATIVE_STOCK_NOT_ALLOWED");
-        }
-        item.setStockQty(newStock);
-
-        // 2) 매입 레코드 갱신
         purchase.setPurchaseQty(nextQty);
         purchase.setUnitPrice(nz(req.getUnitPrice()));
         purchase.setPurchaseDate(req.getPurchaseDate());
 
-        // 3) 최신단가만 재산출
-        recomputeLatestCostFromHistory(item.getItemId());
-
-        // ⭐ [추가] 원가 변경을 메뉴 서비스에 전파
-        menuItemService.propagateCostUpdate(item.getItemId());
+        onPurchaseChanged(item);
 
         return purchaseHistoryMapper.toResponse(purchase);
     }
 
+    @Transactional
+    public void deletePurchase(Long purchaseId) {
+        PurchaseHistory purchase = purchaseHistoryRepository.findById(purchaseId)
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.PURCHASE_NOT_FOUND));
+
+        Long itemId = purchase.getInventory().getItemId();
+
+        Inventory item = inventoryRepository.findByIdWithLock(itemId)
+            .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_ITEM_NOT_FOUND));
+        
+        // 재고 원복 (매입했던 수량을 다시 뺌)
+        item.adjustStock(purchase.getPurchaseQty().negate());
+
+        purchaseHistoryRepository.delete(purchase);
+
+        // 원가 재계산
+        onPurchaseChanged(item);
+    }
+
     /* ====== 내부: 최신단가만 재계산 ====== */
-    private void recomputeLatestCostFromHistory(Long itemId) {
-        Inventory inventory = inventoryRepository.findById(itemId)
-                .orElseThrow(() -> new EntityNotFoundException("INVENTORY_NOT_FOUND"));
+    private void recomputeLatestCostFromHistory(Inventory inventory) {
 
-        List<PurchaseHistory> all = purchaseHistoryRepository.findByInventoryItemId(itemId);
-        if (all.isEmpty()) {
-            // 매입기록이 없으면 최신단가 0
-            inventory.setLastUnitCost(BigDecimal.ZERO);
-            return;
-        }
+        BigDecimal latestPrice = purchaseHistoryRepository
+                .findTop1ByInventoryItemIdOrderByPurchaseDateDescPurchaseIdDesc(inventory.getItemId())
+                .map(PurchaseHistory::getUnitPrice)
+                .orElse(BigDecimal.ZERO);
 
-        // 최신단가 = '구매일' 최신(동일일자는 purchaseId 큰 것) 레코드의 unitPrice
-        PurchaseHistory latest = all.stream()
-                .max(Comparator
-                        .<PurchaseHistory, LocalDate>comparing(p -> p.getPurchaseDate() == null ? LocalDate.MIN : p.getPurchaseDate())
-                        .thenComparing(PurchaseHistory::getPurchaseId))
-                .orElse(all.get(0));
-
-        inventory.setLastUnitCost(nz(latest.getUnitPrice()));
+        inventory.setLastUnitCost(latestPrice);
     }
 
-    private static BigDecimal nz(BigDecimal v) {
-        return v == null ? BigDecimal.ZERO : v;
-    }
+    private void onPurchaseChanged(Inventory item) {
+        recomputeLatestCostFromHistory(item);
+        menuItemService.propagateCostUpdate(item.getItemId());
+}
+
 }

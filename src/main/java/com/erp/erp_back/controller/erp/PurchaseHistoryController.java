@@ -62,4 +62,10 @@ public class PurchaseHistoryController {
     ) {
         return ResponseEntity.ok(purchaseHistoryService.updatePurchase(purchaseId, req));
     }
+
+    @DeleteMapping("/{purchaseId}")
+    public ResponseEntity<Void> deletePurchaseHistory(@PathVariable Long purchaseId) {
+        purchaseHistoryService.deletePurchase(purchaseId);
+        return ResponseEntity.noContent().build();
+    }
 }

@@ -2,7 +2,9 @@
 package com.erp.erp_back.entity.erp;
 
 import java.math.BigDecimal;
+import java.util.Objects;
 
+import com.erp.erp_back.common.ErrorCodes;
 import com.erp.erp_back.entity.enums.ActiveStatus;
 import com.erp.erp_back.entity.store.Store;
 
@@ -84,5 +86,11 @@ public class MenuItem {
         if (calculatedCost == null) calculatedCost = BigDecimal.ZERO;
         if (price == null) price = BigDecimal.ZERO;
         if (status == null) status = ActiveStatus.ACTIVE;
+    }
+
+    public void validateOwner(Store targetStore) {
+        if (!Objects.equals(this.store.getStoreId(), targetStore.getStoreId())) {
+            throw new IllegalArgumentException(ErrorCodes.MENU_STORE_MISMATCH);
+        }
     }
 }

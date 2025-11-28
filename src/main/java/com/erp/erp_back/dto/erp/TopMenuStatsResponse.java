@@ -14,9 +14,8 @@ import java.math.BigDecimal;
 public class TopMenuStatsResponse {
 
     private long menuId;
-    private String name;        // 메뉴명
-    private long quantity;      // 판매량(수량 합계)
+    private String menuName;     
+    private long quantity;     
     private BigDecimal revenue; // 매출액(금액 합계)
-
-    private double growth;
+    
 }
