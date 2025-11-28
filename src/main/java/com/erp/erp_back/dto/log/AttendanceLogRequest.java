@@ -29,9 +29,6 @@ public class AttendanceLogRequest {
     @Size(max = 20)
     private String recordType;  // IN / OUT / CLOCK_IN ...
 
-    @Size(max = 40)
-    private String clientIp;
-
     // ✅ 추가: 직원이 찍은 QR 문자열
     @Size(max = 200)
     private String qrCode;

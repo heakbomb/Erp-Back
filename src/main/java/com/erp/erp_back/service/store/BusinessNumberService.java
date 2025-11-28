@@ -75,6 +75,11 @@ public class BusinessNumberService {
             throw new IllegalArgumentException("유효하지 않은 사업자번호입니다.");
         }
 
+        // ✅ 추가: 폐업자인 경우 인증 및 등록 막기
+        if (stt.contains("폐업")) { // "폐업자", "폐업" 등 문자열 포함 체크
+            throw new IllegalArgumentException("폐업 상태의 사업자번호는 인증 및 등록할 수 없습니다.");
+        }
+
         // 3. Owner 조회
         Owner defaultOwner = ownerRepository.findById(defaultOwnerId)
                 .orElseThrow(() -> new IllegalStateException("기본 Owner가 존재하지 않습니다. (owner_id=1)"));
