@@ -44,4 +44,15 @@ public interface EmployeeAssignmentRepository extends JpaRepository<EmployeeAssi
   // N+1 문제 방지를 위해 JOIN FETCH 사용
   @Query("SELECT ea FROM EmployeeAssignment ea JOIN FETCH ea.employee WHERE ea.store.storeId = :storeId")
   List<EmployeeAssignment> findAllByStoreId(@Param("storeId") Long storeId);
+
+
+  @Query("""
+    SELECT ea
+    FROM EmployeeAssignment ea
+    JOIN FETCH ea.employee e
+    JOIN FETCH ea.store s
+    WHERE ea.store.storeId = :storeId
+      AND ea.status = 'APPROVED'
+    """)
+List<EmployeeAssignment> findApprovedByStoreId(@Param("storeId") Long storeId);
 }
