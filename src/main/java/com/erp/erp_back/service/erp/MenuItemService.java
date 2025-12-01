@@ -12,6 +12,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.erp.erp_back.annotation.LogAudit;
 import com.erp.erp_back.common.ErrorCodes;
 import com.erp.erp_back.dto.erp.MenuItemRequest;
 import com.erp.erp_back.dto.erp.MenuItemResponse;
@@ -90,6 +91,7 @@ public class MenuItemService {
     }
 
     @Transactional
+    @LogAudit(action = "MENU_UPDATE", target = "MenuItem", idIndex = 1)
     public MenuItemResponse updateMenu(Long storeId, Long menuId, MenuItemRequest req) {
         MenuItem menu = menuItemRepository.findByMenuIdAndStoreStoreId(menuId, storeId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.MENU_NOT_FOUND));

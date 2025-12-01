@@ -2,6 +2,8 @@ package com.erp.erp_back.entity.store;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -31,7 +33,6 @@ public class Store {
     @Column(name = "store_id")
     private Long storeId;
 
-    // ✅ 사업자 번호 (BusinessNumber 테이블과 N:1 관계)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "biz_id", nullable = false)
     private BusinessNumber businessNumber;

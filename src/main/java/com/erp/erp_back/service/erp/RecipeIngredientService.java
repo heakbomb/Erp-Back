@@ -10,6 +10,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.erp.erp_back.annotation.LogAudit;
 import com.erp.erp_back.common.ErrorCodes;
 import com.erp.erp_back.dto.erp.RecipeIngredientRequest;
 import com.erp.erp_back.dto.erp.RecipeIngredientResponse;
@@ -94,6 +95,7 @@ public class RecipeIngredientService {
 
     /** 레시피 수정(소모 수량만) */
     @Transactional
+    @LogAudit(action = "RECIPE_UPDATE", target = "RecipeIngredient")
     public RecipeIngredientResponse updateRecipe(Long recipeId, RecipeIngredientUpdateRequest req) {
         Objects.requireNonNull(recipeId,ErrorCodes.RECIPE_ID_MUST_NOT_BE_NULL);
 
@@ -124,6 +126,7 @@ public class RecipeIngredientService {
 
     /** 레시피 삭제 */
     @Transactional
+    @LogAudit(action = "RECIPE_DELETE", target = "RecipeIngredient")
     public void deleteRecipe(Long recipeId) {
         Objects.requireNonNull(recipeId, ErrorCodes.RECIPE_ID_MUST_NOT_BE_NULL);
 

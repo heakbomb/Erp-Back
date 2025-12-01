@@ -15,6 +15,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.erp.erp_back.annotation.LogAudit;
 import com.erp.erp_back.common.ErrorCodes;
 import com.erp.erp_back.dto.erp.InventoryRequest;
 import com.erp.erp_back.dto.erp.InventoryResponse;
@@ -74,6 +75,7 @@ public class InventoryService {
     }
 
     @Transactional
+    @LogAudit(action = "INVENTORY_UPDATE", target = "Inventory", idIndex = 1)
     public InventoryResponse updateInventory(Long storeId, Long itemId, InventoryRequest req) {
         Inventory inv = inventoryRepository.findByItemIdAndStoreStoreId(itemId, storeId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_NOT_FOUND));
@@ -84,6 +86,7 @@ public class InventoryService {
     }
 
     @Transactional
+    @LogAudit(action = "INVENTORY_DEACTIVATE", target = "Inventory", idIndex = 1)
     public void deactivate(Long storeId, Long itemId) {
         Inventory inv = inventoryRepository.findByItemIdAndStoreStoreId(itemId, storeId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_NOT_FOUND));

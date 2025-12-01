@@ -36,4 +36,8 @@ public class AuditLog {
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    // 변경 전후 데이터를 JSON으로 저장할 컬럼
+    @Column(name = "changes", columnDefinition = "LONGTEXT") 
+    private String changes;
 }
