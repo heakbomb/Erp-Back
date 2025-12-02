@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+
 import com.erp.erp_back.entity.log.AttendanceLog;
 
 public interface AttendanceLogRepository extends JpaRepository<AttendanceLog, Long> {
@@ -66,4 +67,5 @@ public interface AttendanceLogRepository extends JpaRepository<AttendanceLog, Lo
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to
     );
+
 }
