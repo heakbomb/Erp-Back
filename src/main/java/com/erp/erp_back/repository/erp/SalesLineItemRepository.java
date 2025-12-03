@@ -30,4 +30,5 @@ public interface SalesLineItemRepository extends JpaRepository<SalesLineItem, Lo
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to
     );
+
 }

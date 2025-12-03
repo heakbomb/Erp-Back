@@ -91,6 +91,11 @@ public class InventoryController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/low-stock-count")
+    public long getLowStockCount(@RequestParam Long storeId) {
+        return inventoryService.countLowStockItems(storeId);
+    }
+
     @GetMapping("/export/excel")
     public ResponseEntity<byte[]> exportExcel(@RequestParam("storeId") Long storeId) {
         byte[] data = inventoryExportService.exportExcel(storeId);

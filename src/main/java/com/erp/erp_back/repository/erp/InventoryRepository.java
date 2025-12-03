@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.erp.erp_back.dto.erp.InventoryResponse;
+import com.erp.erp_back.entity.enums.ActiveStatus;
 import com.erp.erp_back.entity.erp.Inventory;
 
 import jakarta.persistence.LockModeType;
@@ -45,4 +46,14 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long>, Jpa
            ORDER BY i.itemName ASC
            """)
     List<InventoryResponse> findExportRowsByStoreId(@Param("storeId") Long storeId);
+
+    @Query("""
+        SELECT COUNT(i)
+        FROM Inventory i
+        WHERE i.store.storeId = :storeId
+          AND i.status = :status
+          AND i.stockQty < i.safetyQty
+    """)
+    long countLowStockItems(@Param("storeId") Long storeId,
+                            @Param("status") ActiveStatus status);
 }
