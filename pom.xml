@@ -87,6 +87,9 @@
                         </path>
                     </annotationProcessorPaths>
                     <release>17</release> 
+                    <compilerArgs>
+                        <arg>-parameters</arg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
             

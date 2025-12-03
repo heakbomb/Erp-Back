@@ -1,31 +1,33 @@
 package com.erp.erp_back.mapper;
 
-import java.util.List;
-
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
 import org.mapstruct.ReportingPolicy;
 
 import com.erp.erp_back.dto.admin.DashboardStatsResponse;
 
+// componentModel = "spring" : 스프링 빈으로 등록하여 주입받을 수 있게 함
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING,
         unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface DashboardMapper {
 
     /**
-     * 여러 개의 개별 데이터를 받아서 DashboardStatsResponse 객체 생성
-     * 파라미터 이름과 DTO 필드명이 일치하면 @Mapping 생략 가능하지만,
-     * 명시적으로 적어두는 것이 유지보수에 좋습니다.
+     * [해결책] MapStruct 자동 생성(@Mapping) 대신 Java 'default' 메서드로 직접 구현합니다.
+     * 이유: VSCode/Maven 환경에서 파라미터 이름 인식 오류로 인한 빌드 실패 방지
      */
-    @Mapping(source = "totalStores", target = "totalStores")
-    @Mapping(source = "totalUsers", target = "totalUsers")
-    @Mapping(source = "activeSubscriptions", target = "activeSubscriptions")
-    @Mapping(source = "pendingStoreCount", target = "pendingStoreCount")
-    @Mapping(source = "pendingInquiryCount", target = "pendingInquiryCount")
-    DashboardStatsResponse toResponse(long totalStores, 
-                                      long totalUsers, 
-                                      long activeSubscriptions, 
-                                      long pendingStoreCount, 
-                                      long pendingInquiryCount);
+    default DashboardStatsResponse toResponse(long totalStores, 
+                                              long totalUsers, 
+                                              long activeSubscriptions, 
+                                              long pendingStoreCount, 
+                                              long pendingInquiryCount) {
+        
+        // 빌더 패턴을 사용하여 직접 객체 생성 (오류 발생 가능성 0%)
+        return DashboardStatsResponse.builder()
+                .totalStores(totalStores)
+                .totalUsers(totalUsers)
+                .activeSubscriptions(activeSubscriptions)
+                .pendingStoreCount(pendingStoreCount)
+                .pendingInquiryCount(pendingInquiryCount)
+                .build();
+    }
 }
