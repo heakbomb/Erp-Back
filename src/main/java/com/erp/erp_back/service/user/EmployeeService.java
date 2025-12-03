@@ -7,7 +7,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.erp.erp_back.annotation.LogAudit;
 import com.erp.erp_back.dto.user.EmployeeResponse;
 import com.erp.erp_back.entity.user.Employee;
 import com.erp.erp_back.mapper.EmployeeMapper;
@@ -59,7 +58,6 @@ public class EmployeeService {
     }
 
     /** 직원 삭제 */
-    @LogAudit(action = "EMPLOYEE_DELETE", target = "Employee")
     public void deleteEmployee(Long id) {
         if (!employeeRepository.existsById(id)) {
             throw new IllegalArgumentException("해당 직원(ID=" + id + ")을 찾을 수 없습니다.");

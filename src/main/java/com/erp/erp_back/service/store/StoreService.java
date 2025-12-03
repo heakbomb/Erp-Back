@@ -12,7 +12,6 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.erp.erp_back.annotation.LogAudit;
 import com.erp.erp_back.dto.log.StoreQrResponse;
 import com.erp.erp_back.dto.store.BusinessNumberResponse;
 import com.erp.erp_back.dto.store.StoreCreateRequest;
@@ -115,7 +114,6 @@ public class StoreService {
     /**
      * (Admin) 사업장 상태 변경 (승인/반려)
      */
-    @LogAudit(action = "STORE_STATUS_UPDATE", target = "Store")
     public StoreResponse updateStoreStatus(Long storeId, String newStatus) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("사업장을 찾을 수 없습니다."));
@@ -178,7 +176,6 @@ public class StoreService {
     /**
      * 매장 정보 수정
      */
-    @LogAudit(action = "STORE_UPDATE", target = "Store")
     public StoreResponse updateStore(Long storeId, StoreCreateRequest request) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("사업장 없음"));
@@ -209,7 +206,7 @@ public class StoreService {
 
         return storeMapper.toResponse(store, gps);
     }
-    @LogAudit(action = "STORE_DELETE", target = "Store")
+    
     public void deleteStore(Long storeId, boolean force) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("삭제 대상 사업장이 존재하지 않습니다."));

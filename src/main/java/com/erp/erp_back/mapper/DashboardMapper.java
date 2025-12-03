@@ -8,7 +8,6 @@ import org.mapstruct.MappingConstants;
 import org.mapstruct.ReportingPolicy;
 
 import com.erp.erp_back.dto.admin.DashboardStatsResponse;
-import com.erp.erp_back.dto.log.AuditLogResponse;
 
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING,
         unmappedTargetPolicy = ReportingPolicy.IGNORE)
@@ -24,11 +23,9 @@ public interface DashboardMapper {
     @Mapping(source = "activeSubscriptions", target = "activeSubscriptions")
     @Mapping(source = "pendingStoreCount", target = "pendingStoreCount")
     @Mapping(source = "pendingInquiryCount", target = "pendingInquiryCount")
-    @Mapping(source = "recentActivities", target = "recentActivities")
     DashboardStatsResponse toResponse(long totalStores, 
                                       long totalUsers, 
                                       long activeSubscriptions, 
                                       long pendingStoreCount, 
-                                      long pendingInquiryCount, 
-                                      List<AuditLogResponse> recentActivities);
+                                      long pendingInquiryCount);
 }

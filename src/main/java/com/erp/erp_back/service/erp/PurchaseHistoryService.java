@@ -21,7 +21,6 @@ import com.erp.erp_back.mapper.PurchaseHistoryMapper;
 import com.erp.erp_back.repository.erp.InventoryRepository;
 import com.erp.erp_back.repository.erp.PurchaseHistoryRepository;
 import com.erp.erp_back.repository.store.StoreRepository;
-import com.erp.erp_back.annotation.LogAudit;
 import com.erp.erp_back.common.ErrorCodes;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -96,7 +95,6 @@ public class PurchaseHistoryService {
 
     /* ====== 수정 ====== */
     @Transactional
-    @LogAudit(action = "PURCHASE_UPDATE", target = "PurchaseHistory")
     public PurchaseHistoryResponse updatePurchase(Long purchaseId, PurchaseHistoryUpdateRequest req) {
         PurchaseHistory purchase = purchaseHistoryRepository.findById(purchaseId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.PURCHASE_NOT_FOUND));
@@ -122,7 +120,6 @@ public class PurchaseHistoryService {
     }
 
     @Transactional
-    @LogAudit(action = "PURCHASE_DELETE", target = "PurchaseHistory")
     public void deletePurchase(Long purchaseId) {
         PurchaseHistory purchase = purchaseHistoryRepository.findById(purchaseId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.PURCHASE_NOT_FOUND));
