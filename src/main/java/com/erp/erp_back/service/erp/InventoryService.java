@@ -99,14 +99,15 @@ public class InventoryService {
 
     @Transactional
     public void decreaseStock(Map<Long, BigDecimal> requirements) {
-        if (requirements.isEmpty()) return;
+        if (requirements.isEmpty())
+            return;
 
         List<Inventory> inventories = inventoryRepository.findAllByIdInWithLock(requirements.keySet());
 
         for (Inventory inv : inventories) {
             BigDecimal needed = requirements.get(inv.getItemId());
             BigDecimal after = inv.getStockQty().subtract(needed);
-            
+
             if (after.compareTo(BigDecimal.ZERO) < 0) {
                 throw new IllegalStateException("재고 부족: " + inv.getItemName());
             }
@@ -116,7 +117,8 @@ public class InventoryService {
 
     @Transactional
     public void increaseStock(Map<Long, BigDecimal> requirements) {
-        if (requirements.isEmpty()) return;
+        if (requirements.isEmpty())
+            return;
 
         List<Inventory> inventories = inventoryRepository.findAllByIdInWithLock(requirements.keySet());
 
@@ -124,5 +126,9 @@ public class InventoryService {
             BigDecimal addQty = requirements.get(inv.getItemId());
             inv.setStockQty(inv.getStockQty().add(addQty));
         }
+    }
+
+    public long countLowStockItems(Long storeId) {
+        return inventoryRepository.countLowStockItems(storeId, ActiveStatus.ACTIVE);
     }
 }

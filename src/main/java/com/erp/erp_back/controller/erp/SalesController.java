@@ -11,12 +11,14 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.erp.erp_back.dto.erp.MonthlySalesReportResponse;
 import com.erp.erp_back.dto.erp.PosOrderRequest;
 import com.erp.erp_back.dto.erp.PosOrderResponse;
 import com.erp.erp_back.dto.erp.RefundRequest;
@@ -24,8 +26,9 @@ import com.erp.erp_back.dto.erp.SalesDailyStatResponse;
 import com.erp.erp_back.dto.erp.SalesSummaryResponse;
 import com.erp.erp_back.dto.erp.SalesTransactionSummaryResponse;
 import com.erp.erp_back.dto.erp.TopMenuStatsResponse;
+import com.erp.erp_back.service.erp.SalesReportService;
 import com.erp.erp_back.service.erp.SalesService;
-import com.erp.erp_back.service.erp.SalesStatsService; 
+import com.erp.erp_back.service.erp.SalesStatsService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -36,8 +39,9 @@ import lombok.RequiredArgsConstructor;
 @CrossOrigin(origins = "http://localhost:3000") // 필요시 설정 유지
 public class SalesController {
 
-    private final SalesService salesService;          
-    private final SalesStatsService salesStatsService; 
+    private final SalesService salesService;
+    private final SalesStatsService salesStatsService;
+    private final SalesReportService salesReportService;
 
     @PostMapping("/pos-order")
     public ResponseEntity<PosOrderResponse> createPosOrder(@Valid @RequestBody PosOrderRequest req) {
@@ -46,7 +50,7 @@ public class SalesController {
     }
 
     /**
-     * [결제 취소 / 환불] 
+     * [결제 취소 / 환불]
      * - RequestBody로 사유와 폐기 여부를 받음
      */
     @PostMapping("/refund")
@@ -63,8 +67,7 @@ public class SalesController {
     public ResponseEntity<List<SalesDailyStatResponse>> getSalesStats(
             @RequestParam Long storeId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
-    ) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         return ResponseEntity.ok(salesStatsService.getSalesStats(storeId, from, to));
     }
 
@@ -75,8 +78,7 @@ public class SalesController {
     public ResponseEntity<List<TopMenuStatsResponse>> getTopMenus(
             @RequestParam Long storeId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
-    ) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         return ResponseEntity.ok(salesStatsService.getTopMenus(storeId, from, to));
     }
 
@@ -98,16 +100,15 @@ public class SalesController {
             @RequestParam Long storeId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
-            @PageableDefault(size = 20, sort = "transactionTime", direction = Sort.Direction.DESC) Pageable pageable
-    ) {
+            @PageableDefault(size = 20, sort = "transactionTime", direction = Sort.Direction.DESC) Pageable pageable) {
         return ResponseEntity.ok(salesStatsService.getTransactions(storeId, from, to, pageable));
     }
-    
-    // (옵션) 대시보드 전용 '최근 거래' 숏컷이 필요하다면 유지 (내부적으로 위 페이징 메서드 호출해도 됨)
-    /*
-    @GetMapping("/recent-transactions")
-    public ResponseEntity<List<RecentTransactionResponse>> getRecentTransactions(@RequestParam Long storeId) {
-        return ResponseEntity.ok(salesStatsService.getRecentTransactions(storeId));
+
+    @GetMapping("/stores/{storeId}/reports/monthly")
+    public MonthlySalesReportResponse getMonthlyReport(
+            @PathVariable Long storeId,
+            @RequestParam int year,
+            @RequestParam int month) {
+        return salesReportService.getMonthlyReport(storeId, year, month);
     }
-    */
 }
