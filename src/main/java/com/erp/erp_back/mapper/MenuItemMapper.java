@@ -43,4 +43,9 @@ public interface MenuItemMapper {
     @Mapping(target = "store", ignore = true)
     @Mapping(target = "calculatedCost", ignore = true) // 원가는 레시피 변경 시에만 재계산
     void updateFromDto(MenuItemRequest req, @MappingTarget MenuItem menu);
+
+    // ▼ [추가] Aspect 전용 Helper 메소드 매번 계산 X
+    default MenuItemResponse toResponse(MenuItem menu) {
+        return toResponse(menu, menu.getCalculatedCost());
+    }
 }
