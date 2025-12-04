@@ -1,26 +1,21 @@
 package com.erp.erp_back.service.admin;
 
 import java.time.LocalDate;
-import java.util.List;
 
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.erp.erp_back.dto.admin.DashboardStatsResponse;
-import com.erp.erp_back.dto.log.AuditLogResponse;
 import com.erp.erp_back.entity.enums.InquiryStatus;
-import com.erp.erp_back.mapper.AuditLogMapper;
 import com.erp.erp_back.mapper.DashboardMapper;
 import com.erp.erp_back.repository.inquiry.InquiryRepository;
-import com.erp.erp_back.repository.log.AuditLogRepository;
 import com.erp.erp_back.repository.store.StoreRepository;
 import com.erp.erp_back.repository.subscripition.OwnerSubscriptionRepository;
 import com.erp.erp_back.repository.user.EmployeeRepository;
 import com.erp.erp_back.repository.user.OwnerRepository;
 
 import lombok.RequiredArgsConstructor;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -30,10 +25,8 @@ public class DashboardService {
     private final OwnerRepository ownerRepository;
     private final EmployeeRepository employeeRepository;
     private final OwnerSubscriptionRepository ownerSubscriptionRepository; 
-    private final AuditLogRepository auditLogRepository; 
     private final InquiryRepository inquiryRepository;
     
-    private final AuditLogMapper auditLogMapper;
     private final DashboardMapper dashboardMapper;
 
     public DashboardStatsResponse getDashboardStats() {
@@ -55,22 +48,12 @@ public class DashboardService {
         // 5. 대기 문의 수
         long pendingInquiryCount = inquiryRepository.countByStatus(InquiryStatus.PENDING);
 
-        // 6. 최근 활동 (최근 5건)
-        PageRequest pageRequest = PageRequest.of(0, 5, Sort.by(Sort.Direction.DESC, "createdAt"));
-        
-        // ✅ Mapper 사용 (stream 변환)
-        List<AuditLogResponse> recentActivities = auditLogRepository.findAllByOrderByCreatedAtDesc(pageRequest)
-                .stream()
-                .map(auditLogMapper::toResponse) 
-                .toList();
-
         return dashboardMapper.toResponse(
                 totalStores,
                 totalUsers,
                 activeSubscriptions,
                 pendingStoreCount,
-                pendingInquiryCount,
-                recentActivities
+                pendingInquiryCount
         );
     }
 }
