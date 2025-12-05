@@ -16,9 +16,8 @@ public interface InventoryMapper {
     @Mapping(target = "itemId", ignore = true)
     @Mapping(target = "store", source = "store")
     @Mapping(target = "lastUnitCost", expression = "java(java.math.BigDecimal.ZERO)")
-    // ⭐️ status 모호성 해결
+
     @Mapping(target = "status", source = "req.status", defaultValue = "ACTIVE")
-    // ⭐️ [수정] req.getSafetyQty() -> req.safetyQty (필드명 사용)
     @Mapping(target = "stockQty", source = "req.stockQty", qualifiedByName = "defaultZero")
     @Mapping(target = "safetyQty", source = "req.safetyQty", qualifiedByName = "defaultZero")
     Inventory toEntity(InventoryRequest req, Store store);
