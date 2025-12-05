@@ -8,6 +8,7 @@ import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -81,13 +82,31 @@ public interface SalesTransactionRepository extends JpaRepository<SalesTransacti
                         @Param("from") LocalDateTime from,
                         @Param("to") LocalDateTime to);
 
+        // [스케줄러용 - 신규 추가] 특정 날짜의 모든 매장 매출 집계
+        @Query("SELECT new map(" +
+                        "  t.store.storeId as storeId, " +
+                        "  SUM(t.totalAmount) as totalSales, " +
+                        "  COUNT(t) as count " +
+                        ") " +
+                        "FROM SalesTransaction t " +
+                        "WHERE t.transactionTime BETWEEN :from AND :to " +
+                        "AND t.status = 'PAID' " +
+                        "GROUP BY t.store.storeId")
+        List<Map<String, Object>> findDailySalesStatsByDate(
+                        @Param("from") LocalDateTime from,
+                        @Param("to") LocalDateTime to);
+
+        // [멱등성 검사용 - 신규 추가]
+        boolean existsByIdempotencyKey(String idempotencyKey);
+
         // 대시보드용: 특정 사업장의 최근 거래 1건
         Optional<SalesTransaction> findTopByStoreStoreIdOrderByTransactionTimeDesc(Long storeId);
 
+        // [수정] @EntityGraph를 추가하여 lineItems와 menuItem을 한 번에 가져옵니다 (Eager Loading 효과)
+        @EntityGraph(attributePaths = { "lineItems", "lineItems.menuItem" })
         Page<SalesTransaction> findByStoreStoreIdAndTransactionTimeBetween(
                         Long storeId,
                         LocalDateTime start,
                         LocalDateTime end,
                         Pageable pageable);
-
 }
