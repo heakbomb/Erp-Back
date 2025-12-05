@@ -19,7 +19,7 @@ public class InventoryExcelReportGenerator {
 
     public byte[] generate(List<InventoryResponse> rows) {
         try (Workbook workbook = new XSSFWorkbook();
-             ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+                ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
 
             Sheet sheet = workbook.createSheet(SHEET_NAME);
 
@@ -28,36 +28,59 @@ public class InventoryExcelReportGenerator {
 
             int rowIdx = 0;
 
+            // ===========================
             // 1) 헤더
+            // ===========================
             Row header = sheet.createRow(rowIdx++);
             String[] headers = {
                     "품목ID", "품목명", "품목 유형", "재고 유형",
                     "재고 수량", "안전 재고", "상태", "최신 단가"
             };
+
             for (int i = 0; i < headers.length; i++) {
                 Cell cell = header.createCell(i);
                 cell.setCellValue(headers[i]);
                 cell.setCellStyle(headerStyle);
             }
 
-            // 2) 데이터
+            // ===========================
+            // 2) 실제 데이터 rows
+            // ===========================
             for (InventoryResponse rowData : rows) {
                 Row row = sheet.createRow(rowIdx++);
                 int col = 0;
 
+                // 품목ID
                 createNumericCell(row, col++, rowData.getItemId(), numberStyle);
+
+                // 품목명
                 createStringCell(row, col++, rowData.getItemName());
-                createStringCell(row, col++, rowData.getItemType());
+
+                // ⭐ 품목 유형 (한글 라벨)
+                createStringCell(row, col++,
+                        rowData.getItemType() != null ? rowData.getItemType().getLabelKo() : "");
+                // 재고 유형
                 createStringCell(row, col++, rowData.getStockType());
+
+                // 재고 수량
                 createBigDecimalCell(row, col++, rowData.getStockQty(), numberStyle);
+
+                // 안전 재고
                 createBigDecimalCell(row, col++, rowData.getSafetyQty(), numberStyle);
-                createStringCell(row, col++, rowData.getStatus() != null
-                        ? rowData.getStatus().name()
-                        : "");
+
+                // 상태
+                createStringCell(row, col++,
+                        rowData.getStatus() != null
+                                ? rowData.getStatus().name()
+                                : "");
+
+                // 최신 단가
                 createBigDecimalCell(row, col++, rowData.getLastUnitCost(), numberStyle);
             }
 
-            // 3) 컬럼 너비 자동 조정
+            // ===========================
+            // 3) 컬럼 자동 너비 조정
+            // ===========================
             for (int i = 0; i < headers.length; i++) {
                 sheet.autoSizeColumn(i);
             }
@@ -71,6 +94,7 @@ public class InventoryExcelReportGenerator {
     }
 
     // ====== 스타일/셀 유틸 ======
+
     private CellStyle createHeaderStyle(Workbook workbook) {
         CellStyle style = workbook.createCellStyle();
         Font font = workbook.createFont();
@@ -96,7 +120,7 @@ public class InventoryExcelReportGenerator {
 
     private void createNumericCell(Row row, int col, Long value, CellStyle style) {
         Cell cell = row.createCell(col);
-        cell.setCellValue(value != null ? value : 0L);
+        cell.setCellValue(value != null ? value : 0);
         cell.setCellStyle(style);
     }
 

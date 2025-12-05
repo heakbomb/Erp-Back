@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 
 import com.erp.erp_back.common.ErrorCodes;
 import com.erp.erp_back.entity.enums.ActiveStatus;
+import com.erp.erp_back.entity.enums.IngredientCategory;
 import com.erp.erp_back.entity.store.Store;
 import jakarta.persistence.*;
 import lombok.*;
@@ -35,8 +36,9 @@ public class Inventory {
     @Column(name = "item_name", nullable = false, length = 100)
     private String itemName;
 
-    @Column(name = "item_type", nullable = false, length = 20)
-    private String itemType; // Service에서 builder.itemType(), setItemType()
+    @Enumerated(EnumType.STRING)
+    @Column(name = "item_type", nullable = false, length = 30)
+    private IngredientCategory itemType;// Service에서 builder.itemType(), setItemType()
 
     @Column(name = "stock_type", nullable = false, length = 20)
     private String stockType; // Service에서 setStockType()

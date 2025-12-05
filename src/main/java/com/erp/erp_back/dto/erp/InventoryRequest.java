@@ -4,6 +4,8 @@ package com.erp.erp_back.dto.erp;
 import java.math.BigDecimal;
 
 import com.erp.erp_back.entity.enums.ActiveStatus;
+import com.erp.erp_back.entity.enums.IngredientCategory;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -24,9 +26,8 @@ public class InventoryRequest {
     @Size(max = 100)
     private String itemName;
 
-    @NotBlank(message = "품목 타입은 필수입니다.")
-    @Size(max = 20)
-    private String itemType;
+    @NotNull(message = "품목 타입은 필수입니다.")
+    private IngredientCategory itemType;
 
     @NotBlank(message = "수량 타입은 필수입니다.")
     @Size(max = 20)
