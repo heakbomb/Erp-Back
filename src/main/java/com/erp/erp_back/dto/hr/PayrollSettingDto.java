@@ -18,4 +18,5 @@ public class PayrollSettingDto {
     private String wageType;     // "HOURLY" / "MONTHLY"
     private Long baseWage;       // 표시는 정수원(low), DB에선 decimal(10,2)로 저장
     private Double deductionRate; // 0.033 같은 퍼센트 (간단 버전)
+    private String deductionType;     // "NONE" / "FOUR_INSURANCE" / "TAX_3_3"
 }

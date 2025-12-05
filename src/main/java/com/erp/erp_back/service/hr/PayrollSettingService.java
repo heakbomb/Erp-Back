@@ -18,6 +18,8 @@ import com.erp.erp_back.entity.store.Store;
 import com.erp.erp_back.entity.user.Employee;
 import com.erp.erp_back.repository.auth.EmployeeAssignmentRepository;
 import com.erp.erp_back.repository.hr.PayrollSettingRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
 
@@ -28,6 +30,7 @@ public class PayrollSettingService {
 
     private final PayrollSettingRepository payrollSettingRepository;
     private final EmployeeAssignmentRepository employeeAssignmentRepository;
+    private final ObjectMapper objectMapper; // ✅ 공제 JSON 파싱용
 
     /**
      * ✅ 특정 매장의 직원별 급여 설정 조회
@@ -66,12 +69,34 @@ public class PayrollSettingService {
                             ? setting.getWageType()
                             : "HOURLY";
 
+            // ✅ 공제 정보 파싱
+            String deductionType = "NONE";
+            Double deductionRate = null;
+
+            if (setting != null && setting.getDeductionItems() != null) {
+                String json = setting.getDeductionItems();
+                try {
+                    JsonNode node = objectMapper.readTree(json);
+                    if (node.hasNonNull("type")) {
+                        deductionType = node.get("type").asText("NONE");
+                    }
+                    if (node.hasNonNull("rate")) {
+                        deductionRate = node.get("rate").asDouble();
+                    }
+                } catch (Exception ignore) {
+                    // 파싱 실패 시 기본값 유지
+                }
+            }
+
             PayrollSettingDto dto = PayrollSettingDto.builder()
                     .settingId(setting != null ? setting.getSettingId() : null)
                     .employeeId(emp.getEmployeeId())
                     .employeeName(emp.getName())
+                    .role(assign.getRole())              // 🔹 역할도 같이 내려줌
                     .baseWage(baseWage)
                     .wageType(wageType)
+                    .deductionType(deductionType)        // 🔹 공제 타입
+                    .deductionRate(deductionRate)        // 🔹 공제율(있으면)
                     .build();
 
             result.add(dto);
@@ -111,13 +136,32 @@ public class PayrollSettingService {
         }
 
         entity.setWageType(dto.getWageType() != null ? dto.getWageType() : "HOURLY");
-        // ⚠ 현재 DTO에 deductionItems 필드가 없으므로 건들지 않음
+
+        // ✅ 공제 항목 JSON 저장
+        String deductionType = dto.getDeductionType();
+        Double deductionRate = dto.getDeductionRate();
+
+        if (deductionType == null || deductionType.isBlank() || "NONE".equals(deductionType)) {
+            // 공제 없음
+            entity.setDeductionItems(null);
+        } else {
+            // {"type":"FOUR_INSURANCE","rate":0.033} 이런 형식으로 저장
+            StringBuilder sb = new StringBuilder();
+            sb.append("{\"type\":\"").append(deductionType).append("\"");
+            if (deductionRate != null) {
+                sb.append(",\"rate\":").append(deductionRate);
+            }
+            sb.append("}");
+            entity.setDeductionItems(sb.toString());
+        }
 
         PayrollSetting saved = payrollSettingRepository.save(entity);
 
-        // 3) 이름 보정: 프론트에서 employeeName 을 안 보내 준 경우 DB에서 다시 찾기
+        // 3) 이름 / 역할 보정: 프론트에서 employeeName, role 을 안 보내 준 경우 DB에서 다시 찾기
         String employeeName = dto.getEmployeeName();
-        if (employeeName == null || employeeName.isBlank()) {
+        String role = dto.getRole();
+
+        if (employeeName == null || employeeName.isBlank() || role == null) {
             EmployeeAssignment assignment = employeeAssignmentRepository
                     .findApprovedByStoreId(storeId).stream()
                     .filter(a -> a.getEmployee() != null
@@ -126,7 +170,12 @@ public class PayrollSettingService {
                     .orElse(null);
 
             if (assignment != null && assignment.getEmployee() != null) {
-                employeeName = assignment.getEmployee().getName();
+                if (employeeName == null || employeeName.isBlank()) {
+                    employeeName = assignment.getEmployee().getName();
+                }
+                if (role == null) {
+                    role = assignment.getRole();
+                }
             }
         }
 
@@ -135,8 +184,11 @@ public class PayrollSettingService {
                 .settingId(saved.getSettingId())
                 .employeeId(employeeId)
                 .employeeName(employeeName)
+                .role(role)
                 .baseWage(saved.getBaseWage() != null ? saved.getBaseWage().longValue() : 0L)
                 .wageType(saved.getWageType())
+                .deductionType(deductionType == null ? "NONE" : deductionType)
+                .deductionRate(deductionRate)
                 .build();
     }
 }

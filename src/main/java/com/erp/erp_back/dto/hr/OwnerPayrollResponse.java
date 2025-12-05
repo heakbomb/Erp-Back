@@ -32,5 +32,7 @@ public class OwnerPayrollResponse {
         private long netPay;       // 실수령액
 
         private String status;     // "예정" / "지급완료" 등
+        private String deductionType; // "FOUR_INSURANCE" / "TAX_3_3" / "NONE"
+        private String wageType;       // "HOURLY" / "MONTHLY"
     }
 }

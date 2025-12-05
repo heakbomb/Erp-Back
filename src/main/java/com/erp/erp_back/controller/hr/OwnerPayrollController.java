@@ -2,6 +2,7 @@
 package com.erp.erp_back.controller.hr;
 
 import com.erp.erp_back.dto.hr.OwnerPayrollResponse;
+import com.erp.erp_back.dto.hr.PayrollCalcResultDto;
 import com.erp.erp_back.service.hr.OwnerPayrollService;
 import java.time.YearMonth;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +18,7 @@ public class OwnerPayrollController {
         this.ownerPayrollService = ownerPayrollService;
     }
 
-    // GET /owner/payroll?storeId=1&yearMonth=2024-04
+    // ✅ 기존: 이번 달 급여 조회
     @GetMapping
     public ResponseEntity<OwnerPayrollResponse> getMonthlyPayroll(
         @RequestParam Long storeId,
@@ -25,5 +26,16 @@ public class OwnerPayrollController {
     ) {
         YearMonth ym = YearMonth.parse(yearMonth); // "2024-04"
         return ResponseEntity.ok(ownerPayrollService.getMonthlyPayroll(storeId, ym));
+    }
+
+    // ✅ 신규: 급여 자동 계산 (프론트에서 POST /owner/payroll/calc 호출)
+    @PostMapping("/calc")
+    public ResponseEntity<PayrollCalcResultDto> calculatePayroll(
+        @RequestParam Long storeId,
+        @RequestParam String yearMonth
+    ) {
+        YearMonth ym = YearMonth.parse(yearMonth);
+        PayrollCalcResultDto result = ownerPayrollService.calculateMonthlyPayroll(storeId, ym);
+        return ResponseEntity.ok(result);
     }
 }
