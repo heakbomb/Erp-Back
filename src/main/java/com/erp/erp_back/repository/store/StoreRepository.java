@@ -29,7 +29,7 @@ public interface StoreRepository extends JpaRepository<Store, Long>, JpaSpecific
 
   long countByStatus(String status);
 
-  // ✅ 사장님 대시보드용 통계 쿼리 (이 부분은 문법적으로 괜찮습니다)
+  // ✅ 사장님 대시보드용 통계 쿼리 
   @Query("""
       SELECT new com.erp.erp_back.dto.admin.AdminStoreDashboardItem(
           s.storeId,
