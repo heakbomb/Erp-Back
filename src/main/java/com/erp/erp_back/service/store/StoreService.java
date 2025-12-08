@@ -206,7 +206,7 @@ public class StoreService {
 
         return storeMapper.toResponse(store, gps);
     }
-
+    
     public void deleteStore(Long storeId, boolean force) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("삭제 대상 사업장이 존재하지 않습니다."));

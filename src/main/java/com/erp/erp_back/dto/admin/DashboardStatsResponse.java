@@ -1,9 +1,5 @@
 package com.erp.erp_back.dto.admin;
 
-import java.util.List;
-
-import com.erp.erp_back.dto.log.AuditLogResponse;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -22,6 +18,4 @@ public class DashboardStatsResponse {
     private long activeSubscriptions; // ✅ 활성 구독
     private long pendingStoreCount; // ✅ 승인 대기 사업장
     private Long pendingInquiryCount; // 대기 문의
-    // 2. 최근 활동
-    private List<AuditLogResponse> recentActivities; // ✅ 최근 활동
 }
