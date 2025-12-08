@@ -1,3 +1,4 @@
+// src/main/java/com/erp/erp_back/service/user/EmployeeService.java
 package com.erp.erp_back.service.user;
 
 import java.util.List;
@@ -8,8 +9,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.erp.erp_back.dto.user.EmployeeResponse;
+import com.erp.erp_back.entity.auth.EmployeeAssignment;
 import com.erp.erp_back.entity.user.Employee;
 import com.erp.erp_back.mapper.EmployeeMapper;
+import com.erp.erp_back.repository.auth.EmployeeAssignmentRepository;
 import com.erp.erp_back.repository.user.EmployeeRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -21,6 +24,7 @@ public class EmployeeService {
 
     private final EmployeeRepository employeeRepository;
     private final EmployeeMapper employeeMapper;
+    private final EmployeeAssignmentRepository employeeAssignmentRepository;
 
     /** (Admin) 직원 계정 페이징 및 검색 조회 */
     @Transactional(readOnly = true)
@@ -30,11 +34,36 @@ public class EmployeeService {
                 .map(employeeMapper::toResponse);
     }
 
-    /** 직원 전체 목록 조회 */
+    /** 직원 전체 목록 조회 (다른 곳에서 쓰면 사용) */
     @Transactional(readOnly = true)
     public List<EmployeeResponse> getAllEmployees() {
         return employeeRepository.findAll().stream()
                 .map(employeeMapper::toResponse)
+                .toList();
+    }
+
+    /** ✅ 특정 사업장에 등록된 *승인된* 직원 목록 조회 */
+    @Transactional(readOnly = true)
+    public List<EmployeeResponse> getEmployeesByStore(Long storeId) {
+
+        // 1) 해당 매장의 APPROVED 배정 정보
+        List<EmployeeAssignment> assignments =
+                employeeAssignmentRepository.findApprovedByStoreId(storeId);
+
+        // 2) 배정 + 직원 정보를 EmployeeResponse 로 수동 매핑
+        return assignments.stream()
+                .map(a -> {
+                    Employee e = a.getEmployee();
+                    return EmployeeResponse.builder()
+                            .employeeId(e.getEmployeeId())
+                            .assignmentId(a.getAssignmentId())   // 필요하면 프론트에서 사용
+                            .name(e.getName())
+                            .email(e.getEmail())
+                            .phone(e.getPhone())
+                            .provider(e.getProvider())
+                            .createdAt(e.getCreatedAt())
+                            .build();
+                })
                 .toList();
     }
 
@@ -44,17 +73,6 @@ public class EmployeeService {
         Employee emp = employeeRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 직원(ID=" + id + ")을 찾을 수 없습니다."));
         return employeeMapper.toResponse(emp);
-    }
-
-    /** 직원 정보 수정 */
-    public EmployeeResponse updateEmployee(Long id, EmployeeResponse req) {
-        Employee emp = employeeRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("해당 직원(ID=" + id + ")을 찾을 수 없습니다."));
-
-        employeeMapper.updateFromDto(req, emp);
-
-        Employee updated = employeeRepository.save(emp);
-        return employeeMapper.toResponse(updated);
     }
 
     /** 직원 삭제 */

@@ -1,11 +1,18 @@
+// src/main/java/com/erp/erp_back/repository/hr/PayrollSettingRepository.java
 package com.erp.erp_back.repository.hr;
 
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
 
 import com.erp.erp_back.entity.hr.PayrollSetting;
 
-@Repository
 public interface PayrollSettingRepository extends JpaRepository<PayrollSetting, Long> {
-    // 기본적인 CRUD 메소드가 이미 모두 구현되어 있음
+
+    // 사업장 전체 직원 급여 설정
+    List<PayrollSetting> findAllByStore_StoreId(Long storeId);
+
+    // 특정 직원 한 명 설정
+    Optional<PayrollSetting> findByStore_StoreIdAndEmployee_EmployeeId(Long storeId, Long employeeId);
 }

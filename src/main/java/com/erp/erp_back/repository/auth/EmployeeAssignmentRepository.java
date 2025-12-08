@@ -55,4 +55,13 @@ public interface EmployeeAssignmentRepository extends JpaRepository<EmployeeAssi
       AND ea.status = 'APPROVED'
     """)
 List<EmployeeAssignment> findApprovedByStoreId(@Param("storeId") Long storeId);
+
+// ✅ 급여용: 특정 매장(storeId)에 배정된 모든 직원 조회
+    List<EmployeeAssignment> findByStore_StoreId(Long storeId);
+
+     // ✅ [여기 추가] 급여 지급 내역 화면에서 직원 역할 조회용
+  Optional<EmployeeAssignment> findByStore_StoreIdAndEmployee_EmployeeId(
+      Long storeId,
+      Long employeeId
+  );
 }

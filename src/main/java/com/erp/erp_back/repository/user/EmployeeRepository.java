@@ -22,4 +22,5 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 
     // ⭐️ (신규) 통계용: 특정 시간 이후 가입한 직원 수
     long countByCreatedAtAfter(LocalDateTime start);
+
 }
