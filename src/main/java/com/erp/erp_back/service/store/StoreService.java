@@ -210,19 +210,12 @@ public class StoreService {
     public void deleteStore(Long storeId, boolean force) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("삭제 대상 사업장이 존재하지 않습니다."));
-        boolean hasChildren = assignmentRepository.existsByStore_StoreId(storeId);
 
-        // ✅ 근무배정 / 직원 연결이 조금이라도 있으면 삭제 막기
-        if (hasChildren && !force) {
-            throw new IllegalStateException("해당 사업장에 연결된 근무 신청/배정이 있어 삭제할 수 없습니다.");
-        }
-        if (hasChildren) {
-            throw new IllegalStateException(
-                    "이 사업장에는 근무배정(직원 연결) 정보가 있어 삭제할 수 없습니다. " +
-                            "근무 기록 보호를 위해 관리자에게 삭제를 요청해 주세요.");
-        }
-        attendanceQrTokenRepository.deleteByStore_StoreId(storeId);
-        storeRepository.delete(store);
+        // 🔹 실제 삭제 대신 상태만 변경 (Soft Delete)
+        store.setStatus("INACTIVE"); // 혹은 "DELETED" 등 통일해서 사용
+
+        // 🔹 변경사항 저장
+        storeRepository.save(store);
     }
 
     @Transactional(readOnly = true)
@@ -241,6 +234,40 @@ public class StoreService {
                 .map(storeMapper::toSimpleResponse) // Mapper 사용 (수정됨)
                 .collect(Collectors.toList());
     }
+
+    @Transactional(readOnly = true)
+    public List<StoreSimpleResponse> getInactiveStoresByOwner(Long ownerId) {
+    // ⚠️ "INACTIVE"는 실제로 사용하는 상태값으로 맞춰줘야 함
+    String inactiveStatus = "INACTIVE";
+
+    return storeRepository.findAllByBusinessNumber_Owner_OwnerIdAndStatus(ownerId, inactiveStatus).stream()
+            .map(storeMapper::toSimpleResponse)
+            .collect(Collectors.toList());
+    }
+
+     public void activateStore(Long storeId) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new IllegalArgumentException("대상 사업장을 찾을 수 없습니다."));
+
+        // 필요한 정책에 맞게 상태 복구 (여기서는 APPROVED 로 가정)
+        if ("INACTIVE".equalsIgnoreCase(store.getStatus())) {
+            store.setStatus("APPROVED");
+            storeRepository.save(store);
+        }
+    }
+    @Transactional(readOnly = true)
+        public Store requireActiveStore(Long storeId) {
+         Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사업장을 찾을 수 없습니다."));
+
+            if ("INACTIVE".equalsIgnoreCase(store.getStatus())) {
+            // ✅ 여기 메시지가 그대로 프론트에 전달될 거야
+            throw new IllegalStateException("비활성화된 사업장입니다. 활성화 후 이용해 주세요.");
+        }
+
+        return store;
+    }
+
 
     public StoreQrResponse getOrRefreshQr(Long storeId, boolean refresh) {
         if (refresh)

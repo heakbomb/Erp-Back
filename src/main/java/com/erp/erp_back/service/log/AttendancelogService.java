@@ -34,6 +34,7 @@ import com.erp.erp_back.repository.log.AttendanceLogRepository;
 import com.erp.erp_back.repository.log.AttendanceQrTokenRepository;
 import com.erp.erp_back.repository.store.StoreRepository;
 import com.erp.erp_back.repository.user.EmployeeRepository;
+import com.erp.erp_back.service.store.StoreService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -48,6 +49,7 @@ public class AttendancelogService {
     private final StoreRepository storeRepo;
     private final AttendanceQrTokenRepository attendanceQrTokenRepository;
     private final AttendanceLogMapper attendanceLogMapper;
+    private final StoreService storeService; 
 
     /**
      * 출퇴근 기록 저장
@@ -69,10 +71,12 @@ public class AttendancelogService {
         }
 
         // 직원 / 매장 존재 확인
+        // 직원 / 매장 존재 + 활성 상태 확인
         Employee emp = employeeRepo.findById(req.getEmployeeId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 직원입니다."));
-        Store store = storeRepo.findById(req.getStoreId())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사업장입니다."));
+
+        // ✅ 비활성 매장이면 여기서 바로 예외 발생 (조회/저장 모두 차단)
+        Store store = storeService.requireActiveStore(req.getStoreId());
 
         // 최신 QR 토큰 검사
         AttendanceQrToken latestToken = attendanceQrTokenRepository
@@ -322,6 +326,9 @@ public class AttendancelogService {
             String month,
             Long employeeId
     ) {
+        // ✅ 비활성 매장 차단
+        storeService.requireActiveStore(storeId);
+        
         if (month == null || month.isBlank()) {
             throw new IllegalArgumentException("month 파라미터는 'yyyy-MM' 형식이어야 합니다.");
         }

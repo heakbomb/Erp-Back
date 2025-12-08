@@ -51,4 +51,7 @@ public interface StoreRepository extends JpaRepository<Store, Long>, JpaSpecific
       @Param("ownerId") Long ownerId,
       @Param("start") LocalDateTime start,
       @Param("end") LocalDateTime end);
+
+    // ✅ 여기 추가: 특정 owner의 비활성 매장만 조회
+    List<Store> findAllByBusinessNumber_Owner_OwnerIdAndStatus(Long ownerId, String status);
 }

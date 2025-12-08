@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -65,6 +66,20 @@ public class StoreController {
     public ResponseEntity<List<StoreSimpleResponse>> getStoresByOwner(@PathVariable Long ownerId) {
         return ResponseEntity.ok(storeService.getStoresByOwner(ownerId));
     }
+
+    @GetMapping("/inactive/by-owner/{ownerId}")
+    public ResponseEntity<List<StoreSimpleResponse>> getInactiveStoresByOwner(
+        @PathVariable Long ownerId
+    ) {
+    return ResponseEntity.ok(storeService.getInactiveStoresByOwner(ownerId));
+    }
+
+     @PatchMapping("/{storeId}/activate")
+    public ResponseEntity<Void> activateStore(@PathVariable Long storeId) {
+        storeService.activateStore(storeId);
+        return ResponseEntity.noContent().build();
+    }
+
     // ✅ 새로 추가: ownerId 기준 사업자번호 목록 조회
     @GetMapping("/business-numbers/by-owner/{ownerId}")
     public ResponseEntity<List<BusinessNumberResponse>> getBusinessNumbersByOwner(
