@@ -33,11 +33,11 @@ public class Inventory {
     @JoinColumn(name = "store_id", nullable = false)
     private Store store;
 
-    @Column(name = "item_name", nullable = false, length = 100)
+    @Column(name = "item_name", nullable = false, length = 20)
     private String itemName;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "item_type", nullable = false, length = 30)
+    @Column(name = "item_type", nullable = false, length = 20)
     private IngredientCategory itemType;// Service에서 builder.itemType(), setItemType()
 
     @Column(name = "stock_type", nullable = false, length = 20)

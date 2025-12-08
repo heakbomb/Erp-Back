@@ -54,11 +54,10 @@ public class MenuItem {
     @JoinColumn(name = "store_id", nullable = false)
     private Store store;
 
-    @Column(name = "menu_name", nullable = false, length = 100)
+    @Column(name = "menu_name", nullable = false, length = 20)
     private String menuName;
 
-    // 금액 컬럼은 넉넉하게 precision 늘려두는 걸 권장
-    @Column(name = "price", nullable = false, precision = 18, scale = 2)
+    @Column(name = "price", nullable = false, precision = 8, scale = 2)
     @Builder.Default
     private BigDecimal price = BigDecimal.ZERO;
 
