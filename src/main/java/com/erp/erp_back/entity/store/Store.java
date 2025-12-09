@@ -50,5 +50,8 @@ public class Store {
     @Column(name = "approved_at")
     private LocalDateTime approvedAt;
 
-    
+    // ✅ 사장 운영 여부 (true = 사용, false = 비활성화)
+    @Builder.Default
+    @Column(name = "active", nullable = false)
+    private Boolean active = true;   // 기본값
 }

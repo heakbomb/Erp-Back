@@ -28,10 +28,10 @@ public class StoreGps {
     @JoinColumn(name = "store_id", nullable = false)
     private Store store;
 
-    @Column
+    @Column(nullable = false)
     private Double latitude;
 
-    @Column
+    @Column(nullable = false)
     private Double longitude;
 
     @Column(name = "gps_radius_m")

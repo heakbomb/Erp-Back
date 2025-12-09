@@ -5,6 +5,7 @@ import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph; 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,31 +15,26 @@ import com.erp.erp_back.entity.subscripition.OwnerSubscription;
 
 @Repository
 public interface OwnerSubscriptionRepository extends JpaRepository<OwnerSubscription, Long> {
-    /**  (Admin) 특정 날짜 기준 활성 구독 수 */
-    @Query("SELECT COUNT(os) FROM OwnerSubscription os " +
-           "WHERE os.expiryDate >= :date")
+
+    /** (Admin) 특정 날짜 기준 활성 구독 수 */
+    @Query("SELECT COUNT(os) FROM OwnerSubscription os WHERE os.expiryDate >= :date")
     long countActiveSubscriptions(@Param("date") LocalDate date);
-    // 상품 삭제 방지용
+
     boolean existsBySubscriptionSubIdAndExpiryDateAfter(Long subId, LocalDate date);
 
-    /** (Admin) 구독 현황 페이징 및 검색 쿼리
-     * (사장님 이메일, 사장님 이름, 구독 상품명으로 검색)
-     */
+    /** (Admin) 구독 현황 페이징 조회 */
     @Query("SELECT os FROM OwnerSubscription os " +
            "JOIN FETCH os.owner o " +
            "JOIN FETCH os.subscription s " +
            "WHERE (:q = '' OR o.email LIKE %:q% OR o.username LIKE %:q% OR s.subName LIKE %:q%)")
-    Page<OwnerSubscription> findAdminOwnerSubscriptions(
-            @Param("q") String q,
-            Pageable pageable
-    );
+    Page<OwnerSubscription> findAdminOwnerSubscriptions(@Param("q") String q, Pageable pageable);
 
-    /** (Owner) 사장님이 현재 활성/만료예정인 구독이 있는지 확인 */
     Optional<OwnerSubscription> findFirstByOwnerOwnerIdAndExpiryDateAfter(Long ownerId, LocalDate date);
 
     /**
-     * 사장님 ID(ownerId)를 기준으로 가장 최근에 만료되는(혹은 가장 최근에 시작된)
-     * 구독 정보 1건을 찾습니다.
+     * ✅ [수정] 사장님의 현재 구독 정보를 조회할 때, Subscription(상품명, 가격) 정보를 
+     * JOIN FETCH로 함께 가져와서 DB 기반 데이터를 보장합니다.
      */
+    @EntityGraph(attributePaths = {"subscription"}) 
     Optional<OwnerSubscription> findFirstByOwner_OwnerIdOrderByExpiryDateDesc(Long ownerId);
 }

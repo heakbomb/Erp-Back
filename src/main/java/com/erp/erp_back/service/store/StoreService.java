@@ -88,8 +88,7 @@ public class StoreService {
         // 2. Page<Store> 조회 (쿼리 1번)
         Page<Store> storePage = storeRepository.findAll(spec, pageable);
 
-        // ✅ [수정] N+1 해결 로직 시작
-
+        // N+1 해결 로직
         // 2-1. 조회된 매장들의 ID 목록 추출
         List<Long> storeIds = storePage.getContent().stream()
                 .map(Store::getStoreId)
@@ -118,9 +117,11 @@ public class StoreService {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("사업장을 찾을 수 없습니다."));
 
+        // 1. 상태 변경
         store.setStatus(newStatus);
 
-        if ("APPROVED".equals(newStatus) && store.getApprovedAt() == null) {
+        // 2. 승인(APPROVED) 상태로 변경 시, 무조건 현재 시간으로 승인 일시 갱신
+        if ("APPROVED".equals(newStatus)) {
             store.setApprovedAt(LocalDateTime.now());
         }
 
@@ -159,16 +160,14 @@ public class StoreService {
 
         Store saved = storeRepository.save(store);
 
-        // GPS 저장 로직 (별도 로직이므로 유지, 혹은 추후 GpsService로 분리 고려)
-        StoreGps gps = null;
-        if (request.getLatitude() != null || request.getLongitude() != null) {
-            gps = new StoreGps();
-            gps.setStore(saved);
-            gps.setLatitude(request.getLatitude());
-            gps.setLongitude(request.getLongitude());
-            gps.setGpsRadiusM(80);
-            storeGpsRepository.save(gps);
-        }
+        // ⭐️ [수정] GPS 저장 로직 (필수값이므로 조건문 없이 무조건 저장)
+        StoreGps gps = new StoreGps();
+        gps.setStore(saved);
+        gps.setLatitude(request.getLatitude());
+        gps.setLongitude(request.getLongitude());
+        // gpsRadiusM이 없으면 기본값 80 설정
+        gps.setGpsRadiusM(request.getGpsRadiusM() != null ? request.getGpsRadiusM() : 80);
+        storeGpsRepository.save(gps);
 
         return storeMapper.toResponse(saved, gps);
     }
@@ -190,19 +189,24 @@ public class StoreService {
             store.setBusinessNumber(bn);
         }
 
-        // GPS 업데이트 로직
-        StoreGps gps = storeGpsRepository.findByStore_StoreId(storeId).orElse(null);
-        if (request.getLatitude() != null || request.getLongitude() != null) {
-            if (gps == null) {
-                gps = new StoreGps();
-                gps.setStore(store);
-            }
-            gps.setLatitude(request.getLatitude());
-            gps.setLongitude(request.getLongitude());
-            if (gps.getGpsRadiusM() == null)
-                gps.setGpsRadiusM(80);
-            storeGpsRepository.save(gps);
+        // ⭐️ [수정] GPS 업데이트 로직 (필수값이므로 무조건 처리)
+        StoreGps gps = storeGpsRepository.findByStore_StoreId(storeId)
+                .orElseGet(() -> {
+                    StoreGps newGps = new StoreGps();
+                    newGps.setStore(store);
+                    return newGps;
+                });
+        
+        gps.setLatitude(request.getLatitude());
+        gps.setLongitude(request.getLongitude());
+        
+        if (request.getGpsRadiusM() != null) {
+            gps.setGpsRadiusM(request.getGpsRadiusM());
+        } else if (gps.getGpsRadiusM() == null) {
+            gps.setGpsRadiusM(80); // 기존 값이 없거나 null로 들어오면 기본값 유지/설정
         }
+        
+        storeGpsRepository.save(gps);
 
         return storeMapper.toResponse(store, gps);
     }
@@ -231,21 +235,21 @@ public class StoreService {
     @Transactional(readOnly = true)
     public List<StoreSimpleResponse> getStoresByOwner(Long ownerId) {
         return storeRepository.findAllByOwnerId(ownerId).stream()
-                .map(storeMapper::toSimpleResponse) // Mapper 사용 (수정됨)
+                .map(storeMapper::toSimpleResponse)
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public List<StoreSimpleResponse> getInactiveStoresByOwner(Long ownerId) {
-    // ⚠️ "INACTIVE"는 실제로 사용하는 상태값으로 맞춰줘야 함
-    String inactiveStatus = "INACTIVE";
+        // ⚠️ "INACTIVE"는 실제로 사용하는 상태값으로 맞춰줘야 함
+        String inactiveStatus = "INACTIVE";
 
-    return storeRepository.findAllByBusinessNumber_Owner_OwnerIdAndStatus(ownerId, inactiveStatus).stream()
-            .map(storeMapper::toSimpleResponse)
-            .collect(Collectors.toList());
+        return storeRepository.findAllByBusinessNumber_Owner_OwnerIdAndStatus(ownerId, inactiveStatus).stream()
+                .map(storeMapper::toSimpleResponse)
+                .collect(Collectors.toList());
     }
 
-     public void activateStore(Long storeId) {
+    public void activateStore(Long storeId) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("대상 사업장을 찾을 수 없습니다."));
 
@@ -255,19 +259,19 @@ public class StoreService {
             storeRepository.save(store);
         }
     }
+
     @Transactional(readOnly = true)
-        public Store requireActiveStore(Long storeId) {
-         Store store = storeRepository.findById(storeId)
+    public Store requireActiveStore(Long storeId) {
+        Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사업장을 찾을 수 없습니다."));
 
-            if ("INACTIVE".equalsIgnoreCase(store.getStatus())) {
+        if ("INACTIVE".equalsIgnoreCase(store.getStatus())) {
             // ✅ 여기 메시지가 그대로 프론트에 전달될 거야
             throw new IllegalStateException("비활성화된 사업장입니다. 활성화 후 이용해 주세요.");
         }
 
         return store;
     }
-
 
     public StoreQrResponse getOrRefreshQr(Long storeId, boolean refresh) {
         if (refresh)
@@ -307,5 +311,4 @@ public class StoreService {
                 .map(storeMapper::toBusinessNumberResponse)
                 .collect(Collectors.toList());
     }
-
 }
