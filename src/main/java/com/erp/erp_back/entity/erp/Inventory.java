@@ -1,6 +1,8 @@
 // src/main/java/com/erp/erp_back/entity/erp/Inventory.java
 package com.erp.erp_back.entity.erp;
 
+import static com.erp.erp_back.util.BigDecimalUtils.nz;
+
 import java.math.BigDecimal;
 
 import com.erp.erp_back.common.ErrorCodes;
@@ -71,5 +73,15 @@ public class Inventory {
 
         // 내부 상태 변경
         this.stockQty = nextStock;
+    }
+
+    public void activateIfPurchased(BigDecimal purchaseQty) {
+        BigDecimal qty = nz(purchaseQty);
+
+        // 매입 수량이 0보다 크고, 현재 비활성이라면 ACTIVE로 전환
+        if (qty.compareTo(BigDecimal.ZERO) > 0
+                && this.status == ActiveStatus.INACTIVE) {
+            this.status = ActiveStatus.ACTIVE;
+        }
     }
 }

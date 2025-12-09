@@ -27,6 +27,7 @@ import com.erp.erp_back.repository.erp.SalesMenuDailySummaryRepository;
 import com.erp.erp_back.repository.erp.SalesTransactionRepository;
 import com.erp.erp_back.util.DateRangeUtils;
 import com.erp.erp_back.util.DateRangeUtils.DateRange;
+import static com.erp.erp_back.util.SalesCalcUtils.calcAvgTicket;
 
 import lombok.RequiredArgsConstructor;
 
@@ -117,11 +118,27 @@ public class SalesStatsService {
         BigDecimal currentMonth = pastThisMonth.add(todaySales);
         BigDecimal prevMonth    = pastLastMonth;
 
-        // 4. 객단가 (단순화를 위해 이번달 기준만 예시로 계산, 필요 시 Count도 가져와서 정확히 계산 가능)
-        // 여기서는 기존 로직과 호환성을 위해 0으로 두거나 별도 Count 로직 추가 가능
-        // 성능을 위해 일단 금액 위주로 구성합니다.
-        BigDecimal avgTicket = BigDecimal.ZERO; 
-        BigDecimal prevAvgTicket = BigDecimal.ZERO;
+        // 4. 객단가 
+        Long currentMonthCountRaw =
+                salesTransactionRepository.countByStoreStoreIdAndTransactionTimeBetween(
+                        storeId,
+                        monthRange.start(),
+                        LocalDateTime.now()
+                );
+
+        // 👉 지난 달: 지난달 1일 00:00 ~ 지난달 말일 23:59:59 (prevMonthRange가 그렇게 잡혀있다고 가정)
+        Long prevMonthCountRaw =
+                salesTransactionRepository.countByStoreStoreIdAndTransactionTimeBetween(
+                        storeId,
+                        prevMonthRange.start(),
+                        prevMonthRange.end()
+                );
+
+        long currentMonthCount = safeCount(currentMonthCountRaw);
+        long prevMonthCount    = safeCount(prevMonthCountRaw);
+
+        BigDecimal avgTicket     = calcAvgTicket(currentMonth, currentMonthCount);
+        BigDecimal prevAvgTicket = calcAvgTicket(prevMonth,   prevMonthCount);
 
         return salesMapper.toSalesSummary(
                 currentDay, prevDay,
@@ -204,5 +221,9 @@ public class SalesStatsService {
         Page<SalesTransaction> page = salesTransactionRepository
                 .findByStoreStoreIdAndTransactionTimeBetween(storeId, range.start(), range.end(), pageable);
         return page.map(salesMapper::toSummaryResponse);
+    }
+
+    private long safeCount(Long val) {
+        return val == null ? 0L : val;
     }
 }

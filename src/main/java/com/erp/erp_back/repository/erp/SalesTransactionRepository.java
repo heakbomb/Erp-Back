@@ -98,6 +98,7 @@ public interface SalesTransactionRepository extends JpaRepository<SalesTransacti
 
         // [멱등성 검사용 - 신규 추가]
         boolean existsByIdempotencyKey(String idempotencyKey);
+        
 
         // 대시보드용: 특정 사업장의 최근 거래 1건
         Optional<SalesTransaction> findTopByStoreStoreIdOrderByTransactionTimeDesc(Long storeId);
@@ -109,4 +110,6 @@ public interface SalesTransactionRepository extends JpaRepository<SalesTransacti
                         LocalDateTime start,
                         LocalDateTime end,
                         Pageable pageable);
+
+                        
 }
