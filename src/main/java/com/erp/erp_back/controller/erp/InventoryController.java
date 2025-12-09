@@ -24,12 +24,15 @@ import org.springframework.web.bind.annotation.RestController;
 import com.erp.erp_back.dto.erp.InventoryRequest;
 import com.erp.erp_back.dto.erp.InventoryResponse;
 import com.erp.erp_back.entity.enums.ActiveStatus;
+import com.erp.erp_back.entity.enums.IngredientCategory;
 import com.erp.erp_back.service.erp.InventoryExportService;
 import com.erp.erp_back.service.erp.InventoryService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/owner/inventory")
 @RequiredArgsConstructor
@@ -45,8 +48,13 @@ public class InventoryController {
             @RequestParam Long storeId,
             @RequestParam(required = false) String q,
             @RequestParam(required = false) ActiveStatus status,
+            @RequestParam(required = false) IngredientCategory itemType,
             @PageableDefault(size = 10, sort = "itemName") Pageable pageable) {
-        Page<InventoryResponse> page = inventoryService.getInventoryPage(storeId, q, status, pageable);
+
+            log.info("Inventory search: storeId={}, status={}, itemType={}, q={}",
+            storeId, status, itemType, q);
+
+        Page<InventoryResponse> page = inventoryService.getInventoryPage(storeId, q, status, itemType, pageable);
         return ResponseEntity.ok(page);
     }
 

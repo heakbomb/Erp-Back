@@ -3,6 +3,7 @@ package com.erp.erp_back.repository.specification;
 import org.springframework.data.jpa.domain.Specification;
 
 import com.erp.erp_back.entity.enums.ActiveStatus;
+import com.erp.erp_back.entity.enums.IngredientCategory;
 import com.erp.erp_back.entity.erp.Inventory;
 
 
@@ -33,5 +34,11 @@ public class InventorySpecification {
      */
     public static Specification<Inventory> hasStatus(ActiveStatus status) {
         return (root, query, cb) -> cb.equal(root.get("status"), status);
+    }
+
+    // 재고 품목 타입 
+     public static Specification<Inventory> hasItemType(IngredientCategory itemType) {
+        return (root, query, cb) ->
+                itemType == null ? null : cb.equal(root.get("itemType"), itemType);
     }
 }

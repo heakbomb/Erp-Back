@@ -11,6 +11,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Component;
 
 import com.erp.erp_back.dto.erp.InventoryResponse;
+import com.erp.erp_back.entity.enums.ActiveStatus;
 
 @Component
 public class InventoryExcelReportGenerator {
@@ -18,6 +19,12 @@ public class InventoryExcelReportGenerator {
     private static final String SHEET_NAME = "재고현황";
 
     public byte[] generate(List<InventoryResponse> rows) {
+
+        // 활성 재고만
+        List<InventoryResponse> activeRows = rows.stream()
+                .filter(r -> r.getStatus() == ActiveStatus.ACTIVE)
+                .toList();
+        
         try (Workbook workbook = new XSSFWorkbook();
                 ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
 
@@ -46,7 +53,7 @@ public class InventoryExcelReportGenerator {
             // ===========================
             // 2) 실제 데이터 rows
             // ===========================
-            for (InventoryResponse rowData : rows) {
+            for (InventoryResponse rowData : activeRows) {
                 Row row = sheet.createRow(rowIdx++);
                 int col = 0;
 

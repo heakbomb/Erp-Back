@@ -68,11 +68,13 @@ public class PurchaseHistoryService {
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.STORE_NOT_FOUND));
 
         Inventory item = inventoryRepository.findByIdWithLock(req.getItemId())
-            .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_ITEM_NOT_FOUND));
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_ITEM_NOT_FOUND));
 
         if (!Objects.equals(item.getStore().getStoreId(), store.getStoreId())) {
             throw new IllegalArgumentException(ErrorCodes.ITEM_NOT_BELONG_TO_STORE);
         }
+
+        item.activateIfPurchased(req.getPurchaseQty());
 
         PurchaseHistory purchase = purchaseHistoryMapper.toEntity(req, store, item);
         PurchaseHistory saved = purchaseHistoryRepository.save(purchase);
@@ -102,12 +104,14 @@ public class PurchaseHistoryService {
         Long itemId = purchase.getInventory().getItemId();
 
         Inventory item = inventoryRepository.findByIdWithLock(itemId)
-            .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_ITEM_NOT_FOUND));
-            
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_ITEM_NOT_FOUND));
+
         BigDecimal prevQty = nz(purchase.getPurchaseQty()); // 기존 매입량
         BigDecimal nextQty = nz(req.getPurchaseQty()); // 수정된 매입량
         BigDecimal delta = nextQty.subtract(prevQty); // 차이 (예: +2 or -5)
-        
+
+        item.activateIfPurchased(req.getPurchaseQty());
+
         item.adjustStock(delta);
 
         purchase.setPurchaseQty(nextQty);
@@ -127,8 +131,8 @@ public class PurchaseHistoryService {
         Long itemId = purchase.getInventory().getItemId();
 
         Inventory item = inventoryRepository.findByIdWithLock(itemId)
-            .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_ITEM_NOT_FOUND));
-        
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_ITEM_NOT_FOUND));
+
         // 재고 원복 (매입했던 수량을 다시 뺌)
         item.adjustStock(purchase.getPurchaseQty().negate());
 
@@ -152,6 +156,7 @@ public class PurchaseHistoryService {
     private void onPurchaseChanged(Inventory item) {
         recomputeLatestCostFromHistory(item);
         menuItemService.propagateCostUpdate(item.getItemId());
-}
+    }
 
+    
 }
