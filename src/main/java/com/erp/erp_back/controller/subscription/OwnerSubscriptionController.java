@@ -19,57 +19,39 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/owner/subscriptions") // ✅ 사장님(Owner)용 API 루트
+@RequestMapping("/owner/subscriptions") 
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class OwnerSubscriptionController {
 
     private final OwnerSubscriptionService ownerSubService;
 
-    /**
-     * (Owner) 구독 신청
-     * POST /owner/subscriptions
-     */
+    // 구독 신청 API (기존 유지)
     @PostMapping
     public ResponseEntity<OwnerSubscriptionResponse> createSubscription(
             @Valid @RequestBody OwnerSubscriptionRequest request
     ) {
-        // [로그 추가] 요청이 여기까지 들어오는지 확인
-        System.out.println("==================================================");
-        System.out.println("[DEBUG] createSubscription 요청 도착!");
-        System.out.println("[DEBUG] SubId: " + request.getSubId());
-        System.out.println("[DEBUG] CustomerUid(BillingKey): " + request.getCustomerUid());
-        System.out.println("==================================================");
+        // TODO: 추후 Spring Security의 @AuthenticationPrincipal 등으로 ownerId 교체 필요
         Long tempOwnerId = 1L; 
-        try {
-            OwnerSubscriptionResponse response = ownerSubService.createSubscription(tempOwnerId, request);
-            System.out.println("[DEBUG] 서비스 처리 완료: " + response);
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
-        } catch (Exception e) {
-            System.out.println("[DEBUG] 에러 발생: " + e.getMessage());
-            e.printStackTrace();
-            throw e;
-        }
+        OwnerSubscriptionResponse response = ownerSubService.createSubscription(tempOwnerId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
-    /**
-     * ⭐️ [신규] (Owner) 현재 구독 상태 조회
-     * GET /owner/subscriptions/current
-     */
+
+    // (Owner) 현재 구독 상태 조회 (DB 기반)
     @GetMapping("/current")
     public ResponseEntity<OwnerSubscriptionResponse> getCurrentSubscription() {
-        Long tempOwnerId = 1L; // ⭐️ 사장 ID 1번 하드코딩
-        
-        // ⭐️ (참고) 서비스 레이어에 getSubscriptionByOwnerId 같은 메서드가 필요합니다.
-        // 이 메서드는 OwnerSubscription과 Subscription을 조인(Join)해서
-        // OwnerSubscriptionResponse DTO (subName, monthlyPrice 포함)를 반환해야 합니다.
+        Long tempOwnerId = 1L; 
+
+        // 서비스 -> 리포지토리(Join Fetch) -> DB 조회 -> DTO 변환(가격/이름 포함)
         OwnerSubscriptionResponse response = ownerSubService.getCurrentSubscriptionByOwnerId(tempOwnerId);
         
         return ResponseEntity.ok(response);
     }                                           
              
-    // --- (예외 핸들러) ---
+    // --- 예외 핸들러 ---
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<String> handleNotFound(EntityNotFoundException e) {
+        // 구독 정보가 없을 때 404 리턴
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
     }
     

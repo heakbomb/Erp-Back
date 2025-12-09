@@ -26,8 +26,10 @@ public class StoreCreateRequest {
     @Size(max = 50)
     private String posVendor;
 
+    @NotNull(message = "위치 정보(위도)는 필수입니다.")
     private Double latitude;
     
+    @NotNull(message = "위치 정보(경도)는 필수입니다.")
     private Double longitude;
 
     private Integer gpsRadiusM;

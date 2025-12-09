@@ -54,7 +54,6 @@ public class PhoneVerifyScheduler {
 
         // 2. PENDING 건이 0이면 (기다리는 사람이 없으면) Gmail 접속 안 함
         if (pendingCount == 0) {
-            System.out.println("[" + java.time.LocalTime.now() + "] PENDING 요청 없음. (Skip)");
             return; // 작업 종료 (가장 효율적)
         }
         // ================================================
@@ -133,7 +132,6 @@ public class PhoneVerifyScheduler {
     @Transactional
     public void cleanupExpiredRequests() {
         LocalDateTime now = LocalDateTime.now();
-        System.out.println("[" + now + "] 만료된 인증 요청(phone_verify_requests) 청소 시작...");
         
         // Repository의 쿼리 호출
         phoneVerifyRepository.deleteAllByExpiresAtBefore(now);
