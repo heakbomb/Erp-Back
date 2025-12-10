@@ -21,7 +21,8 @@ import com.erp.erp_back.entity.store.BusinessNumber;
 import com.erp.erp_back.entity.store.Store;
 import com.erp.erp_back.entity.store.StoreGps;
 
-@Mapper(componentModel = MappingConstants.ComponentModel.SPRING,
+@Mapper(
+    componentModel = MappingConstants.ComponentModel.SPRING,
     unmappedTargetPolicy = ReportingPolicy.IGNORE
 )
 public interface StoreMapper {
@@ -48,6 +49,8 @@ public interface StoreMapper {
     @Mapping(source = "store.storeId", target = "storeId")
     @Mapping(source = "store.status", target = "status")
     @Mapping(source = "store.approvedAt", target = "approvedAt")
+    // ✅ 추가: active 매핑
+    @Mapping(source = "store.active", target = "active")
     // BusinessNumber 내부 필드 접근 (Dot notation 사용)
     @Mapping(source = "store.businessNumber.bizId", target = "bizId")
     @Mapping(source = "store.businessNumber.bizNum", target = "bizNum")
@@ -74,7 +77,7 @@ public interface StoreMapper {
     default StoreResponse toResponse(Store store) {
         return toResponse(store, null, null);
     }
-    
+
     default StoreResponse toResponse(Store store, StoreGps gps) {
         return toResponse(store, gps, null);
     }

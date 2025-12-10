@@ -22,6 +22,7 @@ public class StoreResponse {
     private LocalDateTime approvedAt;
     private Double latitude;
     private Double longitude;
+    private Boolean active;
 
     // --- 상세 정보 필드 ---
     private String ownerName;
