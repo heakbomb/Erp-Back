@@ -27,11 +27,13 @@ import com.erp.erp_back.entity.auth.EmployeeAssignment;
 import com.erp.erp_back.entity.log.AttendanceLog;
 import com.erp.erp_back.entity.log.AttendanceQrToken;
 import com.erp.erp_back.entity.store.Store;
+import com.erp.erp_back.entity.store.StoreGps;                    // ✅ 추가
 import com.erp.erp_back.entity.user.Employee;
 import com.erp.erp_back.mapper.AttendanceLogMapper;
 import com.erp.erp_back.repository.auth.EmployeeAssignmentRepository;
 import com.erp.erp_back.repository.log.AttendanceLogRepository;
 import com.erp.erp_back.repository.log.AttendanceQrTokenRepository;
+import com.erp.erp_back.repository.store.StoreGpsRepository;     // ✅ 추가
 import com.erp.erp_back.repository.store.StoreRepository;
 import com.erp.erp_back.repository.user.EmployeeRepository;
 import com.erp.erp_back.service.store.StoreService;
@@ -49,7 +51,25 @@ public class AttendancelogService {
     private final StoreRepository storeRepo;
     private final AttendanceQrTokenRepository attendanceQrTokenRepository;
     private final AttendanceLogMapper attendanceLogMapper;
-    private final StoreService storeService; 
+    private final StoreService storeService;
+    private final StoreGpsRepository storeGpsRepository;        // ✅ 추가
+
+    // ✅ 지구 반지름 (m)
+    private static final double EARTH_RADIUS_M = 6371000.0;
+
+    // ✅ 두 좌표 간 거리(m) 계산 (Haversine)
+    private double distanceMeters(double lat1, double lon1, double lat2, double lon2) {
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1))
+                * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return EARTH_RADIUS_M * c;
+    }
 
     /**
      * 출퇴근 기록 저장
@@ -71,7 +91,6 @@ public class AttendancelogService {
         }
 
         // 직원 / 매장 존재 확인
-        // 직원 / 매장 존재 + 활성 상태 확인
         Employee emp = employeeRepo.findById(req.getEmployeeId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 직원입니다."));
 
@@ -100,31 +119,93 @@ public class AttendancelogService {
             throw new IllegalStateException("해당 매장에 승인된 직원만 출퇴근을 기록할 수 있습니다.");
         }
 
-        // 마지막 기록 확인해서 IN/OUT 순서 체크
-        AttendanceLog last = attendanceRepo
-                .findTopByEmployee_EmployeeIdAndStore_StoreIdOrderByRecordTimeDesc(
-                        emp.getEmployeeId(), store.getStoreId());
+        // ============================
+        // ✅ GPS 반경 검사 (store_gps 기준)
+        // ============================
+        // 1) 위치 정보 없는 경우
+        if (req.getLatitude() == null || req.getLongitude() == null) {
+            throw new IllegalArgumentException("위치 정보가 없습니다. '위치 가져오기' 후 다시 시도해 주세요.");
+        }
 
-        if (last != null) {
-            if ("IN".equals(last.getRecordType()) && "IN".equals(type)) {
-                throw new IllegalStateException("이미 출근 상태입니다. 먼저 퇴근(OUT)을 기록하세요.");
+        // 2) 매장 GPS 정보 조회
+        StoreGps storeGps = storeGpsRepository.findByStore_StoreId(store.getStoreId())
+                .orElseThrow(() -> new IllegalStateException("이 매장은 위치 정보가 설정되어 있지 않습니다. 관리자에게 문의해 주세요."));
+
+        if (storeGps.getLatitude() == null || storeGps.getLongitude() == null) {
+            throw new IllegalStateException("이 매장의 위도/경도 정보가 올바르지 않습니다. 관리자에게 문의해 주세요.");
+        }
+
+        double storeLat = storeGps.getLatitude();
+        double storeLng = storeGps.getLongitude();
+        double userLat = req.getLatitude();
+        double userLng = req.getLongitude();
+
+        // 반경 (m) – 값이 없으면 기본 80m
+        double radius = (storeGps.getGpsRadiusM() != null)
+                ? storeGps.getGpsRadiusM()
+                : 80.0;
+
+        double distance = distanceMeters(userLat, userLng, storeLat, storeLng);
+
+        if (distance > radius) {
+            String msg = String.format(
+                    "사업장 반경 %.0fm 이내에서만 출퇴근을 기록할 수 있습니다. (현재 거리: 약 %.0fm)",
+                    radius,
+                    distance
+            );
+            throw new IllegalStateException(msg);
+        }
+
+        // ============================
+        // 🔒 "오늘" 기준 중복 출근/퇴근 방지 로직
+        // ============================
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
+        LocalDate today = now.toLocalDate();
+        LocalDateTime startOfDay = today.atStartOfDay();
+        LocalDateTime endOfDay = today.atTime(LocalTime.MAX);
+
+        // 오늘 이 직원+매장의 기록(최신순) 조회
+        List<AttendanceLog> todayLogs = attendanceRepo
+                .findByEmployee_EmployeeIdAndStore_StoreIdAndRecordTimeBetweenOrderByRecordTimeDesc(
+                        emp.getEmployeeId(),
+                        store.getStoreId(),
+                        startOfDay,
+                        endOfDay
+                );
+
+        // 👉 오늘 IN / OUT 이 한 번이라도 있는지 여부
+        boolean hasInToday = todayLogs.stream()
+                .anyMatch(l -> "IN".equalsIgnoreCase(l.getRecordType()));
+
+        boolean hasOutToday = todayLogs.stream()
+                .anyMatch(l -> "OUT".equalsIgnoreCase(l.getRecordType()));
+
+        if ("IN".equals(type)) {
+            // 오늘 이미 한 번이라도 출근(IN)이 찍혀 있으면 → 중복 출근 막기
+            if (hasInToday) {
+                throw new IllegalStateException("이미 오늘 출근이 등록되어 있습니다.");
             }
-            if ("OUT".equals(last.getRecordType()) && "OUT".equals(type)) {
-                throw new IllegalStateException("이미 퇴근 상태입니다. 먼저 출근(IN)을 기록하세요.");
+        } else if ("OUT".equals(type)) {
+            // 1) 오늘 출근 기록이 전혀 없는데 퇴근부터 누르면 막기
+            if (!hasInToday) {
+                throw new IllegalStateException("오늘 출근 기록이 없습니다. 먼저 출근을 등록하세요.");
             }
-        } else {
-            if ("OUT".equals(type)) {
-                throw new IllegalStateException("첫 기록은 출근(IN)이어야 합니다.");
+            // 2) 오늘 이미 한 번이라도 퇴근(OUT)이 찍혀 있으면 → 중복 퇴근 막기
+            if (hasOutToday) {
+                throw new IllegalStateException("이미 오늘 퇴근이 등록되어 있습니다.");
             }
         }
 
+        // ============================
         // 저장
+        // ============================
         AttendanceLog saved = new AttendanceLog();
         saved.setEmployee(emp);
         saved.setStore(store);
-        saved.setRecordTime(LocalDateTime.now(ZoneId.of("Asia/Seoul")));
+        saved.setRecordTime(now);
         saved.setRecordType(type);
 
+        // 💡 나중에 필요하면 여기서 saved.setLatitude(userLat) 같은 것도 추가 가능
 
         saved = attendanceRepo.save(saved);
 
@@ -272,10 +353,10 @@ public class AttendancelogService {
 
                 days.add(time.toLocalDate());
 
-                String type = l.getRecordType();
-                if ("IN".equalsIgnoreCase(type)) {
+                String t = l.getRecordType();
+                if ("IN".equalsIgnoreCase(t)) {
                     lastIn = time;
-                } else if ("OUT".equalsIgnoreCase(type) && lastIn != null) {
+                } else if ("OUT".equalsIgnoreCase(t) && lastIn != null) {
                     totalMinutes += Duration.between(lastIn, time).toMinutes();
                     lastIn = null;
                 }

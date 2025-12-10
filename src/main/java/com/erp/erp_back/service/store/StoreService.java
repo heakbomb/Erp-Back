@@ -88,23 +88,18 @@ public class StoreService {
         // 2. Page<Store> 조회 (쿼리 1번)
         Page<Store> storePage = storeRepository.findAll(spec, pageable);
 
-        // ✅ [수정] N+1 해결 로직 시작
-
-        // 2-1. 조회된 매장들의 ID 목록 추출
+        // ✅ N+1 해결 - GPS 한번에 조회
         List<Long> storeIds = storePage.getContent().stream()
                 .map(Store::getStoreId)
                 .toList();
 
-        // 2-2. 해당 매장들의 GPS 정보를 한 번에 조회 (쿼리 1번)
         List<StoreGps> gpsList = storeGpsRepository.findAllByStore_StoreIdIn(storeIds);
 
-        // 2-3. 매핑 편의를 위해 Map<StoreId, StoreGps>로 변환
         Map<Long, StoreGps> gpsMap = gpsList.stream()
                 .collect(Collectors.toMap(
                         gps -> gps.getStore().getStoreId(),
                         gps -> gps));
 
-        // 3. 메모리 상에서 매핑 (DB 조회 없음)
         return storePage.map(s -> {
             StoreGps gps = gpsMap.get(s.getStoreId());
             return storeMapper.toResponse(s, gps);
@@ -113,6 +108,8 @@ public class StoreService {
 
     /**
      * (Admin) 사업장 상태 변경 (승인/반려)
+     *  - 여기서는 여전히 status 만 변경 (APPROVED / REJECTED / PENDING)
+     *  - active 는 건드리지 않음
      */
     public StoreResponse updateStoreStatus(Long storeId, String newStatus) {
         Store store = storeRepository.findById(storeId)
@@ -127,7 +124,6 @@ public class StoreService {
         Store updated = storeRepository.save(store);
         StoreGps gps = storeGpsRepository.findByStore_StoreId(updated.getStoreId()).orElse(null);
 
-        // 상태 변경 후에는 상세 정보를 포함하여 반환
         List<EmployeeAssignment> assignments = assignmentRepository.findAllByStoreId(updated.getStoreId());
         return storeMapper.toResponse(updated, gps, assignments);
     }
@@ -143,7 +139,6 @@ public class StoreService {
         StoreGps gps = storeGpsRepository.findByStore_StoreId(storeId).orElse(null);
         List<EmployeeAssignment> assignments = assignmentRepository.findAllByStoreId(storeId);
 
-        // Mapper 사용: 모든 정보를 통합하여 반환
         return storeMapper.toResponse(store, gps, assignments);
     }
 
@@ -154,12 +149,11 @@ public class StoreService {
         BusinessNumber bn = businessNumberRepository.findById(request.getBizId())
                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 사업자(bizId) 입니다."));
 
-        // Builder 대신 Mapper 사용
+        // Mapper 에서 status / active 기본값 세팅 (예: status = PENDING, active = true)
         Store store = storeMapper.toEntity(request, bn);
 
         Store saved = storeRepository.save(store);
 
-        // GPS 저장 로직 (별도 로직이므로 유지, 혹은 추후 GpsService로 분리 고려)
         StoreGps gps = null;
         if (request.getLatitude() != null || request.getLongitude() != null) {
             gps = new StoreGps();
@@ -180,17 +174,16 @@ public class StoreService {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("사업장 없음"));
 
-        // 일일이 setter 호출하는 대신 Mapper가 업데이트 수행
         storeMapper.updateFromDto(request, store);
 
-        // 비즈니스 로직: 사업자 번호가 변경된 경우 별도 처리
+        // 사업자 번호 변경 시 처리
         if (request.getBizId() != null && !request.getBizId().equals(store.getBusinessNumber().getBizId())) {
             BusinessNumber bn = businessNumberRepository.findById(request.getBizId())
                     .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 사업자(bizId) 입니다."));
             store.setBusinessNumber(bn);
         }
 
-        // GPS 업데이트 로직
+        // GPS 업데이트
         StoreGps gps = storeGpsRepository.findByStore_StoreId(storeId).orElse(null);
         if (request.getLatitude() != null || request.getLongitude() != null) {
             if (gps == null) {
@@ -206,15 +199,18 @@ public class StoreService {
 
         return storeMapper.toResponse(store, gps);
     }
-    
+
+    /**
+     * ✅ 사장용 “비활성화” (Soft Delete)
+     *  - status 는 건드리지 않고 active 만 false 로 변경
+     */
     public void deleteStore(Long storeId, boolean force) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("삭제 대상 사업장이 존재하지 않습니다."));
 
-        // 🔹 실제 삭제 대신 상태만 변경 (Soft Delete)
-        store.setStatus("INACTIVE"); // 혹은 "DELETED" 등 통일해서 사용
+        // 여기서는 일단 정책 단순화: 무조건 active=false 로만 처리
+        store.setActive(Boolean.FALSE);
 
-        // 🔹 변경사항 저장
         storeRepository.save(store);
     }
 
@@ -231,43 +227,54 @@ public class StoreService {
     @Transactional(readOnly = true)
     public List<StoreSimpleResponse> getStoresByOwner(Long ownerId) {
         return storeRepository.findAllByOwnerId(ownerId).stream()
-                .map(storeMapper::toSimpleResponse) // Mapper 사용 (수정됨)
+                .map(storeMapper::toSimpleResponse)
                 .collect(Collectors.toList());
     }
 
+    /**
+     * ✅ 사장용: “비활성화된 사업장 목록”
+     *   - status 가 아니라 active=false 기준으로 조회
+     */
     @Transactional(readOnly = true)
     public List<StoreSimpleResponse> getInactiveStoresByOwner(Long ownerId) {
-    // ⚠️ "INACTIVE"는 실제로 사용하는 상태값으로 맞춰줘야 함
-    String inactiveStatus = "INACTIVE";
-
-    return storeRepository.findAllByBusinessNumber_Owner_OwnerIdAndStatus(ownerId, inactiveStatus).stream()
-            .map(storeMapper::toSimpleResponse)
-            .collect(Collectors.toList());
+        return storeRepository
+                .findAllByBusinessNumber_Owner_OwnerIdAndActive(ownerId, false)
+                .stream()
+                .map(storeMapper::toSimpleResponse)
+                .collect(Collectors.toList());
     }
 
-     public void activateStore(Long storeId) {
+    /**
+     * ✅ 사장용: 비활성화된 사업장 다시 활성화
+     *   - status 는 그대로 (PENDING / APPROVED / REJECTED 값 유지)
+     *   - active 만 true 로 변경
+     */
+    public void activateStore(Long storeId) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("대상 사업장을 찾을 수 없습니다."));
 
-        // 필요한 정책에 맞게 상태 복구 (여기서는 APPROVED 로 가정)
-        if ("INACTIVE".equalsIgnoreCase(store.getStatus())) {
-            store.setStatus("APPROVED");
+        if (Boolean.FALSE.equals(store.getActive())) {
+            store.setActive(Boolean.TRUE);
             storeRepository.save(store);
         }
     }
+
+    /**
+     * ✅ 출퇴근/QR 등에서 사용하는 “사용 가능한 사업장” 체크
+     *   - status 가 INACTIVE 인지 보던 기존 로직을 active=false 체크로 변경
+     */
     @Transactional(readOnly = true)
-        public Store requireActiveStore(Long storeId) {
-         Store store = storeRepository.findById(storeId)
+    public Store requireActiveStore(Long storeId) {
+        Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사업장을 찾을 수 없습니다."));
 
-            if ("INACTIVE".equalsIgnoreCase(store.getStatus())) {
-            // ✅ 여기 메시지가 그대로 프론트에 전달될 거야
+        // active 가 null 이면 기존 데이터 호환을 위해 true 로 간주
+        if (Boolean.FALSE.equals(store.getActive())) {
             throw new IllegalStateException("비활성화된 사업장입니다. 활성화 후 이용해 주세요.");
         }
 
         return store;
     }
-
 
     public StoreQrResponse getOrRefreshQr(Long storeId, boolean refresh) {
         if (refresh)
@@ -277,7 +284,6 @@ public class StoreService {
         if (latest == null || latest.getExpireAt().isBefore(LocalDateTime.now())) {
             return regenerateQrToken(storeId);
         }
-        // Mapper 사용 (수정됨)
         return storeMapper.toQrResponse(latest);
     }
 
@@ -294,7 +300,6 @@ public class StoreService {
 
         AttendanceQrToken savedQr = attendanceQrTokenRepository.save(qr);
 
-        // Mapper 사용 (수정됨)
         return storeMapper.toQrResponse(savedQr);
     }
 

@@ -5,7 +5,6 @@ import java.util.List;
 
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,10 +19,9 @@ import com.erp.erp_back.dto.log.EmployeeAttendanceSummary;
 import com.erp.erp_back.service.log.AttendancelogService;
 
 import lombok.RequiredArgsConstructor;
-
 @RestController
 @RequestMapping("/attendance")
-@CrossOrigin(origins = "*")
+
 @RequiredArgsConstructor
 public class AttendancelogController {
 
