@@ -17,6 +17,7 @@ import com.erp.erp_back.dto.erp.PurchaseHistoryUpdateRequest;
 import com.erp.erp_back.entity.erp.Inventory;
 import com.erp.erp_back.entity.erp.PurchaseHistory;
 import com.erp.erp_back.entity.store.Store;
+import com.erp.erp_back.exception.BusinessException;
 import com.erp.erp_back.mapper.PurchaseHistoryMapper;
 import com.erp.erp_back.repository.erp.InventoryRepository;
 import com.erp.erp_back.repository.erp.PurchaseHistoryRepository;
@@ -68,11 +69,13 @@ public class PurchaseHistoryService {
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.STORE_NOT_FOUND));
 
         Inventory item = inventoryRepository.findByIdWithLock(req.getItemId())
-            .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_ITEM_NOT_FOUND));
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_ITEM_NOT_FOUND));
 
         if (!Objects.equals(item.getStore().getStoreId(), store.getStoreId())) {
             throw new IllegalArgumentException(ErrorCodes.ITEM_NOT_BELONG_TO_STORE);
         }
+
+        item.activateIfPurchased(req.getPurchaseQty());
 
         PurchaseHistory purchase = purchaseHistoryMapper.toEntity(req, store, item);
         PurchaseHistory saved = purchaseHistoryRepository.save(purchase);
@@ -102,13 +105,24 @@ public class PurchaseHistoryService {
         Long itemId = purchase.getInventory().getItemId();
 
         Inventory item = inventoryRepository.findByIdWithLock(itemId)
-            .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_ITEM_NOT_FOUND));
-            
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_ITEM_NOT_FOUND));
+
         BigDecimal prevQty = nz(purchase.getPurchaseQty()); // 기존 매입량
         BigDecimal nextQty = nz(req.getPurchaseQty()); // 수정된 매입량
         BigDecimal delta = nextQty.subtract(prevQty); // 차이 (예: +2 or -5)
-        
-        item.adjustStock(delta);
+
+        item.activateIfPurchased(req.getPurchaseQty());
+
+        try {
+            item.adjustStock(delta);
+        } catch (IllegalArgumentException ex) {
+            if (ErrorCodes.NEGATIVE_STOCK_NOT_ALLOWED.equals(ex.getMessage())) {
+                throw new BusinessException(
+                        ErrorCodes.PURCHASE_QTY_LESS_THAN_SOLD,
+                        "이미 판매된 수량 때문에 이 매입 수량으로 줄이면 재고가 음수가 되어 수정할 수 없습니다.");
+            }
+            throw ex; // 다른 IllegalArgumentException이면 그대로 던짐
+        }
 
         purchase.setPurchaseQty(nextQty);
         purchase.setUnitPrice(nz(req.getUnitPrice()));
@@ -127,10 +141,21 @@ public class PurchaseHistoryService {
         Long itemId = purchase.getInventory().getItemId();
 
         Inventory item = inventoryRepository.findByIdWithLock(itemId)
-            .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_ITEM_NOT_FOUND));
-        
+                .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_ITEM_NOT_FOUND));
+
         // 재고 원복 (매입했던 수량을 다시 뺌)
-        item.adjustStock(purchase.getPurchaseQty().negate());
+        try {
+            // 삭제 = 과거 매입을 없애는 거라, 당시 매입량만큼 재고에서 빼줌
+            item.adjustStock(purchase.getPurchaseQty().negate());
+        } catch (IllegalArgumentException ex) {
+            // 재고 음수 도메인 규칙 위반이면 → 사용자 친화적인 비즈니스 예외로 포장
+            if (ErrorCodes.NEGATIVE_STOCK_NOT_ALLOWED.equals(ex.getMessage())) {
+                throw new BusinessException(
+                        ErrorCodes.PURCHASE_DELETE_BELOW_CONSUMED,
+                        "이미 판매된 수량 때문에 이 매입 내역을 삭제하면 재고가 음수가 되어 삭제할 수 없습니다.");
+            }
+            throw ex; // 다른 IllegalArgumentException이면 그대로 올림
+        }
 
         purchaseHistoryRepository.delete(purchase);
 
@@ -152,6 +177,6 @@ public class PurchaseHistoryService {
     private void onPurchaseChanged(Inventory item) {
         recomputeLatestCostFromHistory(item);
         menuItemService.propagateCostUpdate(item.getItemId());
-}
+    }
 
 }

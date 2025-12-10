@@ -4,6 +4,7 @@ package com.erp.erp_back.service.erp;
 import static com.erp.erp_back.repository.specification.InventorySpecification.byStoreId;
 import static com.erp.erp_back.repository.specification.InventorySpecification.hasStatus;
 import static com.erp.erp_back.repository.specification.InventorySpecification.itemNameContains;
+import static com.erp.erp_back.repository.specification.InventorySpecification.hasItemType;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -19,6 +20,7 @@ import com.erp.erp_back.common.ErrorCodes;
 import com.erp.erp_back.dto.erp.InventoryRequest;
 import com.erp.erp_back.dto.erp.InventoryResponse;
 import com.erp.erp_back.entity.enums.ActiveStatus;
+import com.erp.erp_back.entity.enums.IngredientCategory;
 import com.erp.erp_back.entity.erp.Inventory;
 import com.erp.erp_back.entity.store.Store;
 import com.erp.erp_back.mapper.InventoryMapper;
@@ -54,7 +56,7 @@ public class InventoryService {
         return inventoryMapper.toResponse(inv);
     }
 
-    public Page<InventoryResponse> getInventoryPage(Long storeId, String q, ActiveStatus status, Pageable pageable) {
+    public Page<InventoryResponse> getInventoryPage(Long storeId, String q, ActiveStatus status, IngredientCategory itemType, Pageable pageable) {
         Specification<Inventory> spec = byStoreId(storeId);
 
         // 2. 동적 조건: 검색어(q)가 있으면 AND 조건 추가 (AND item_name LIKE %?%)
@@ -66,6 +68,11 @@ public class InventoryService {
         if (status != null) {
             spec = spec.and(hasStatus(status));
         }
+
+        // 4. 동적 조건: 품목 타입 
+         if (itemType != null) {
+        spec = spec.and(hasItemType(itemType));
+    }
 
         // 4. 실행: 완성된 명세(Spec)로 조회
         Page<Inventory> page = inventoryRepository.findAll(spec, pageable);

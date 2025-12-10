@@ -9,7 +9,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -32,7 +31,7 @@ public class MenuItemController {
             @RequestParam Long storeId,
             @RequestParam(required = false) String q,
             @RequestParam(required = false) ActiveStatus status,
-            @PageableDefault(size = 20, sort = "menuName") Pageable pageable
+            Pageable pageable
     ) {
         Page<MenuItemResponse> page = menuItemService.getMenuPage(storeId, q, status, pageable);
         return ResponseEntity.ok(page);

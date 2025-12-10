@@ -13,12 +13,12 @@ import com.erp.erp_back.dto.subscription.OwnerSubscriptionResponse;
 import com.erp.erp_back.entity.subscripition.OwnerSubscription;
 import com.erp.erp_back.entity.subscripition.Subscription;
 import com.erp.erp_back.entity.user.Owner;
-import com.erp.erp_back.entity.user.PaymentMethod; // ✅ 추가
+import com.erp.erp_back.entity.user.PaymentMethod;
 import com.erp.erp_back.mapper.OwnerSubscriptionMapper;
 import com.erp.erp_back.repository.subscripition.OwnerSubscriptionRepository;
 import com.erp.erp_back.repository.subscripition.SubscriptionRepository;
 import com.erp.erp_back.repository.user.OwnerRepository;
-import com.erp.erp_back.repository.user.PaymentMethodRepository; // ✅ 추가
+import com.erp.erp_back.repository.user.PaymentMethodRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +31,7 @@ public class OwnerSubscriptionService {
     private final OwnerSubscriptionRepository ownerSubRepo;
     private final OwnerRepository ownerRepository;
     private final SubscriptionRepository subscriptionRepository;
-    private final PaymentMethodRepository paymentMethodRepository; // ✅ 추가
+    private final PaymentMethodRepository paymentMethodRepository; 
     private final OwnerSubscriptionMapper subscriptionMapper;
 
     /**
@@ -116,17 +116,16 @@ public class OwnerSubscriptionService {
         paymentMethodRepository.save(newMethod);
     }
 
-    // ==========================================
-    // ⬇️ 아래 메서드들이 없어서 에러가 났던 것입니다. ⬇️
-    // ==========================================
-
     /**
      * 2. (Owner) 현재 구독 현황 조회
      */
     @Transactional(readOnly = true)
     public OwnerSubscriptionResponse getCurrentSubscriptionByOwnerId(Long ownerId) {
+        // 1. 가장 최근 만료일(혹은 현재 활성) 구독 조회
         OwnerSubscription ownerSub = ownerSubRepo.findFirstByOwner_OwnerIdOrderByExpiryDateDesc(ownerId)
-                .orElseThrow(() -> new EntityNotFoundException("구독 정보를 찾을 수 없습니다."));
+                .orElseThrow(() -> new EntityNotFoundException("현재 이용 중인 구독 정보가 없습니다."));
+        
+        // 2. DTO 변환 (Mapper 내부에서 subscription.monthlyPrice -> response.monthlyPrice 매핑 수행)
         return subscriptionMapper.toResponse(ownerSub);
     }
 

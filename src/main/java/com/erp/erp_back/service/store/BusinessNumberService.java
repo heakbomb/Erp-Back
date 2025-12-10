@@ -19,7 +19,7 @@ import com.erp.erp_back.repository.user.OwnerRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j; 
 
-@Slf4j // ✅ 경고 로그 찍으려고 추가
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -33,8 +33,8 @@ public class BusinessNumberService {
     private final Long defaultOwnerId = 1L;
 
     /** 숫자만 남기기(하이픈/공백 제거) */
-    private String norm(String bizNo) {
-        return bizNo == null ? "" : bizNo.replaceAll("[^0-9]", "");
+    private String norm(String input) {
+        return input == null ? "" : input.replaceAll("[^0-9]", "");
     }
 
     public BusinessNumber verifyAndSave(String rawBizNo, String rawPhone) {
@@ -43,7 +43,8 @@ public class BusinessNumberService {
             throw new IllegalArgumentException("사업자번호 형식이 올바르지 않습니다. (숫자 10자리)");
         }
 
-        String phone = rawPhone == null ? "" : rawPhone.trim();
+        String phone = norm(rawPhone); 
+        
         if (phone.isBlank()) {
             throw new IllegalArgumentException("전화번호는 필수 입력입니다.");
         }
@@ -75,8 +76,7 @@ public class BusinessNumberService {
             throw new IllegalArgumentException("유효하지 않은 사업자번호입니다.");
         }
 
-        // ✅ 추가: 폐업자인 경우 인증 및 등록 막기
-        if (stt.contains("폐업")) { // "폐업자", "폐업" 등 문자열 포함 체크
+        if (stt.contains("폐업")) {
             throw new IllegalArgumentException("폐업 상태의 사업자번호는 인증 및 등록할 수 없습니다.");
         }
 
@@ -84,7 +84,7 @@ public class BusinessNumberService {
         Owner defaultOwner = ownerRepository.findById(defaultOwnerId)
                 .orElseThrow(() -> new IllegalStateException("기본 Owner가 존재하지 않습니다. (owner_id=1)"));
 
-        // 4. Mapper를 사용하여 Entity 생성 (수동 Builder 제거)
+        // 4. Mapper를 사용하여 Entity 생성 (여기서 정제된 phone이 들어감)
         BusinessNumber bn = businessNumberMapper.toEntity(bno, phone, item, defaultOwner);
 
         return businessRepo.save(bn);

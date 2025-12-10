@@ -88,7 +88,8 @@ public class StoreService {
         // 2. Page<Store> 조회 (쿼리 1번)
         Page<Store> storePage = storeRepository.findAll(spec, pageable);
 
-        // ✅ N+1 해결 - GPS 한번에 조회
+        // N+1 해결 로직
+        // 2-1. 조회된 매장들의 ID 목록 추출
         List<Long> storeIds = storePage.getContent().stream()
                 .map(Store::getStoreId)
                 .toList();
@@ -115,9 +116,11 @@ public class StoreService {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("사업장을 찾을 수 없습니다."));
 
+        // 1. 상태 변경
         store.setStatus(newStatus);
 
-        if ("APPROVED".equals(newStatus) && store.getApprovedAt() == null) {
+        // 2. 승인(APPROVED) 상태로 변경 시, 무조건 현재 시간으로 승인 일시 갱신
+        if ("APPROVED".equals(newStatus)) {
             store.setApprovedAt(LocalDateTime.now());
         }
 
@@ -154,15 +157,14 @@ public class StoreService {
 
         Store saved = storeRepository.save(store);
 
-        StoreGps gps = null;
-        if (request.getLatitude() != null || request.getLongitude() != null) {
-            gps = new StoreGps();
-            gps.setStore(saved);
-            gps.setLatitude(request.getLatitude());
-            gps.setLongitude(request.getLongitude());
-            gps.setGpsRadiusM(80);
-            storeGpsRepository.save(gps);
-        }
+        // ⭐️ [수정] GPS 저장 로직 (필수값이므로 조건문 없이 무조건 저장)
+        StoreGps gps = new StoreGps();
+        gps.setStore(saved);
+        gps.setLatitude(request.getLatitude());
+        gps.setLongitude(request.getLongitude());
+        // gpsRadiusM이 없으면 기본값 80 설정
+        gps.setGpsRadiusM(request.getGpsRadiusM() != null ? request.getGpsRadiusM() : 80);
+        storeGpsRepository.save(gps);
 
         return storeMapper.toResponse(saved, gps);
     }
@@ -183,19 +185,24 @@ public class StoreService {
             store.setBusinessNumber(bn);
         }
 
-        // GPS 업데이트
-        StoreGps gps = storeGpsRepository.findByStore_StoreId(storeId).orElse(null);
-        if (request.getLatitude() != null || request.getLongitude() != null) {
-            if (gps == null) {
-                gps = new StoreGps();
-                gps.setStore(store);
-            }
-            gps.setLatitude(request.getLatitude());
-            gps.setLongitude(request.getLongitude());
-            if (gps.getGpsRadiusM() == null)
-                gps.setGpsRadiusM(80);
-            storeGpsRepository.save(gps);
+        // ⭐️ [수정] GPS 업데이트 로직 (필수값이므로 무조건 처리)
+        StoreGps gps = storeGpsRepository.findByStore_StoreId(storeId)
+                .orElseGet(() -> {
+                    StoreGps newGps = new StoreGps();
+                    newGps.setStore(store);
+                    return newGps;
+                });
+        
+        gps.setLatitude(request.getLatitude());
+        gps.setLongitude(request.getLongitude());
+        
+        if (request.getGpsRadiusM() != null) {
+            gps.setGpsRadiusM(request.getGpsRadiusM());
+        } else if (gps.getGpsRadiusM() == null) {
+            gps.setGpsRadiusM(80); // 기존 값이 없거나 null로 들어오면 기본값 유지/설정
         }
+        
+        storeGpsRepository.save(gps);
 
         return storeMapper.toResponse(store, gps);
     }
@@ -225,10 +232,19 @@ public class StoreService {
     }
 
     @Transactional(readOnly = true)
-    public List<StoreSimpleResponse> getStoresByOwner(Long ownerId) {
-        return storeRepository.findAllByOwnerId(ownerId).stream()
-                .map(storeMapper::toSimpleResponse)
-                .collect(Collectors.toList());
+    public List<StoreResponse> getStoresByOwner(Long ownerId) {
+    // 1) owner 기준으로 Store 목록 조회
+    List<Store> stores = storeRepository.findAllByOwnerId(ownerId);
+
+    // 2) 각 Store 에 대한 GPS 가져와서 StoreResponse 로 변환
+    return stores.stream()
+            .map(s -> {
+                StoreGps gps = storeGpsRepository
+                        .findByStore_StoreId(s.getStoreId())
+                        .orElse(null);
+                return storeMapper.toResponse(s, gps);
+            })
+            .collect(Collectors.toList());
     }
 
     /**
@@ -312,5 +328,4 @@ public class StoreService {
                 .map(storeMapper::toBusinessNumberResponse)
                 .collect(Collectors.toList());
     }
-
 }

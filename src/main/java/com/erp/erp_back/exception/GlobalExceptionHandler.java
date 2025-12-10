@@ -75,6 +75,20 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("INVALID_INPUT", primaryMessage, errors));
     }
 
+    //비즈니스 예외(BusinessException)를 공통 에러 응답으로 변환해 주는 글로벌 핸들러.
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ErrorResponse> handleBusiness(BusinessException ex) {
+
+        ErrorResponse body = new ErrorResponse(
+                ex.getCode(),
+                ex.getMessage(),
+                null);
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(body);
+    }
+
     // 잘못된 인자 전달 (기존 두 핸들러 충돌 해결)
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
@@ -92,7 +106,7 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse("CONSTRAINT_VIOLATION", ex.getMessage()));
     }
-    
+
     // 잘못된 상태 (ApiExceptionHandler에서 가져옴)
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ErrorResponse> handleIllegalState(IllegalStateException ex) {
@@ -138,7 +152,7 @@ public class GlobalExceptionHandler {
     // =================================================================================
     // 4. 그 외 처리되지 않은 모든 예외 (최후의 보루)
     // =================================================================================
-    
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGlobalException(Exception ex) {
         log.error("Unexpected Error: ", ex); // 스택 트레이스 전체 로깅
