@@ -63,8 +63,8 @@ public class StoreController {
     }
 
     @GetMapping("/by-owner/{ownerId}")
-    public ResponseEntity<List<StoreSimpleResponse>> getStoresByOwner(@PathVariable Long ownerId) {
-        return ResponseEntity.ok(storeService.getStoresByOwner(ownerId));
+    public ResponseEntity<List<StoreResponse>> getStoresByOwner(@PathVariable Long ownerId) {
+    return ResponseEntity.ok(storeService.getStoresByOwner(ownerId));
     }
 
     @GetMapping("/inactive/by-owner/{ownerId}")

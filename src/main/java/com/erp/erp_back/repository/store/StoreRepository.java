@@ -15,8 +15,6 @@ import com.erp.erp_back.entity.store.Store;
 @Repository
 public interface StoreRepository extends JpaRepository<Store, Long>, JpaSpecificationExecutor<Store> {
 
-  // ✅ [수정됨] fetch 위치를 'join' 바로 뒤로 이동했습니다.
-  // (기존: join s.businessNumber bn fetch -> 수정: join fetch s.businessNumber bn)
   @Query("""
       select s
       from Store s
@@ -52,6 +50,9 @@ public interface StoreRepository extends JpaRepository<Store, Long>, JpaSpecific
       @Param("start") LocalDateTime start,
       @Param("end") LocalDateTime end);
 
-    // ✅ 여기 추가: 특정 owner의 비활성 매장만 조회
-    List<Store> findAllByBusinessNumber_Owner_OwnerIdAndStatus(Long ownerId, String status);
+  // ⚠️ 예전: status 로 비활성 매장 찾던 메서드
+  // List<Store> findAllByBusinessNumber_Owner_OwnerIdAndStatus(Long ownerId, String status);
+
+  // ✅ 새로 추가: active 플래그 기준으로 조회
+  List<Store> findAllByBusinessNumber_Owner_OwnerIdAndActive(Long ownerId, boolean active);
 }

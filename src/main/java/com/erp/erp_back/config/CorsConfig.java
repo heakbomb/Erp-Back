@@ -23,8 +23,8 @@ public class CorsConfig {
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://192.168.0.151:3000",
-        //"https://*.ngrok-free.app" // ✅ 모든 ngrok 서브도메인을 허용
-        "https://diphthongic-apolonia-aggravatingly.ngrok-free.dev"
+        "https://*.ngrok-free.app",
+        "https://*.ngrok-free.dev"
     ));
     
     // [기존 설정 유지]
