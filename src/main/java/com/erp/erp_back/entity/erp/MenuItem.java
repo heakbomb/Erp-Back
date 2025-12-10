@@ -57,7 +57,7 @@ public class MenuItem {
     @Column(name = "menu_name", nullable = false, length = 20)
     private String menuName;
 
-    @Column(name = "price", nullable = false, precision = 8, scale = 2)
+    @Column(name = "price", nullable = false, precision = 10, scale = 2)
     @Builder.Default
     private BigDecimal price = BigDecimal.ZERO;
 

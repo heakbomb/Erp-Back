@@ -42,7 +42,7 @@ public class Inventory {
     @Column(name = "item_type", nullable = false, length = 20)
     private IngredientCategory itemType;// Service에서 builder.itemType(), setItemType()
 
-    @Column(name = "stock_type", nullable = false, length = 20)
+    @Column(name = "stock_type", nullable = false, length = 10)
     private String stockType; // Service에서 setStockType()
 
     @Column(name = "stock_qty", nullable = false, precision = 10, scale = 3)

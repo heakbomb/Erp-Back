@@ -30,6 +30,9 @@ public final class ErrorCodes {
     public static final String CANNOT_MODIFY_RECIPE_OF_INACTIVE_MENU = "CANNOT_MODIFY_RECIPE_OF_INACTIVE_MENU";
     public static final String CANNOT_USE_INACTIVE_INVENTORY_IN_RECIPE = "CANNOT_USE_INACTIVE_INVENTORY_IN_RECIPE";
 
+    public static final String PURCHASE_QTY_LESS_THAN_SOLD = "PURCHASE_QTY_LESS_THAN_SOLD";
+    public static final String PURCHASE_DELETE_BELOW_CONSUMED = "PURCHASE_DELETE_BELOW_CONSUMED";
+    
     public static final String UNSUPPORTED_PERIOD = "Unsupported period";
 
     // existing code...
