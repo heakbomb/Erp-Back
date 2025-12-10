@@ -30,25 +30,50 @@ public class SalesSummaryScheduler {
 
     private final SalesTransactionRepository transactionRepo;
     private final SalesDailySummaryRepository summaryRepo;
-    
+
     // 메뉴 요약용 리포지토리 추가 주입
     private final SalesLineItemRepository lineItemRepo;
     private final SalesMenuDailySummaryRepository menuSummaryRepo;
 
     // 매일 새벽 2시 실행
-    @Scheduled(cron = "0 0 2 * * ?")
+    @Scheduled(cron = "0 40 20 * * ?")
     @Transactional
     public void summarizeYesterdayData() {
         LocalDate yesterday = LocalDate.now().minusDays(1);
-        log.info("[Scheduler] {} 일자 데이터 집계 시작", yesterday);
-        
-        // 1. 매출 요약 (Dashboard)
-        summarizeSales(yesterday);
-        
-        // 2. 메뉴 판매 요약 (Top Menu)
-        summarizeMenus(yesterday);
-        
-        log.info("[Scheduler] {} 일자 데이터 집계 완료", yesterday);
+        LocalDate targetFrom = findLastSummaryDatePlusOneOrFallback(yesterday.minusDays(7));
+        LocalDate targetTo = yesterday;
+
+        log.info("[Scheduler] {} ~ {} 일자 데이터 집계 시작", targetFrom, targetTo);
+
+        LocalDate cur = targetFrom;
+        while (!cur.isAfter(targetTo)) {
+            summarizeSales(cur);
+            summarizeMenus(cur);
+            cur = cur.plusDays(1);
+        }
+
+        log.info("[Scheduler] {} ~ {} 일자 데이터 집계 완료", targetFrom, targetTo);
+    }
+
+    private LocalDate findLastSummaryDatePlusOneOrFallback(LocalDate fallbackFrom) {
+        LocalDate yesterday = LocalDate.now().minusDays(1);
+        LocalDate maxDate = summaryRepo.findMaxSummaryDate(); // 가장 최근 요약 날짜
+
+        if (maxDate == null) {
+            // ▶ 요약 데이터가 하나도 없으면: fallbackFrom부터 시작
+            return fallbackFrom;
+        }
+
+        // ▶ 마지막 요약 날짜의 다음 날부터 다시 집계 시작
+        LocalDate candidate = maxDate.plusDays(1);
+
+        // 만약 이미 어제까지 다 요약돼 있으면, 어제 하루만 대상으로 삼도록 조정
+        if (candidate.isAfter(yesterday)) {
+            return yesterday;
+        }
+
+        // candidate가 fallbackFrom보다 이전이면 fallbackFrom부터 시작
+        return candidate.isBefore(fallbackFrom) ? fallbackFrom : candidate;
     }
 
     private void summarizeSales(LocalDate date) {
@@ -58,13 +83,13 @@ public class SalesSummaryScheduler {
         List<Map<String, Object>> stats = transactionRepo.findDailySalesStatsByDate(start, end);
 
         List<SalesDailySummary> summaries = stats.stream()
-            .map(row -> SalesDailySummary.builder()
-                .storeId((Long) row.get("storeId"))
-                .summaryDate(date)
-                .totalSales((BigDecimal) row.get("totalSales"))
-                .transactionCount((Long) row.get("count"))
-                .build())
-            .toList();
+                .map(row -> SalesDailySummary.builder()
+                        .storeId((Long) row.get("storeId"))
+                        .summaryDate(date)
+                        .totalSales((BigDecimal) row.get("totalSales"))
+                        .transactionCount((Long) row.get("count"))
+                        .build())
+                .toList();
 
         if (!summaries.isEmpty()) {
             summaryRepo.saveAll(summaries);
@@ -80,14 +105,14 @@ public class SalesSummaryScheduler {
         List<DailyMenuStatDto> stats = lineItemRepo.findDailyMenuStatsByDate(start, end);
 
         List<SalesMenuDailySummary> summaries = stats.stream()
-            .map(dto -> SalesMenuDailySummary.builder()
-                .store(Store.builder().storeId(dto.getStoreId()).build()) // Proxy 객체
-                .menuItem(MenuItem.builder().menuId(dto.getMenuId()).build())
-                .summaryDate(date)
-                .totalQuantity(dto.getTotalQuantity())
-                .totalAmount(dto.getTotalAmount())
-                .build())
-            .toList();
+                .map(dto -> SalesMenuDailySummary.builder()
+                        .store(Store.builder().storeId(dto.getStoreId()).build()) // Proxy 객체
+                        .menuItem(MenuItem.builder().menuId(dto.getMenuId()).build())
+                        .summaryDate(date)
+                        .totalQuantity(dto.getTotalQuantity())
+                        .totalAmount(dto.getTotalAmount())
+                        .build())
+                .toList();
 
         if (!summaries.isEmpty()) {
             menuSummaryRepo.saveAll(summaries);

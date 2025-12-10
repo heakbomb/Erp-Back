@@ -38,4 +38,7 @@ public interface SalesDailySummaryRepository extends JpaRepository<SalesDailySum
         @Param("prevMonthEnd") LocalDate prevMonthEnd,
         @Param("minDate") LocalDate minDate
     );
+
+    @Query("select max(s.summaryDate) from SalesDailySummary s")
+    LocalDate findMaxSummaryDate();
 }

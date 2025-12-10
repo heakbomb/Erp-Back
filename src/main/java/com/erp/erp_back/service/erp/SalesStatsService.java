@@ -45,35 +45,33 @@ public class SalesStatsService {
     /**
      * [메인 변경] 하이브리드 대시보드 요약 (성능 최적화됨)
      */
-    public SalesSummaryResponse getSalesSummary(Long storeId) {
-        LocalDate today = LocalDate.now();
-        LocalDate yesterday = today.minusDays(1);
+public SalesSummaryResponse getSalesSummary(Long storeId) {
+    LocalDate today = LocalDate.now();
+    LocalDate yesterday = today.minusDays(1);
 
-        // 1. 날짜 범위 정의
-        DateRange weekRange = DateRangeUtils.forThisWeek(today);
-        // ✅ 수정: between() 대신 new DateRange() 사용
-        DateRange prevWeekRange = new DateRange(
-                weekRange.start().minusWeeks(1), 
-                weekRange.end().minusWeeks(1)
-        );
-        
-        DateRange monthRange = DateRangeUtils.forThisMonth(today);
-        // ✅ 수정: between() 대신 new DateRange() 사용
-        DateRange prevMonthRange = new DateRange(
-                monthRange.start().minusMonths(1), 
-                monthRange.end().minusMonths(1)
-        );
+    // 1. 날짜 범위 정의
+    DateRange weekRange = DateRangeUtils.forThisWeek(today);
+    DateRange prevWeekRange = new DateRange(
+            weekRange.start().minusWeeks(1),
+            weekRange.end().minusWeeks(1)
+    );
 
-        // 쿼리 최적화용: 가장 오래된 조회 시작 날짜
-        LocalDate minDate = prevMonthRange.start().toLocalDate(); 
-        if (prevWeekRange.start().toLocalDate().isBefore(minDate)) {
-            minDate = prevWeekRange.start().toLocalDate();
-        }
+    DateRange monthRange = DateRangeUtils.forThisMonth(today);
+    DateRange prevMonthRange = new DateRange(
+            monthRange.start().minusMonths(1),
+            monthRange.end().minusMonths(1)
+    );
 
-        // =================================================================
-        // STEP 1: 과거 데이터 조회 (요약 테이블 - 1번의 쿼리로 모든 과거 데이터 조회)
-        // =================================================================
-        DashboardStatsProjection pastStats = salesDailySummaryRepository.findIntegratedStats(
+    // 쿼리 최적화용: 가장 오래된 조회 시작 날짜
+    LocalDate minDate = prevMonthRange.start().toLocalDate();
+    if (prevWeekRange.start().toLocalDate().isBefore(minDate)) {
+        minDate = prevWeekRange.start().toLocalDate();
+    }
+
+    // =================================================================
+    // STEP 1: 과거 데이터 조회 (요약 테이블 - 1번의 쿼리로 모든 과거 데이터 조회)
+    // =================================================================
+    DashboardStatsProjection pastStats = salesDailySummaryRepository.findIntegratedStats(
             storeId,
             yesterday,
             weekRange.start().toLocalDate(),     // 이번주 시작
@@ -83,70 +81,97 @@ public class SalesStatsService {
             prevMonthRange.start().toLocalDate(),// 지난달 시작
             prevMonthRange.end().toLocalDate(),  // 지난달 끝
             minDate
-        );
-        
-        // Null 방지 (데이터가 없으면 0)
-        BigDecimal pastYesterday = safe(pastStats != null ? pastStats.yesterdaySales() : null);
-        BigDecimal pastThisWeek  = safe(pastStats != null ? pastStats.thisWeekSales() : null);
-        BigDecimal pastLastWeek  = safe(pastStats != null ? pastStats.lastWeekSales() : null);
-        BigDecimal pastThisMonth = safe(pastStats != null ? pastStats.thisMonthSales() : null);
-        BigDecimal pastLastMonth = safe(pastStats != null ? pastStats.lastMonthSales() : null);
+    );
 
+    // Null 방지 (데이터가 없으면 0)
+    BigDecimal pastYesterday = safe(pastStats != null ? pastStats.yesterdaySales() : null);
+    BigDecimal pastThisWeek  = safe(pastStats != null ? pastStats.thisWeekSales() : null);
+    BigDecimal pastLastWeek  = safe(pastStats != null ? pastStats.lastWeekSales() : null);
+    BigDecimal pastThisMonth = safe(pastStats != null ? pastStats.thisMonthSales() : null);
+    BigDecimal pastLastMonth = safe(pastStats != null ? pastStats.lastMonthSales() : null);
 
-        // =================================================================
-        // STEP 2: 오늘 실시간 데이터 조회 (Transaction 테이블 - 오늘치만 스캔)
-        // =================================================================
-        BigDecimal todaySales = salesTransactionRepository.sumTotalAmountByStoreIdBetween(
-            storeId, today.atStartOfDay(), LocalDateTime.now()
-        );
-        todaySales = safe(todaySales);
+    // =================================================================
+    // STEP 2: 오늘 실시간 데이터 조회 (Transaction 테이블 - 오늘치만 스캔)
+    // =================================================================
+    BigDecimal todaySales = safe(
+            salesTransactionRepository.sumTotalAmountByStoreIdBetween(
+                    storeId,
+                    today.atStartOfDay(),
+                    LocalDateTime.now()
+            )
+    );
 
+    // =================================================================
+    // STEP 3: 데이터 병합 (과거 + 오늘) + 요약 없을 때 fallback
+    // =================================================================
 
-        // =================================================================
-        // STEP 3: 데이터 병합 (과거 + 오늘)
-        // =================================================================
-        
-        // 1. 일별: [오늘] vs [어제]
-        BigDecimal currentDay = todaySales;
-        BigDecimal prevDay    = pastYesterday;
+    // 1. 일별: [오늘] vs [어제]
+    BigDecimal currentDay = todaySales;
+    BigDecimal prevDay    = pastYesterday;
 
-        // 2. 주간: [오늘 + 이번주(어제까지)] vs [지난주]
-        BigDecimal currentWeek = pastThisWeek.add(todaySales);
-        BigDecimal prevWeek    = pastLastWeek;
-
-        // 3. 월간: [오늘 + 이번달(어제까지)] vs [지난달]
-        BigDecimal currentMonth = pastThisMonth.add(todaySales);
-        BigDecimal prevMonth    = pastLastMonth;
-
-        // 4. 객단가 
-        Long currentMonthCountRaw =
-                salesTransactionRepository.countByStoreStoreIdAndTransactionTimeBetween(
+    // 2. 주간
+    BigDecimal currentWeek;
+    if (pastThisWeek.compareTo(BigDecimal.ZERO) > 0) {
+        // ✅ 요약 테이블에 이번주(어제까지) 데이터가 있으면: 요약 + 오늘
+        currentWeek = pastThisWeek.add(todaySales);
+    } else {
+        // ⚠ 요약이 비어 있으면: 이번 주 전체를 트랜잭션에서 직접 합산
+        currentWeek = safe(
+                salesTransactionRepository.sumTotalAmountByStoreIdBetween(
                         storeId,
-                        monthRange.start(),
-                        LocalDateTime.now()
-                );
-
-        // 👉 지난 달: 지난달 1일 00:00 ~ 지난달 말일 23:59:59 (prevMonthRange가 그렇게 잡혀있다고 가정)
-        Long prevMonthCountRaw =
-                salesTransactionRepository.countByStoreStoreIdAndTransactionTimeBetween(
-                        storeId,
-                        prevMonthRange.start(),
-                        prevMonthRange.end()
-                );
-
-        long currentMonthCount = safeCount(currentMonthCountRaw);
-        long prevMonthCount    = safeCount(prevMonthCountRaw);
-
-        BigDecimal avgTicket     = calcAvgTicket(currentMonth, currentMonthCount);
-        BigDecimal prevAvgTicket = calcAvgTicket(prevMonth,   prevMonthCount);
-
-        return salesMapper.toSalesSummary(
-                currentDay, prevDay,
-                currentWeek, prevWeek,
-                currentMonth, prevMonth,
-                avgTicket, prevAvgTicket
+                        weekRange.start(),            // 이번주 시작 (예: 월요일 00:00)
+                        LocalDateTime.now()           // 현재 시각
+                )
         );
     }
+    BigDecimal prevWeek = pastLastWeek;            // 지난주는 여전히 요약 사용
+
+    // 3. 월간
+    BigDecimal currentMonth;
+    if (pastThisMonth.compareTo(BigDecimal.ZERO) > 0) {
+        // ✅ 요약 테이블에 이번달(어제까지) 데이터가 있으면: 요약 + 오늘
+        currentMonth = pastThisMonth.add(todaySales);
+    } else {
+        // ⚠ 요약이 비어 있으면: 이번 달 전체를 트랜잭션에서 직접 합산
+        currentMonth = safe(
+                salesTransactionRepository.sumTotalAmountByStoreIdBetween(
+                        storeId,
+                        monthRange.start(),           // 이번달 1일 00:00
+                        LocalDateTime.now()
+                )
+        );
+    }
+    BigDecimal prevMonth = pastLastMonth;          // 지난달은 요약 사용
+
+    // 4. 객단가 (currentMonth 기준으로 그대로 계산)
+    Long currentMonthCountRaw =
+            salesTransactionRepository.countByStoreStoreIdAndTransactionTimeBetween(
+                    storeId,
+                    monthRange.start(),
+                    LocalDateTime.now()
+            );
+
+    Long prevMonthCountRaw =
+            salesTransactionRepository.countByStoreStoreIdAndTransactionTimeBetween(
+                    storeId,
+                    prevMonthRange.start(),
+                    prevMonthRange.end()
+            );
+
+    long currentMonthCount = safeCount(currentMonthCountRaw);
+    long prevMonthCount    = safeCount(prevMonthCountRaw);
+
+    BigDecimal avgTicket     = calcAvgTicket(currentMonth, currentMonthCount);
+    BigDecimal prevAvgTicket = calcAvgTicket(prevMonth,   prevMonthCount);
+
+    return salesMapper.toSalesSummary(
+            currentDay, prevDay,
+            currentWeek, prevWeek,
+            currentMonth, prevMonth,
+            avgTicket, prevAvgTicket
+    );
+}
+
 
     private BigDecimal safe(BigDecimal val) {
         return val == null ? BigDecimal.ZERO : val;
