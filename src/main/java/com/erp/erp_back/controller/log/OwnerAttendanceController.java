@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.erp.erp_back.dto.log.EmployeeAttendanceSummary;
+import com.erp.erp_back.dto.log.EmployeeStatusSummary;
 import com.erp.erp_back.service.log.OwnerAttendanceService;
 
 import lombok.RequiredArgsConstructor;
@@ -38,5 +39,14 @@ public class OwnerAttendanceController {
         List<EmployeeAttendanceSummary> list =
                 ownerAttendanceService.getDailySummary(storeId, date);
         return ResponseEntity.ok(list);
+    }
+
+     @GetMapping("/status")
+    public ResponseEntity<EmployeeStatusSummary> status(
+            @RequestParam Long storeId
+    ) {
+        EmployeeStatusSummary summary =
+                ownerAttendanceService.getEmployeeStatus(storeId);
+        return ResponseEntity.ok(summary);
     }
 }
