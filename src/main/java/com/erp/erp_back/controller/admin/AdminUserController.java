@@ -91,26 +91,6 @@ public class AdminUserController {
         return ResponseEntity.ok(employeePage);
     }
 
-    /**
-     * (Admin) '사장님' 계정 삭제
-     * DELETE /admin/users/owners/{id}
-     */
-    @DeleteMapping("/owners/{id}")
-    public ResponseEntity<Void> deleteOwner(@PathVariable Long id) {
-        ownerService.deleteOwner(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    /**
-     * (Admin) '직원' 계정 삭제
-     * DELETE /admin/users/employees/{id}
-     */
-    @DeleteMapping("/employees/{id}")
-    public ResponseEntity<Void> deleteEmployee(@PathVariable Long id) {
-        employeeService.deleteEmployee(id);
-        return ResponseEntity.noContent().build();
-    }
-
     // --- (AdminStoreController와 동일한 예외 핸들러) ---
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<String> handleConflict(IllegalStateException e) {
