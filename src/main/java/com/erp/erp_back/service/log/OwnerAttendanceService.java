@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.erp.erp_back.dto.log.EmployeeAttendanceSummary;
+import com.erp.erp_back.dto.log.EmployeeStatusSummary;
 import com.erp.erp_back.entity.log.AttendanceLog;
 import com.erp.erp_back.entity.auth.EmployeeAssignment;
 import com.erp.erp_back.mapper.EmployeeAttendanceMapper;
@@ -75,4 +76,39 @@ public class OwnerAttendanceService {
 
         return result;
     }
+
+    public EmployeeStatusSummary getEmployeeStatus(Long storeId) {
+    if (storeId == null) {
+        throw new IllegalArgumentException("storeId는 필수입니다.");
+    }
+
+    LocalDate today = LocalDate.now();
+
+    // 오늘 이 매장의 로그
+    List<AttendanceLog> logs =
+            attendanceLogRepository.findByStoreAndDate(storeId, today);
+
+    Map<Long, AttendanceLog> latestLogByEmp = new HashMap<>();
+    for (AttendanceLog log : logs) {
+        if (log.getEmployee() == null || log.getRecordTime() == null) continue;
+
+        Long empId = log.getEmployee().getEmployeeId();
+        AttendanceLog current = latestLogByEmp.get(empId);
+
+        if (current == null ||
+            log.getRecordTime().isAfter(current.getRecordTime())) {
+            latestLogByEmp.put(empId, log);
+        }
+    }
+
+    long workingCount = latestLogByEmp.values().stream()
+            .filter(l -> "IN".equalsIgnoreCase(l.getRecordType()))
+            .count();
+
+    List<EmployeeAssignment> assignments =
+            employeeAssignmentRepository.findApprovedByStoreId(storeId);
+    long totalCount = assignments.size();
+
+    return new EmployeeStatusSummary(workingCount, totalCount);
+}
 }
