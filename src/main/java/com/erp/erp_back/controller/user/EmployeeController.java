@@ -43,8 +43,8 @@ public class EmployeeController {
 
     /** 직원 삭제 */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        employeeService.deleteEmployee(id);
+    public ResponseEntity<Void> delete(@PathVariable("id") Long assignmentId) {
+        employeeService.endAssignment(assignmentId);
         return ResponseEntity.noContent().build();
     }
 }

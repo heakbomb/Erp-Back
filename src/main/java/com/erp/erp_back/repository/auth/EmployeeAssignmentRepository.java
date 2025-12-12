@@ -57,13 +57,19 @@ public interface EmployeeAssignmentRepository extends JpaRepository<EmployeeAssi
     // ✅ 급여용: 특정 매장(storeId)에 배정된 모든 직원 조회
     List<EmployeeAssignment> findByStore_StoreId(Long storeId);
 
-    // ✅ 급여 지급 내역 화면에서 직원 역할 조회용
-    Optional<EmployeeAssignment> findByStore_StoreIdAndEmployee_EmployeeId(
-            Long storeId,
-            Long employeeId
-    );
+     // ✅ [여기 추가] 급여 지급 내역 화면에서 직원 역할 조회용
+  Optional<EmployeeAssignment> findByStore_StoreIdAndEmployee_EmployeeId(
+      Long storeId,
+      Long employeeId
+  );
 
-    // ✅ [여기 추가] 직원 ID로 소속된 매장 목록 조회 (APPROVED 상태만, Store 정보 Fetch)
+   // ⭐️ [추가] 직원 + 사업장 기준으로 "가장 최근" 신청 1건 조회 (상태 무관)
+  Optional<EmployeeAssignment> findTopByEmployee_EmployeeIdAndStore_StoreIdOrderByAssignmentIdDesc(
+      Long employeeId,
+      Long storeId
+  );
+
+   // ✅ [여기 추가] 직원 ID로 소속된 매장 목록 조회 (APPROVED 상태만, Store 정보 Fetch)
     // N+1 문제를 방지하기 위해 Store 정보를 fetch join으로 함께 가져옵니다.
     @Query("SELECT ea FROM EmployeeAssignment ea JOIN FETCH ea.store WHERE ea.employee.employeeId = :employeeId AND ea.status = 'APPROVED'")
     List<EmployeeAssignment> findAllByEmployeeId(@Param("employeeId") Long employeeId);

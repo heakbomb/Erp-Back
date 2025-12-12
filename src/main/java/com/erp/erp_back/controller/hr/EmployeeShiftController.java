@@ -108,4 +108,11 @@ public class EmployeeShiftController {
     public ResponseEntity<String> handleBadReq(IllegalArgumentException e) {
         return ResponseEntity.badRequest().body(e.getMessage());
     }
+
+    // ⭐ 중복 근무 스케줄 등 상태 충돌(IllegalStateException) 처리
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<String> handleConflict(IllegalStateException e) {
+        // 409 CONFLICT 로 내려주고, 메시지는 그대로 프론트에 전달
+        return ResponseEntity.status(409).body(e.getMessage());
+    }
 }

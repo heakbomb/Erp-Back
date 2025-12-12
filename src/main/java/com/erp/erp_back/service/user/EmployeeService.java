@@ -7,7 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.erp.erp_back.dto.store.StoreSimpleResponse; // ✅ DTO Import 추가
+import com.erp.erp_back.dto.store.StoreSimpleResponse;
 import com.erp.erp_back.dto.user.EmployeeResponse;
 import com.erp.erp_back.entity.auth.EmployeeAssignment;
 import com.erp.erp_back.entity.user.Employee;
@@ -72,7 +72,22 @@ public class EmployeeService {
         return employeeMapper.toResponse(emp);
     }
 
-    /** ✅ [여기 추가] 특정 직원이 소속된 매장 목록 조회 */
+    /**
+     * ✅ 직원-사업장 배정 해제(퇴사 처리)
+     * - employee 테이블은 건드리지 않고
+     * - employee_assignment.status를 ENDED로 변경
+     * - 이력은 그대로 남는다.
+     */
+    public void endAssignment(Long assignmentId) {
+        EmployeeAssignment a = employeeAssignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 배정(assignmentId=" + assignmentId + ")을 찾을 수 없습니다."));
+
+        // 이미 APPROVED 상태에서만 목록에 뜨므로,
+        // 여기서 ENDED로 바꾸면 이후 getEmployeesByStore()에서 자동으로 안 보이게 됨.
+        a.setStatus("ENDED");
+    }
+
+       /** ✅ [여기 추가] 특정 직원이 소속된 매장 목록 조회 */
     @Transactional(readOnly = true)
     public List<StoreSimpleResponse> getStoresByEmployee(Long employeeId) {
         return employeeAssignmentRepository.findAllByEmployeeId(employeeId).stream()
@@ -87,11 +102,6 @@ public class EmployeeService {
                 .toList();
     }
 
-    /** 직원 삭제 */
-    public void deleteEmployee(Long id) {
-        if (!employeeRepository.existsById(id)) {
-            throw new IllegalArgumentException("해당 직원(ID=" + id + ")을 찾을 수 없습니다.");
-        }
-        employeeRepository.deleteById(id);
-    }
+
+    
 }
