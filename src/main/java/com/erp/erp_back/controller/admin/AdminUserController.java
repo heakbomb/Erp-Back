@@ -7,7 +7,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -90,18 +89,6 @@ public class AdminUserController {
         Page<EmployeeResponse> employeePage = employeeService.getEmployeesForAdmin(q, pageable);
         return ResponseEntity.ok(employeePage);
     }
-
-    /**
-     * (Admin) '사장님' 계정 삭제
-     * DELETE /admin/users/owners/{id}
-     */
-    @DeleteMapping("/owners/{id}")
-    public ResponseEntity<Void> deleteOwner(@PathVariable Long id) {
-        ownerService.deleteOwner(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    
 
     // --- (AdminStoreController와 동일한 예외 핸들러) ---
     @ExceptionHandler(IllegalStateException.class)

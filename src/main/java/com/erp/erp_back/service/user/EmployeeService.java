@@ -1,4 +1,3 @@
-// src/main/java/com/erp/erp_back/service/user/EmployeeService.java
 package com.erp.erp_back.service.user;
 
 import java.util.List;
@@ -8,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.erp.erp_back.dto.store.StoreSimpleResponse;
 import com.erp.erp_back.dto.user.EmployeeResponse;
 import com.erp.erp_back.entity.auth.EmployeeAssignment;
 import com.erp.erp_back.entity.user.Employee;
@@ -45,18 +45,15 @@ public class EmployeeService {
     /** ✅ 특정 사업장에 등록된 *승인된* 직원 목록 조회 */
     @Transactional(readOnly = true)
     public List<EmployeeResponse> getEmployeesByStore(Long storeId) {
-
-        // 1) 해당 매장의 APPROVED 배정 정보
         List<EmployeeAssignment> assignments =
                 employeeAssignmentRepository.findApprovedByStoreId(storeId);
 
-        // 2) 배정 + 직원 정보를 EmployeeResponse 로 수동 매핑
         return assignments.stream()
                 .map(a -> {
                     Employee e = a.getEmployee();
                     return EmployeeResponse.builder()
                             .employeeId(e.getEmployeeId())
-                            .assignmentId(a.getAssignmentId())   // 필요하면 프론트에서 사용
+                            .assignmentId(a.getAssignmentId())
                             .name(e.getName())
                             .email(e.getEmail())
                             .phone(e.getPhone())
@@ -89,4 +86,22 @@ public class EmployeeService {
         // 여기서 ENDED로 바꾸면 이후 getEmployeesByStore()에서 자동으로 안 보이게 됨.
         a.setStatus("ENDED");
     }
+
+       /** ✅ [여기 추가] 특정 직원이 소속된 매장 목록 조회 */
+    @Transactional(readOnly = true)
+    public List<StoreSimpleResponse> getStoresByEmployee(Long employeeId) {
+        return employeeAssignmentRepository.findAllByEmployeeId(employeeId).stream()
+                .map(ea -> StoreSimpleResponse.builder()
+                        .storeId(ea.getStore().getStoreId())
+                        .storeName(ea.getStore().getStoreName())
+                        .industry(ea.getStore().getIndustry())
+                        .status(ea.getStore().getStatus())
+                        .posVendor(ea.getStore().getPosVendor())
+                        .bizNum(ea.getStore().getBusinessNumber().getBizNum())
+                        .build())
+                .toList();
+    }
+
+
+    
 }

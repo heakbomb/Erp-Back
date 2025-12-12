@@ -80,43 +80,87 @@ public class SalesSummaryScheduler {
         LocalDateTime start = date.atStartOfDay();
         LocalDateTime end = date.atTime(23, 59, 59);
 
-        List<Map<String, Object>> stats = transactionRepo.findDailySalesStatsByDate(start, end);
+        // 1) 원본 통계 조회
+        List<Map<String, Object>> rawStats = transactionRepo.findDailySalesStatsByDate(start, end);
 
-        List<SalesDailySummary> summaries = stats.stream()
-                .map(row -> SalesDailySummary.builder()
-                        .storeId((Long) row.get("storeId"))
-                        .summaryDate(date)
-                        .totalSales((BigDecimal) row.get("totalSales"))
-                        .transactionCount((Long) row.get("count"))
-                        .build())
-                .toList();
+        // 2) 같은 매장(storeId) 기준으로 Java에서 한 번 더 합치기 (중복 row 대비)
+        Map<Long, AggregatedDailyStat> statByStore = new java.util.HashMap<>();
 
-        if (!summaries.isEmpty()) {
-            summaryRepo.saveAll(summaries);
+        for (Map<String, Object> row : rawStats) {
+            Long storeId = (Long) row.get("storeId");
+            BigDecimal totalSales = (BigDecimal) row.get("totalSales");
+            Long count = (Long) row.get("count");
+
+            AggregatedDailyStat agg = statByStore.computeIfAbsent(
+                    storeId,
+                    id -> new AggregatedDailyStat(BigDecimal.ZERO, 0L));
+
+            // null 방어하면서 합계 누적
+            agg.totalSales = agg.totalSales.add(totalSales != null ? totalSales : BigDecimal.ZERO);
+            agg.transactionCount = agg.transactionCount + (count != null ? count : 0L);
         }
-        log.info(" - 매출 요약: {}개 매장 처리됨", summaries.size());
+
+        int affectedStores = 0;
+
+        // 3) 매장별로 1번씩만 upsert (delete 후 insert)
+        for (Map.Entry<Long, AggregatedDailyStat> entry : statByStore.entrySet()) {
+            Long storeId = entry.getKey();
+            AggregatedDailyStat agg = entry.getValue();
+
+            // ✅ 먼저 기존 요약 삭제 (없으면 0건 삭제라 괜찮음)
+            summaryRepo.deleteByStoreIdAndSummaryDate(storeId, date);
+
+            // ✅ 새 row 생성해서 INSERT (PK는 자동 생성)
+            SalesDailySummary fresh = SalesDailySummary.builder()
+                    .storeId(storeId)
+                    .summaryDate(date)
+                    .totalSales(agg.totalSales)
+                    .transactionCount(agg.transactionCount)
+                    .build();
+
+            summaryRepo.save(fresh); // 여기서는 중복 키가 날 수 없음
+
+            affectedStores++;
+        }
+
+        log.info(" - 매출 요약: {}개 매장 처리 완료 (date={})", affectedStores, date);
     }
 
     private void summarizeMenus(LocalDate date) {
-        LocalDateTime start = date.atStartOfDay();
-        LocalDateTime end = date.atTime(23, 59, 59);
+    LocalDateTime start = date.atStartOfDay();
+    LocalDateTime end = date.atTime(23, 59, 59);
 
-        // SalesLineItemRepository에 findDailyMenuStatsByDate 메서드가 있어야 합니다.
-        List<DailyMenuStatDto> stats = lineItemRepo.findDailyMenuStatsByDate(start, end);
+    // ✅ 1) 이 날짜에 대한 기존 메뉴 요약 싹 삭제 (모든 매장/메뉴)
+    menuSummaryRepo.deleteBySummaryDate(date);
 
-        List<SalesMenuDailySummary> summaries = stats.stream()
-                .map(dto -> SalesMenuDailySummary.builder()
-                        .store(Store.builder().storeId(dto.getStoreId()).build()) // Proxy 객체
-                        .menuItem(MenuItem.builder().menuId(dto.getMenuId()).build())
-                        .summaryDate(date)
-                        .totalQuantity(dto.getTotalQuantity())
-                        .totalAmount(dto.getTotalAmount())
-                        .build())
-                .toList();
+    // ✅ 2) 원본 LineItem에서 통계 뽑기
+    List<DailyMenuStatDto> stats = lineItemRepo.findDailyMenuStatsByDate(start, end);
 
-        if (!summaries.isEmpty()) {
-            menuSummaryRepo.saveAll(summaries);
+    List<SalesMenuDailySummary> summaries = stats.stream()
+            .map(dto -> SalesMenuDailySummary.builder()
+                    .store(Store.builder().storeId(dto.getStoreId()).build()) // Proxy
+                    .menuItem(MenuItem.builder().menuId(dto.getMenuId()).build())
+                    .summaryDate(date)
+                    .totalQuantity(dto.getTotalQuantity())
+                    .totalAmount(dto.getTotalAmount())
+                    .build())
+            .toList();
+
+    // ✅ 3) 새 데이터만 INSERT
+    if (!summaries.isEmpty()) {
+        menuSummaryRepo.saveAll(summaries);
+    }
+
+    log.info(" - 메뉴 요약: {}건 데이터 생성됨 (date={})", summaries.size(), date);
+}
+
+    private static class AggregatedDailyStat {
+        BigDecimal totalSales;
+        Long transactionCount;
+
+        AggregatedDailyStat(BigDecimal totalSales, Long transactionCount) {
+            this.totalSales = totalSales;
+            this.transactionCount = transactionCount;
         }
-        log.info(" - 메뉴 요약: {}건 데이터 생성됨", summaries.size());
     }
 }
