@@ -64,4 +64,10 @@ List<EmployeeAssignment> findApprovedByStoreId(@Param("storeId") Long storeId);
       Long storeId,
       Long employeeId
   );
+
+   // ⭐️ [추가] 직원 + 사업장 기준으로 "가장 최근" 신청 1건 조회 (상태 무관)
+  Optional<EmployeeAssignment> findTopByEmployee_EmployeeIdAndStore_StoreIdOrderByAssignmentIdDesc(
+      Long employeeId,
+      Long storeId
+  );
 }

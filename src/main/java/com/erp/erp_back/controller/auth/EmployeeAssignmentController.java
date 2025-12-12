@@ -50,6 +50,18 @@ public class EmployeeAssignmentController {
         return ResponseEntity.ok(service.reject(assignmentId));
     }
 
+     // ⭐️ [추가] 직원 + 사업장 기준 최신 신청 상태 조회
+    //  - 기록이 없으면 204 No Content
+    @GetMapping("/status")
+    public ResponseEntity<EmployeeAssignmentResponse> getStatus(
+            @RequestParam Long employeeId,
+            @RequestParam Long storeId
+    ) {
+        return service.getLatestStatus(employeeId, storeId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.noContent().build());
+    }
+
     // 에러 메시지 정리
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<String> badReq(IllegalArgumentException e) {

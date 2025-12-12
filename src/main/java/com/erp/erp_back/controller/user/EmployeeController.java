@@ -35,10 +35,13 @@ public class EmployeeController {
         return ResponseEntity.ok(employeeService.getEmployeeById(id));
     }
 
-    /** 직원 삭제 */
+     /**
+     * ✅ 직원 삭제(사실상: 직원-사업장 배정 해제)
+     * 프론트에서는 여기의 {id}에 employeeId가 아니라 assignmentId를 넘겨야 함
+     */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        employeeService.deleteEmployee(id);
+    public ResponseEntity<Void> delete(@PathVariable("id") Long assignmentId) {
+        employeeService.endAssignment(assignmentId);
         return ResponseEntity.noContent().build();
     }
 

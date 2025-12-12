@@ -101,15 +101,7 @@ public class AdminUserController {
         return ResponseEntity.noContent().build();
     }
 
-    /**
-     * (Admin) '직원' 계정 삭제
-     * DELETE /admin/users/employees/{id}
-     */
-    @DeleteMapping("/employees/{id}")
-    public ResponseEntity<Void> deleteEmployee(@PathVariable Long id) {
-        employeeService.deleteEmployee(id);
-        return ResponseEntity.noContent().build();
-    }
+    
 
     // --- (AdminStoreController와 동일한 예외 핸들러) ---
     @ExceptionHandler(IllegalStateException.class)

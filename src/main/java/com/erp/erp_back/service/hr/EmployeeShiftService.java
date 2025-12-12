@@ -40,7 +40,7 @@ public class EmployeeShiftService {
 
                 return shiftRepository.findByStore_StoreIdAndShiftDateBetween(storeId, start, end)
                                 .stream()
-                                .map(shiftMapper::toResponse) 
+                                .map(shiftMapper::toResponse)
                                 .toList();
         }
 
@@ -53,7 +53,8 @@ public class EmployeeShiftService {
                 LocalDate end = ym.atEndOfMonth();
 
                 return shiftRepository
-                                .findByStore_StoreIdAndEmployee_EmployeeIdAndShiftDateBetween(storeId, employeeId, start, end)
+                                .findByStore_StoreIdAndEmployee_EmployeeIdAndShiftDateBetween(storeId, employeeId,
+                                                start, end)
                                 .stream()
                                 .map(shiftMapper::toResponse)
                                 .toList();
@@ -98,16 +99,23 @@ public class EmployeeShiftService {
                 Employee employee = employeeRepository.findById(req.getEmployeeId())
                                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 직원입니다."));
 
-                List<EmployeeShiftResponse> result = new ArrayList<>();
-
+                // 🔥 1단계: 먼저 전체 기간에 대해 중복 여부만 검사
+                // 하나라도 겹치면 아무 것도 저장하지 않고 예외를 던진다.
                 for (LocalDate date : req.getDates()) {
                         boolean exists = shiftRepository.existsByEmployee_EmployeeIdAndShiftDateAndStartTime(
                                         employee.getEmployeeId(), date, req.getStartTime());
                         if (exists) {
-                                continue;
+                                // 컨트롤러의 @ExceptionHandler(IllegalStateException) 에서
+                                // 409 + 이 메시지를 그대로 프론트로 내려줌
+                                throw new IllegalStateException("이미 등록된 근무 스케줄이 포함되어 있습니다.");
                         }
+                }
 
-                        // ✅ Mapper를 사용하여 Entity 생성 (날짜만 Loop 변수 주입)
+                // ⚙ 2단계: 실제 저장 (위에서 예외 안 났으면 전부 신규)
+                List<EmployeeShiftResponse> result = new ArrayList<>();
+
+                for (LocalDate date : req.getDates()) {
+                        // Mapper를 사용하여 Entity 생성 (날짜만 Loop 변수 주입)
                         EmployeeShift shift = shiftMapper.toEntityFromBulk(req, store, employee, date);
                         EmployeeShift saved = shiftRepository.save(shift);
                         result.add(shiftMapper.toResponse(saved));
@@ -132,6 +140,7 @@ public class EmployeeShiftService {
                         from = to;
                         to = tmp;
                 }
-                shiftRepository.deleteByStore_StoreIdAndEmployee_EmployeeIdAndShiftDateBetween(storeId, employeeId, from, to);
+                shiftRepository.deleteByStore_StoreIdAndEmployee_EmployeeIdAndShiftDateBetween(storeId, employeeId,
+                                from, to);
         }
 }
