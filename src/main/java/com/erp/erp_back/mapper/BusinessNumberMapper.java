@@ -44,7 +44,6 @@ public interface BusinessNumberMapper {
         // Record의 접근자 메서드 직접 호출
         target.setOpenStatus(item.bStt());
         target.setTaxType(item.taxType());
-        target.setStartDt(item.startDt());
         target.setEndDt(item.endDt());
     }
 }
