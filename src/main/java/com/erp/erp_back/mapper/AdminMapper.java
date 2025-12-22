@@ -21,7 +21,7 @@ import com.erp.erp_back.entity.user.Owner;
         unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface AdminMapper {
 
-    // 1. 통계 (기존 유지)
+    // 1. 통계
     default AdminUserStatsResponse toStatsResponse(long totalUsers, long totalOwners, 
                                            long totalEmployees, long newSignupsThisMonth) {
         return AdminUserStatsResponse.builder()
@@ -32,23 +32,27 @@ public interface AdminMapper {
                 .build();
     }
 
-    // 2. 대시보드 아이템 (기존 유지)
+    // 2. 대시보드 아이템
     @Mapping(source = "store.storeId", target = "storeId")
     @Mapping(source = "store.storeName", target = "storeName")
-    @Mapping(source = "store.industry", target = "industry")
+    @Mapping(source = "store.industry", target = "industry") // Enum to Enum (자동 매핑)
     @Mapping(source = "store.status", target = "status")
     @Mapping(source = "store.businessNumber.owner.username", target = "ownerName")
     @Mapping(source = "store.businessNumber.owner.email", target = "ownerEmail")
     @Mapping(source = "store.businessNumber.bizNum", target = "bizNum")
     @Mapping(source = "employeeCount", target = "employeeCount")
-    @Mapping(source = "totalSalesMonth", target = "totalSalesMonth")
-    @Mapping(source = "lastSalesDate", target = "lastSalesDate")
+    
+    // ✅ [수정] 타겟 필드명 변경 (totalSalesMonth -> totalSales)
+    @Mapping(source = "totalSales", target = "totalSales")
+    
+    // ✅ [수정] 타겟 필드명 변경 (lastSalesDate -> lastTransaction)
+    @Mapping(source = "lastTransaction", target = "lastTransaction")
     AdminStoreDashboardItem toDashboardItem(Store store, long employeeCount, 
-                                            BigDecimal totalSalesMonth, LocalDateTime lastSalesDate);
+                                            BigDecimal totalSales, LocalDateTime lastTransaction);
 
-    // ✅ 3. [수정] 사장님 상세 정보 변환 (username 매핑 수정)
+    // 3. 사장님 상세 정보 변환
     @Mapping(source = "owner.ownerId", target = "ownerId")
-    @Mapping(source = "owner.username", target = "username") // ✅ 이름 일치
+    @Mapping(source = "owner.username", target = "username")
     @Mapping(source = "owner.email", target = "email")
     @Mapping(source = "owner.createdAt", target = "createdAt")
     @Mapping(source = "stores", target = "stores")

@@ -3,6 +3,8 @@ package com.erp.erp_back.dto.admin;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+import com.erp.erp_back.entity.enums.StoreIndustry; // Enum Import
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -17,13 +19,18 @@ import lombok.Setter;
 public class AdminStoreDashboardItem {
     private Long storeId;
     private String storeName;
-    private String industry;
+    
+    // ✅ [수정] String -> StoreIndustry
+    private StoreIndustry industry;
+    
     private String status;
-    private long employeeCount; // 직원 수 (집계)
-    private BigDecimal totalSalesMonth; // 당월 매출 (집계)
-    private LocalDateTime lastSalesDate; // 최근 매출일
+    private long employeeCount; 
+    
+    // ✅ [수정] 필드명 변경 (Mapper, Repository와 통일)
+    private BigDecimal totalSales;       // 기존 totalSalesMonth
+    private LocalDateTime lastTransaction; // 기존 lastSalesDate
 
     private String ownerName;
     private String ownerEmail;
-    private String bizNum; // 필드 추가
+    private String bizNum; 
 }

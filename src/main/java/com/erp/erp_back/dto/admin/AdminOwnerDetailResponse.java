@@ -6,11 +6,17 @@ import java.util.List;
 import com.erp.erp_back.dto.store.StoreSimpleResponse;
 import com.erp.erp_back.dto.subscription.OwnerSubscriptionResponse;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
+@Setter
 @Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class AdminOwnerDetailResponse {
     // 사장님 기본 정보
     private Long ownerId;

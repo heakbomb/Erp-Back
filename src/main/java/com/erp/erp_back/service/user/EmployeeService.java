@@ -11,7 +11,9 @@ import com.erp.erp_back.dto.store.StoreSimpleResponse;
 import com.erp.erp_back.dto.user.EmployeeResponse;
 import com.erp.erp_back.entity.auth.EmployeeAssignment;
 import com.erp.erp_back.entity.user.Employee;
+// StoreIndustry 임포트 불필요 (Mapper가 처리함)
 import com.erp.erp_back.mapper.EmployeeMapper;
+import com.erp.erp_back.mapper.StoreMapper; // ✅ 추가
 import com.erp.erp_back.repository.auth.EmployeeAssignmentRepository;
 import com.erp.erp_back.repository.user.EmployeeRepository;
 
@@ -25,6 +27,7 @@ public class EmployeeService {
     private final EmployeeRepository employeeRepository;
     private final EmployeeMapper employeeMapper;
     private final EmployeeAssignmentRepository employeeAssignmentRepository;
+    private final StoreMapper storeMapper; // ✅ StoreMapper 주입
 
     /** (Admin) 직원 계정 페이징 및 검색 조회 */
     @Transactional(readOnly = true)
@@ -34,7 +37,7 @@ public class EmployeeService {
                 .map(employeeMapper::toResponse);
     }
 
-    /** 직원 전체 목록 조회 (다른 곳에서 쓰면 사용) */
+    /** 직원 전체 목록 조회 */
     @Transactional(readOnly = true)
     public List<EmployeeResponse> getAllEmployees() {
         return employeeRepository.findAll().stream()
@@ -74,34 +77,20 @@ public class EmployeeService {
 
     /**
      * ✅ 직원-사업장 배정 해제(퇴사 처리)
-     * - employee 테이블은 건드리지 않고
-     * - employee_assignment.status를 ENDED로 변경
-     * - 이력은 그대로 남는다.
      */
     public void endAssignment(Long assignmentId) {
         EmployeeAssignment a = employeeAssignmentRepository.findById(assignmentId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 배정(assignmentId=" + assignmentId + ")을 찾을 수 없습니다."));
-
-        // 이미 APPROVED 상태에서만 목록에 뜨므로,
-        // 여기서 ENDED로 바꾸면 이후 getEmployeesByStore()에서 자동으로 안 보이게 됨.
         a.setStatus("ENDED");
     }
 
-       /** ✅ [여기 추가] 특정 직원이 소속된 매장 목록 조회 */
+    /** ✅ [수정됨] 특정 직원이 소속된 매장 목록 조회 (Mapper 사용) */
     @Transactional(readOnly = true)
     public List<StoreSimpleResponse> getStoresByEmployee(Long employeeId) {
         return employeeAssignmentRepository.findAllByEmployeeId(employeeId).stream()
-                .map(ea -> StoreSimpleResponse.builder()
-                        .storeId(ea.getStore().getStoreId())
-                        .storeName(ea.getStore().getStoreName())
-                        .industry(ea.getStore().getIndustry())
-                        .status(ea.getStore().getStatus())
-                        .posVendor(ea.getStore().getPosVendor())
-                        .bizNum(ea.getStore().getBusinessNumber().getBizNum())
-                        .build())
+                // ✅ 수동 Builder 대신 StoreMapper 사용
+                // MapStruct가 String(Entity) <-> Enum(DTO) 변환을 자동으로 처리해줍니다.
+                .map(ea -> storeMapper.toSimpleResponse(ea.getStore())) 
                 .toList();
     }
-
-
-    
 }
