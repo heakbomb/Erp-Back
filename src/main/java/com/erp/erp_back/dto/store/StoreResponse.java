@@ -3,6 +3,8 @@ package com.erp.erp_back.dto.store;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.erp.erp_back.entity.enums.StoreIndustry; // Enum Import
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -16,7 +18,10 @@ public class StoreResponse {
     private Long storeId;
     private Long bizId;
     private String storeName;
-    private String industry;
+    
+    // ✅ [수정] String -> StoreIndustry
+    private StoreIndustry industry;
+    
     private String posVendor;
     private String status;
     private LocalDateTime approvedAt;
@@ -33,14 +38,12 @@ public class StoreResponse {
     private String startDt; 
     private String phone;
 
-    // --- 직원 목록 리스트 ---
     private List<StoreEmployeeDto> employees;
 
-    // ⭐️ [수정] Inner Class에도 생성자 어노테이션 추가
     @Getter
     @Setter 
-    @NoArgsConstructor  // 추가: 기본 생성자
-    @AllArgsConstructor // 추가: 모든 필드 생성자 (public으로 생성됨)
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class StoreEmployeeDto {
         private String name;
         private String role;

@@ -2,8 +2,12 @@ package com.erp.erp_back.entity.store;
 
 import java.time.LocalDateTime;
 
+import com.erp.erp_back.entity.enums.StoreIndustry; // ✅ Enum Import 필수!
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType; // 추가
+import jakarta.persistence.Enumerated; // 추가
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -18,7 +22,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "store")   // 소문자로 맞춰두는 게 안전
+@Table(name = "store")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -37,9 +41,11 @@ public class Store {
 
     @Column(name = "store_name", nullable = false, length = 100)
     private String storeName;
-
+    
+    // ✅ [수정 후 - 정답]
+    @Enumerated(EnumType.STRING)     // DB에는 'KOREAN' 같은 문자열로 저장하겠다는 뜻
     @Column(nullable = false, length = 50)
-    private String industry;
+    private StoreIndustry industry;  // 변수 타입도 반드시 Enum 클래스여야 함
 
     @Column(name = "pos_vendor", length = 50)
     private String posVendor;
@@ -50,8 +56,7 @@ public class Store {
     @Column(name = "approved_at")
     private LocalDateTime approvedAt;
 
-    // ✅ 사장 운영 여부 (true = 사용, false = 비활성화)
     @Builder.Default
     @Column(name = "active", nullable = false)
-    private Boolean active = true;   // 기본값
+    private Boolean active = true;
 }
