@@ -73,4 +73,6 @@ public interface EmployeeAssignmentRepository extends JpaRepository<EmployeeAssi
     // N+1 문제를 방지하기 위해 Store 정보를 fetch join으로 함께 가져옵니다.
     @Query("SELECT ea FROM EmployeeAssignment ea JOIN FETCH ea.store WHERE ea.employee.employeeId = :employeeId AND ea.status = 'APPROVED'")
     List<EmployeeAssignment> findAllByEmployeeId(@Param("employeeId") Long employeeId);
+
+    List<EmployeeAssignment> findByStore_StoreIdAndStatus(Long storeId, String status);
 }
