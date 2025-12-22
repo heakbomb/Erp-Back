@@ -55,10 +55,7 @@ public class BusinessNumber {
 
     @Column(name = "tax_type", length = 50)
     private String taxType; // 과세유형 (예: 부가가치세 일반과세자)
-
-    @Column(name = "start_dt", length = 10)
-    private String startDt; // 개업일자 (YYYYMMDD)
-
+    
     @Column(name = "end_dt", length = 10)
     private String endDt; // 폐업일자 (YYYYMMDD)
 
