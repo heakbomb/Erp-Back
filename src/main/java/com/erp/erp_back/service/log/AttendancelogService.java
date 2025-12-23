@@ -20,20 +20,23 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.erp.erp_back.dto.hr.AttendanceShiftStatusResponse;
 import com.erp.erp_back.dto.log.AttendanceLogRequest;
 import com.erp.erp_back.dto.log.AttendanceLogResponse;
 import com.erp.erp_back.dto.log.EmployeeAttendanceSummary;
 import com.erp.erp_back.entity.auth.EmployeeAssignment;
+import com.erp.erp_back.entity.hr.EmployeeShift;
 import com.erp.erp_back.entity.log.AttendanceLog;
 import com.erp.erp_back.entity.log.AttendanceQrToken;
 import com.erp.erp_back.entity.store.Store;
-import com.erp.erp_back.entity.store.StoreGps;                    // ✅ 추가
+import com.erp.erp_back.entity.store.StoreGps;
 import com.erp.erp_back.entity.user.Employee;
 import com.erp.erp_back.mapper.AttendanceLogMapper;
 import com.erp.erp_back.repository.auth.EmployeeAssignmentRepository;
+import com.erp.erp_back.repository.hr.EmployeeShiftRepository;
 import com.erp.erp_back.repository.log.AttendanceLogRepository;
 import com.erp.erp_back.repository.log.AttendanceQrTokenRepository;
-import com.erp.erp_back.repository.store.StoreGpsRepository;     // ✅ 추가
+import com.erp.erp_back.repository.store.StoreGpsRepository;
 import com.erp.erp_back.repository.store.StoreRepository;
 import com.erp.erp_back.repository.user.EmployeeRepository;
 import com.erp.erp_back.service.store.StoreService;
@@ -52,12 +55,13 @@ public class AttendancelogService {
     private final AttendanceQrTokenRepository attendanceQrTokenRepository;
     private final AttendanceLogMapper attendanceLogMapper;
     private final StoreService storeService;
-    private final StoreGpsRepository storeGpsRepository;        // ✅ 추가
+    private final StoreGpsRepository storeGpsRepository;
 
-    // ✅ 지구 반지름 (m)
+    // ✅ shift 자동 매칭을 위해 사용
+    private final EmployeeShiftRepository employeeShiftRepository;
+
     private static final double EARTH_RADIUS_M = 6371000.0;
 
-    // ✅ 두 좌표 간 거리(m) 계산 (Haversine)
     private double distanceMeters(double lat1, double lon1, double lat2, double lon2) {
         double dLat = Math.toRadians(lat2 - lat1);
         double dLon = Math.toRadians(lon2 - lon1);
@@ -72,14 +76,13 @@ public class AttendancelogService {
     }
 
     /**
-     * 출퇴근 기록 저장
+     * 출퇴근 기록 저장 (A안: 서버가 근무시간표 기준으로 shift 자동 매칭)
      */
     public AttendanceLogResponse punch(AttendanceLogRequest req) {
         if (req.getEmployeeId() == null || req.getStoreId() == null) {
             throw new IllegalArgumentException("employeeId, storeId 는 필수입니다.");
         }
 
-        // recordType 정규화
         String rawType = (req.getRecordType() == null) ? "" : req.getRecordType().trim().toUpperCase();
         String type = switch (rawType) {
             case "IN", "CLOCK_IN" -> "IN";
@@ -90,11 +93,9 @@ public class AttendancelogService {
             throw new IllegalArgumentException("recordType 은 IN 또는 OUT 이어야 합니다.");
         }
 
-        // 직원 / 매장 존재 확인
         Employee emp = employeeRepo.findById(req.getEmployeeId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 직원입니다."));
 
-        // ✅ 비활성 매장이면 여기서 바로 예외 발생 (조회/저장 모두 차단)
         Store store = storeService.requireActiveStore(req.getStoreId());
 
         // 최신 QR 토큰 검사
@@ -113,21 +114,16 @@ public class AttendancelogService {
             }
         }
 
-        // 직원이 이 매장에 승인 상태인지 확인
         boolean approved = assignmentRepo.existsApprovedByEmployeeAndStore(emp.getEmployeeId(), store.getStoreId());
         if (!approved) {
             throw new IllegalStateException("해당 매장에 승인된 직원만 출퇴근을 기록할 수 있습니다.");
         }
 
-        // ============================
-        // ✅ GPS 반경 검사 (store_gps 기준)
-        // ============================
-        // 1) 위치 정보 없는 경우
+        // GPS 반경 검사
         if (req.getLatitude() == null || req.getLongitude() == null) {
             throw new IllegalArgumentException("위치 정보가 없습니다. '위치 가져오기' 후 다시 시도해 주세요.");
         }
 
-        // 2) 매장 GPS 정보 조회
         StoreGps storeGps = storeGpsRepository.findByStore_StoreId(store.getStoreId())
                 .orElseThrow(() -> new IllegalStateException("이 매장은 위치 정보가 설정되어 있지 않습니다. 관리자에게 문의해 주세요."));
 
@@ -135,17 +131,8 @@ public class AttendancelogService {
             throw new IllegalStateException("이 매장의 위도/경도 정보가 올바르지 않습니다. 관리자에게 문의해 주세요.");
         }
 
-        double storeLat = storeGps.getLatitude();
-        double storeLng = storeGps.getLongitude();
-        double userLat = req.getLatitude();
-        double userLng = req.getLongitude();
-
-        // 반경 (m) – 값이 없으면 기본 80m
-        double radius = (storeGps.getGpsRadiusM() != null)
-                ? storeGps.getGpsRadiusM()
-                : 80.0;
-
-        double distance = distanceMeters(userLat, userLng, storeLat, storeLng);
+        double radius = (storeGps.getGpsRadiusM() != null) ? storeGps.getGpsRadiusM() : 80.0;
+        double distance = distanceMeters(req.getLatitude(), req.getLongitude(), storeGps.getLatitude(), storeGps.getLongitude());
 
         if (distance > radius) {
             String msg = String.format(
@@ -156,59 +143,97 @@ public class AttendancelogService {
             throw new IllegalStateException(msg);
         }
 
-        // ============================
-        // 🔒 "오늘" 기준 중복 출근/퇴근 방지 로직
-        // ============================
+        // 저장 시각
         LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
         LocalDate today = now.toLocalDate();
-        LocalDateTime startOfDay = today.atStartOfDay();
-        LocalDateTime endOfDay = today.atTime(LocalTime.MAX);
 
-        // 오늘 이 직원+매장의 기록(최신순) 조회
-        List<AttendanceLog> todayLogs = attendanceRepo
-                .findByEmployee_EmployeeIdAndStore_StoreIdAndRecordTimeBetweenOrderByRecordTimeDesc(
-                        emp.getEmployeeId(),
-                        store.getStoreId(),
-                        startOfDay,
-                        endOfDay
-                );
-
-        // 👉 오늘 IN / OUT 이 한 번이라도 있는지 여부
-        boolean hasInToday = todayLogs.stream()
-                .anyMatch(l -> "IN".equalsIgnoreCase(l.getRecordType()));
-
-        boolean hasOutToday = todayLogs.stream()
-                .anyMatch(l -> "OUT".equalsIgnoreCase(l.getRecordType()));
+        // ✅ shift 자동 매칭
+        EmployeeShift shift = null;
 
         if ("IN".equals(type)) {
-            // 오늘 이미 한 번이라도 출근(IN)이 찍혀 있으면 → 중복 출근 막기
-            if (hasInToday) {
-                throw new IllegalStateException("이미 오늘 출근이 등록되어 있습니다.");
+            LocalTime nowTime = now.toLocalTime();
+
+            // 오늘(shiftDate) + 직원 + 매장 + (startTime <= nowTime <= endTime) 인 shift 찾기
+            // (Repository 메서드가 없을 수 있으니, 기본 findAll 후 필터 방식으로 안전하게 처리)
+            List<EmployeeShift> todays = employeeShiftRepository
+                    .findByStore_StoreIdAndEmployee_EmployeeIdAndShiftDate(
+                            store.getStoreId(),
+                            emp.getEmployeeId(),
+                            today
+                    );
+
+            // 현재시간을 포함하는 shift를 선택(가장 startTime이 늦은 것 우선)
+            shift = todays.stream()
+                    .filter(s -> s.getStartTime() != null && s.getEndTime() != null)
+                    .filter(s -> !nowTime.isBefore(s.getStartTime()) && !nowTime.isAfter(s.getEndTime()))
+                    .sorted(Comparator.comparing(EmployeeShift::getStartTime).reversed())
+                    .findFirst()
+                    .orElse(null);
+
+            if (shift == null) {
+                // 근무시간표 연동이 목표이므로, shift를 못 찾으면 출근 자체를 막는 게 안전
+                throw new IllegalArgumentException("현재 시간에 해당하는 근무시간표(shift)를 찾을 수 없습니다.");
             }
-        } else if ("OUT".equals(type)) {
-            // 1) 오늘 출근 기록이 전혀 없는데 퇴근부터 누르면 막기
-            if (!hasInToday) {
+        } else {
+            // OUT: 오늘 최신 IN 로그의 shift 복사
+            LocalDateTime startOfDay = today.atStartOfDay();
+            LocalDateTime endOfDay = today.atTime(LocalTime.MAX);
+
+            List<AttendanceLog> todayLogs = attendanceRepo
+                    .findByEmployee_EmployeeIdAndStore_StoreIdAndRecordTimeBetweenOrderByRecordTimeDesc(
+                            emp.getEmployeeId(),
+                            store.getStoreId(),
+                            startOfDay,
+                            endOfDay
+                    );
+
+            AttendanceLog latestIn = todayLogs.stream()
+                    .filter(l -> "IN".equalsIgnoreCase(l.getRecordType()))
+                    .findFirst() // 최신순이므로 첫 번째가 최신
+                    .orElse(null);
+
+            if (latestIn == null) {
                 throw new IllegalStateException("오늘 출근 기록이 없습니다. 먼저 출근을 등록하세요.");
             }
-            // 2) 오늘 이미 한 번이라도 퇴근(OUT)이 찍혀 있으면 → 중복 퇴근 막기
-            if (hasOutToday) {
-                throw new IllegalStateException("이미 오늘 퇴근이 등록되어 있습니다.");
+
+            shift = latestIn.getShift();
+            if (shift == null) {
+                throw new IllegalStateException("출근 기록에 근무시간표(shift) 연동 정보가 없습니다. 관리자에게 문의해 주세요.");
             }
         }
 
-        // ============================
-        // 저장
-        // ============================
+        // ✅ 중복 방지: "shift 단위"로 IN/OUT 1회씩만 허용
+        List<AttendanceLog> shiftLogs = attendanceRepo
+                .findByEmployee_EmployeeIdAndStore_StoreIdAndShift_ShiftIdOrderByRecordTimeDesc(
+                        emp.getEmployeeId(),
+                        store.getStoreId(),
+                        shift.getShiftId()
+                );
+
+        boolean hasInThisShift = shiftLogs.stream().anyMatch(l -> "IN".equalsIgnoreCase(l.getRecordType()));
+        boolean hasOutThisShift = shiftLogs.stream().anyMatch(l -> "OUT".equalsIgnoreCase(l.getRecordType()));
+
+        if ("IN".equals(type)) {
+            if (hasInThisShift) {
+                throw new IllegalStateException("이미 이 근무(shift)에 출근이 등록되어 있습니다.");
+            }
+        } else { // OUT
+            if (!hasInThisShift) {
+                throw new IllegalStateException("이 근무(shift)의 출근 기록이 없습니다. 먼저 출근을 등록하세요.");
+            }
+            if (hasOutThisShift) {
+                throw new IllegalStateException("이미 이 근무(shift)에 퇴근이 등록되어 있습니다.");
+            }
+        }
+
         AttendanceLog saved = new AttendanceLog();
         saved.setEmployee(emp);
         saved.setStore(store);
+        saved.setShift(shift);          // ✅ shift 연동
         saved.setRecordTime(now);
         saved.setRecordType(type);
 
-        // 💡 나중에 필요하면 여기서 saved.setLatitude(userLat) 같은 것도 추가 가능
-
         saved = attendanceRepo.save(saved);
-
         return attendanceLogMapper.toResponse(saved);
     }
 
@@ -243,7 +268,6 @@ public class AttendancelogService {
     // 직원 본인 조회용
     // =========================
 
-    /** 직원 본인 최근 N건 (storeId 없으면 전체 매장 기준) */
     @Transactional(readOnly = true)
     public List<AttendanceLogResponse> myRecent(Long employeeId, Integer limit, Long storeId) {
         int size = (limit == null || limit <= 0 || limit > 200) ? 30 : limit;
@@ -258,7 +282,6 @@ public class AttendancelogService {
                 .toList();
     }
 
-    /** 직원 본인 기간 조회 */
     @Transactional(readOnly = true)
     public List<AttendanceLogResponse> myRange(Long employeeId, LocalDate from, LocalDate to, Long storeId) {
         LocalDateTime start = from.atStartOfDay();
@@ -320,11 +343,9 @@ public class AttendancelogService {
         Store store = storeRepo.findById(storeId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사업장입니다."));
 
-        // 1) 이 매장의 이 달 전체 로그
         List<AttendanceLog> logs =
                 attendanceRepo.findByStoreAndDateTimeRange(storeId, from, to);
 
-        // 2) 직원별로 로그 그룹핑
         Map<Long, List<AttendanceLog>> logsByEmp = new HashMap<>();
         for (AttendanceLog log : logs) {
             if (log.getEmployee() == null) continue;
@@ -332,7 +353,6 @@ public class AttendancelogService {
             logsByEmp.computeIfAbsent(empId, k -> new ArrayList<>()).add(log);
         }
 
-        // 3) 직원별 근무일수 / 근무시간 계산
         Map<Long, Integer> daysMap = new HashMap<>();
         Map<Long, Long> minutesMap = new HashMap<>();
 
@@ -340,7 +360,6 @@ public class AttendancelogService {
             Long empId = entry.getKey();
             List<AttendanceLog> empLogs = entry.getValue();
 
-            // 시간 순 정렬
             empLogs.sort(Comparator.comparing(AttendanceLog::getRecordTime));
 
             Set<LocalDate> days = new HashSet<>();
@@ -366,7 +385,6 @@ public class AttendancelogService {
             minutesMap.put(empId, totalMinutes);
         }
 
-        // 4) 승인된 직원 기준으로 결과 구성
         List<EmployeeAssignment> assignments = assignmentRepo.findAllByStoreId(storeId);
 
         List<EmployeeAttendanceSummary> result = new ArrayList<>();
@@ -398,25 +416,21 @@ public class AttendancelogService {
         return result;
     }
 
-    // =========================
-    // 사장페이지용 - 직원 출결 "월간 요약" + 직원 필터
-    // =========================
     @Transactional(readOnly = true)
     public List<EmployeeAttendanceSummary> findMonthlySummary(
             Long storeId,
             String month,
             Long employeeId
     ) {
-        // ✅ 비활성 매장 차단
         storeService.requireActiveStore(storeId);
-        
+
         if (month == null || month.isBlank()) {
             throw new IllegalArgumentException("month 파라미터는 'yyyy-MM' 형식이어야 합니다.");
         }
 
         YearMonth ym;
         try {
-            ym = YearMonth.parse(month);   // 예: "2025-11"
+            ym = YearMonth.parse(month);
         } catch (DateTimeParseException e) {
             throw new IllegalArgumentException("month 파라미터는 'yyyy-MM' 형식이어야 합니다.");
         }
@@ -435,5 +449,130 @@ public class AttendancelogService {
             }
         }
         return filtered;
+    }
+
+    // =========================
+    // ✅ [추가] 상태 API (shift status)
+    // =========================
+    @Transactional(readOnly = true)
+    public AttendanceShiftStatusResponse getShiftStatus(Long employeeId, Long storeId) {
+
+        LocalDateTime nowDt = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
+        LocalDate today = nowDt.toLocalDate();
+        LocalTime nowTime = nowDt.toLocalTime();
+
+        // 기본 검증
+        if (employeeId == null || storeId == null) {
+            throw new IllegalArgumentException("employeeId, storeId 는 필수입니다.");
+        }
+
+        // 사업장 활성 검증(기존 정책 유지)
+        storeService.requireActiveStore(storeId);
+
+        // ✅ 오늘 shifts 조회 (너가 punch()에서 이미 쓰는 repo 메서드 그대로 활용)
+        List<EmployeeShift> todays = employeeShiftRepository
+                .findByStore_StoreIdAndEmployee_EmployeeIdAndShiftDate(
+                        storeId,
+                        employeeId,
+                        today
+                );
+
+        if (todays == null || todays.isEmpty()) {
+            return AttendanceShiftStatusResponse.builder()
+                    .storeId(storeId)
+                    .employeeId(employeeId)
+                    .date(today)
+                    .now(nowTime)
+                    .shiftId(null)
+                    .hasIn(false)
+                    .hasOut(false)
+                    .canClockIn(false)
+                    .canClockOut(false)
+                    .message("오늘 등록된 근무시간표(shift)가 없습니다.")
+                    .build();
+        }
+
+        // ✅ “현재 진행중 shift” 우선 선택
+        EmployeeShift current = todays.stream()
+                .filter(s -> s.getStartTime() != null && s.getEndTime() != null)
+                .filter(s -> !nowTime.isBefore(s.getStartTime()) && !nowTime.isAfter(s.getEndTime()))
+                .sorted(Comparator.comparing(EmployeeShift::getStartTime).reversed())
+                .findFirst()
+                .orElse(null);
+
+        // ✅ 현재 shift가 없으면 “다음 shift” 선택 (하루 2번 근무 대응)
+        EmployeeShift next = null;
+        if (current == null) {
+            next = todays.stream()
+                    .filter(s -> s.getStartTime() != null && s.getEndTime() != null)
+                    .filter(s -> nowTime.isBefore(s.getStartTime()))
+                    .sorted(Comparator.comparing(EmployeeShift::getStartTime))
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        EmployeeShift target = (current != null) ? current : next;
+
+        // target이 없으면(오늘 shift는 있는데 이미 모두 끝남)
+        if (target == null) {
+            return AttendanceShiftStatusResponse.builder()
+                    .storeId(storeId)
+                    .employeeId(employeeId)
+                    .date(today)
+                    .now(nowTime)
+                    .shiftId(null)
+                    .hasIn(false)
+                    .hasOut(false)
+                    .canClockIn(false)
+                    .canClockOut(false)
+                    .message("오늘 근무시간이 모두 종료되었습니다.")
+                    .build();
+        }
+
+        Long shiftId = target.getShiftId();
+
+        // ✅ target shift 로그만 조회해서 상태 계산
+        List<AttendanceLog> shiftLogs = attendanceRepo
+                .findByEmployee_EmployeeIdAndStore_StoreIdAndShift_ShiftIdOrderByRecordTimeDesc(
+                        employeeId, storeId, shiftId
+                );
+
+        boolean hasIn = shiftLogs.stream().anyMatch(l -> "IN".equalsIgnoreCase(l.getRecordType()));
+        boolean hasOut = shiftLogs.stream().anyMatch(l -> "OUT".equalsIgnoreCase(l.getRecordType()));
+
+        boolean within = current != null; // current면 근무시간 “진행중”, next면 아직 시작 전
+
+        boolean canIn = within && !hasIn;
+        boolean canOut = within && hasIn && !hasOut;
+
+        String msg;
+        if (!within) {
+            msg = "현재 근무 시간이 아닙니다. 다음 근무 시작 시간에 출근할 수 있습니다.";
+        } else if (canIn) {
+            msg = "출근 가능합니다.";
+        } else if (canOut) {
+            msg = "퇴근 가능합니다.";
+        } else if (hasIn && hasOut) {
+            msg = "이미 이 근무는 출근/퇴근이 완료되었습니다.";
+        } else if (hasIn) {
+            msg = "이미 출근이 등록되어 있습니다.";
+        } else {
+            msg = "근무 상태를 확인하세요.";
+        }
+
+        return AttendanceShiftStatusResponse.builder()
+                .storeId(storeId)
+                .employeeId(employeeId)
+                .date(today)
+                .now(nowTime)
+                .shiftId(shiftId)
+                .shiftStart(target.getStartTime())
+                .shiftEnd(target.getEndTime())
+                .hasIn(hasIn)
+                .hasOut(hasOut)
+                .canClockIn(canIn)
+                .canClockOut(canOut)
+                .message(msg)
+                .build();
     }
 }

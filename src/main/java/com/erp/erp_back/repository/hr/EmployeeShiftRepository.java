@@ -3,7 +3,6 @@ package com.erp.erp_back.repository.hr;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -29,7 +28,7 @@ public interface EmployeeShiftRepository extends JpaRepository<EmployeeShift, Lo
     );
 
     // ✅ 날짜별 존재 여부 확인용
-    Optional<EmployeeShift> findByStore_StoreIdAndEmployee_EmployeeIdAndShiftDate(
+    List<EmployeeShift> findByStore_StoreIdAndEmployee_EmployeeIdAndShiftDate(
             Long storeId,
             Long employeeId,
             LocalDate shiftDate

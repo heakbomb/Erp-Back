@@ -13,5 +13,6 @@ public interface AttendanceLogMapper {
 
     @Mapping(source = "employee.employeeId", target = "employeeId")
     @Mapping(source = "store.storeId", target = "storeId")
+    @Mapping(source = "shift.shiftId", target = "shiftId")
     AttendanceLogResponse toResponse(AttendanceLog entity);
 }
