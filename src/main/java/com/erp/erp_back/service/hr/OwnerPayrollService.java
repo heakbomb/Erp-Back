@@ -57,7 +57,7 @@ public class OwnerPayrollService {
 
         // 1) 이 매장에 배정된 전체 직원 (필요하면 나중에 status=APPROVED 조건 추가)
         List<EmployeeAssignment> assignments =
-            employeeAssignmentRepository.findByStore_StoreId(storeId);
+            employeeAssignmentRepository.findByStore_StoreIdAndStatus(storeId, "APPROVED");
 
         // 1-1) 이 매장의 급여 설정들을 employeeId 기준으로 맵핑
         Map<Long, PayrollSetting> settingMap =

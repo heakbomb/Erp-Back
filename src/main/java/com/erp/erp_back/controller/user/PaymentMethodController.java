@@ -31,7 +31,6 @@ public class PaymentMethodController {
             .map(pm -> Map.<String, Object>of(
                 "paymentId", pm.getPaymentId(),
                 "cardName", pm.getCardName() != null ? pm.getCardName() : "신용카드",
-                "cardNumber", pm.getCardNumber() != null ? pm.getCardNumber() : "****",
                 "isDefault", pm.isDefault()
             ))
             .collect(Collectors.toList());

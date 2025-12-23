@@ -27,9 +27,6 @@ public class PaymentMethod {
     @Column(name = "card_name", length = 50)
     private String cardName;
 
-    @Column(name = "card_number", length = 4)
-    private String cardNumber;
-
     // ✅ [누락된 필드 추가]
     @Column(name = "provider", length = 20)
     private String provider; // 예: "PORTONE"

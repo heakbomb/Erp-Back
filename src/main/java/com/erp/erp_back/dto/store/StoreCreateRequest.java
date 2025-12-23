@@ -1,7 +1,9 @@
 package com.erp.erp_back.dto.store;
 
+import com.erp.erp_back.entity.enums.StoreIndustry; // Enum Import
+
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull; // NotBlank 대신 NotNull 사용
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -19,9 +21,9 @@ public class StoreCreateRequest {
     @Size(max = 100)
     private String storeName;
 
-    @NotBlank(message = "업종은 필수입니다.")
-    @Size(max = 50)
-    private String industry;
+    // ✅ [수정] String -> StoreIndustry, @NotBlank -> @NotNull
+    @NotNull(message = "업종은 필수입니다.")
+    private StoreIndustry industry;
 
     @Size(max = 50)
     private String posVendor;

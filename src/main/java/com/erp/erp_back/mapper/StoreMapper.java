@@ -58,7 +58,6 @@ public interface StoreMapper {
     @Mapping(source = "store.businessNumber.owner.email", target = "ownerEmail")
     @Mapping(source = "store.businessNumber.openStatus", target = "openStatus")
     @Mapping(source = "store.businessNumber.taxType", target = "taxType")
-    @Mapping(source = "store.businessNumber.startDt", target = "startDt")
     @Mapping(source = "store.businessNumber.phone", target = "phone")
     // StoreGps 매핑 (null일 경우 MapStruct가 알아서 null 처리)
     @Mapping(source = "gps.latitude", target = "latitude")
