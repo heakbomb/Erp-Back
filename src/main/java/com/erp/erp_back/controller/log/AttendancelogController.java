@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.erp.erp_back.dto.hr.AttendanceShiftStatusResponse;
 import com.erp.erp_back.dto.log.AttendanceLogRequest;
 import com.erp.erp_back.dto.log.AttendanceLogResponse;
 import com.erp.erp_back.dto.log.EmployeeAttendanceSummary;
@@ -30,7 +31,7 @@ public class AttendancelogController {
     /** 출퇴근 기록 */
     @PostMapping("/punch")
     public ResponseEntity<AttendanceLogResponse> punch(@RequestBody AttendanceLogRequest req) {
-        // 👉 IP 사용 안 하고, QR 기반만 사용하므로 바로 서비스 호출
+        // QR 기반만 사용하므로 바로 서비스 호출
         return ResponseEntity.ok(service.punch(req));
     }
 
@@ -116,6 +117,17 @@ public class AttendancelogController {
         return ResponseEntity.ok(
                 service.findMonthlySummary(storeId, month, employeeId)
         );
+    }
+
+    // =========================
+    // ✅ [추가] shift 상태 API
+    // =========================
+    @GetMapping("/shift/status")
+    public ResponseEntity<AttendanceShiftStatusResponse> shiftStatus(
+            @RequestParam Long employeeId,
+            @RequestParam Long storeId
+    ) {
+        return ResponseEntity.ok(service.getShiftStatus(employeeId, storeId));
     }
 
     // 공통 에러 응답

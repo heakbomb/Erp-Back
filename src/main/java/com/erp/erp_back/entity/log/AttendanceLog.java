@@ -2,6 +2,7 @@ package com.erp.erp_back.entity.log;
 
 import java.time.LocalDateTime;
 
+import com.erp.erp_back.entity.hr.EmployeeShift;
 import com.erp.erp_back.entity.store.Store;
 import com.erp.erp_back.entity.user.Employee;
 
@@ -20,9 +21,9 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "attendance_log", // DB 테이블명과 일치시킴
-       indexes = {
-           @Index(name = "idx_att_employee_store_time", columnList = "employee_id, store_id, record_time")
-       })
+        indexes = {
+                @Index(name = "idx_att_employee_store_time", columnList = "employee_id, store_id, record_time")
+        })
 @Data
 @NoArgsConstructor
 public class AttendanceLog {
@@ -45,5 +46,9 @@ public class AttendanceLog {
 
     @Column(name = "record_type", nullable = false, length = 20) // "IN" | "OUT"
     private String recordType;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "shift_id")
+    private EmployeeShift shift;
 
 }
