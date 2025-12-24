@@ -17,7 +17,8 @@ public interface OwnerSubscriptionMapper {
     @Mapping(source = "subscription.subId", target = "subId")
     @Mapping(source = "subscription.subName", target = "subName")
     @Mapping(source = "subscription.monthlyPrice", target = "monthlyPrice")
-    @Mapping(source = "subscription.active", target = "isActive")
+    // [수정] subscription.isActive (X) -> subscription.active (O)
+    @Mapping(source = "subscription.active", target = "isActive") 
     OwnerSubscriptionResponse toResponse(OwnerSubscription entity);
 
     // 관리자용 응답
