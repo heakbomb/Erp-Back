@@ -2,6 +2,8 @@ package com.erp.erp_back.dto.subscription;
 
 import java.math.BigDecimal;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -24,5 +26,6 @@ public class SubscriptionRequest {
     private BigDecimal monthlyPrice; 
 
     @NotNull
+    @JsonProperty("isActive")
     private Boolean isActive; 
 }
