@@ -11,11 +11,15 @@ import com.erp.erp_back.entity.auth.EmployeeAssignment;
 import com.erp.erp_back.entity.store.Store;
 import com.erp.erp_back.entity.user.Employee;
 
-@Mapper(componentModel = MappingConstants.ComponentModel.SPRING,
-        unmappedTargetPolicy = ReportingPolicy.IGNORE)
+@Mapper(
+    componentModel = MappingConstants.ComponentModel.SPRING,
+    unmappedTargetPolicy = ReportingPolicy.IGNORE
+)
 public interface EmployeeAssignmentMapper {
 
     @Mapping(source = "employee.employeeId", target = "employeeId")
+    @Mapping(source = "employee.name", target = "employeeName")     // ⭐ 추가
+    @Mapping(source = "employee.phone", target = "employeePhone")   // ⭐ 추가
     @Mapping(source = "store.storeId", target = "storeId")
     EmployeeAssignmentResponse toResponse(EmployeeAssignment entity);
 
@@ -23,6 +27,10 @@ public interface EmployeeAssignmentMapper {
     @Mapping(target = "employee", source = "employee")
     @Mapping(target = "store", source = "store")
     @Mapping(target = "role", source = "req.role")
-    @Mapping(target = "status", constant = "PENDING") // 기본값 PENDING 설정
-    EmployeeAssignment toEntity(EmployeeAssignmentRequest req, Employee employee, Store store);
+    @Mapping(target = "status", constant = "PENDING")
+    EmployeeAssignment toEntity(
+        EmployeeAssignmentRequest req,
+        Employee employee,
+        Store store
+    );
 }

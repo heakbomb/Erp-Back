@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.erp.erp_back.dto.store.BusinessNumberResponse;
 import com.erp.erp_back.dto.log.StoreQrResponse;
 import com.erp.erp_back.dto.store.StoreCreateRequest;
+import com.erp.erp_back.dto.store.StoreGpsResponse;
 import com.erp.erp_back.dto.store.StoreResponse;
 import com.erp.erp_back.dto.store.StoreSimpleResponse;
 import com.erp.erp_back.service.store.StoreService;
@@ -38,12 +39,12 @@ public class StoreController {
 
     @GetMapping
     public ResponseEntity<List<StoreResponse>> getAllStores() {
-      return ResponseEntity.ok(storeService.getAllStores());
+        return ResponseEntity.ok(storeService.getAllStores());
     }
 
     @GetMapping("/{storeId}")
     public ResponseEntity<StoreResponse> getStore(@PathVariable Long storeId) {
-      return ResponseEntity.ok(storeService.getStore(storeId));
+        return ResponseEntity.ok(storeService.getStore(storeId));
     }
 
     @PutMapping("/{storeId}")
@@ -56,25 +57,23 @@ public class StoreController {
     @DeleteMapping("/{storeId}")
     public ResponseEntity<Void> deleteStore(
             @PathVariable Long storeId,
-            @RequestParam(name = "force", defaultValue = "false") boolean force
-    ) {
+            @RequestParam(name = "force", defaultValue = "false") boolean force) {
         storeService.deleteStore(storeId, force);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/by-owner/{ownerId}")
     public ResponseEntity<List<StoreResponse>> getStoresByOwner(@PathVariable Long ownerId) {
-    return ResponseEntity.ok(storeService.getStoresByOwner(ownerId));
+        return ResponseEntity.ok(storeService.getStoresByOwner(ownerId));
     }
 
     @GetMapping("/inactive/by-owner/{ownerId}")
     public ResponseEntity<List<StoreSimpleResponse>> getInactiveStoresByOwner(
-        @PathVariable Long ownerId
-    ) {
-    return ResponseEntity.ok(storeService.getInactiveStoresByOwner(ownerId));
+            @PathVariable Long ownerId) {
+        return ResponseEntity.ok(storeService.getInactiveStoresByOwner(ownerId));
     }
 
-     @PatchMapping("/{storeId}/activate")
+    @PatchMapping("/{storeId}/activate")
     public ResponseEntity<Void> activateStore(@PathVariable Long storeId) {
         storeService.activateStore(storeId);
         return ResponseEntity.noContent().build();
@@ -83,8 +82,7 @@ public class StoreController {
     // ✅ 새로 추가: ownerId 기준 사업자번호 목록 조회
     @GetMapping("/business-numbers/by-owner/{ownerId}")
     public ResponseEntity<List<BusinessNumberResponse>> getBusinessNumbersByOwner(
-            @PathVariable Long ownerId
-    ) {
+            @PathVariable Long ownerId) {
         return ResponseEntity.ok(storeService.getBusinessNumbersByOwner(ownerId));
     }
 
@@ -93,8 +91,7 @@ public class StoreController {
     @GetMapping("/{storeId}/qr")
     public ResponseEntity<StoreQrResponse> getOrRefreshQr(
             @PathVariable Long storeId,
-            @RequestParam(name = "refresh", defaultValue = "false") boolean refresh
-    ) {
+            @RequestParam(name = "refresh", defaultValue = "false") boolean refresh) {
         return ResponseEntity.ok(storeService.getOrRefreshQr(storeId, refresh));
     }
 
@@ -106,5 +103,17 @@ public class StoreController {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<String> handleBadReq(IllegalArgumentException e) {
         return ResponseEntity.badRequest().body(e.getMessage());
+    }
+
+    // ✅ [추가] 직원용 사업장 검색: 승인된 사업장만 조회 가능
+    @GetMapping("/approved/{storeId}")
+    public ResponseEntity<StoreResponse> getApprovedStore(@PathVariable Long storeId) {
+        return ResponseEntity.ok(storeService.getApprovedStoreForEmployee(storeId));
+    }
+
+    // 직원/공용: 사업장 GPS 좌표 조회
+    @GetMapping("/{storeId}/gps")
+    public ResponseEntity<StoreGpsResponse> getStoreGps(@PathVariable Long storeId) {
+        return ResponseEntity.ok(storeService.getStoreGps(storeId));
     }
 }

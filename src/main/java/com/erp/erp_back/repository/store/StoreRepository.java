@@ -2,6 +2,7 @@ package com.erp.erp_back.repository.store;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -27,7 +28,7 @@ public interface StoreRepository extends JpaRepository<Store, Long>, JpaSpecific
 
   long countByStatus(String status);
 
-  // ✅ 사장님 대시보드용 통계 쿼리 
+  // ✅ 사장님 대시보드용 통계 쿼리
   @Query("""
       SELECT new com.erp.erp_back.dto.admin.AdminStoreDashboardItem(
           s.storeId,
@@ -51,8 +52,19 @@ public interface StoreRepository extends JpaRepository<Store, Long>, JpaSpecific
       @Param("end") LocalDateTime end);
 
   // ⚠️ 예전: status 로 비활성 매장 찾던 메서드
-  // List<Store> findAllByBusinessNumber_Owner_OwnerIdAndStatus(Long ownerId, String status);
+  // List<Store> findAllByBusinessNumber_Owner_OwnerIdAndStatus(Long ownerId,
+  // String status);
 
   // ✅ 새로 추가: active 플래그 기준으로 조회
   List<Store> findAllByBusinessNumber_Owner_OwnerIdAndActive(Long ownerId, boolean active);
+
+  // ✅ [추가] 직원 검색용: 승인(APPROVED) + 활성(active=true 또는 null) 매장만 조회
+  @Query("""
+      select s
+      from Store s
+      where s.storeId = :storeId
+        and s.status = 'APPROVED'
+        and (s.active is null or s.active = true)
+      """)
+  Optional<Store> findApprovedActiveByStoreId(@Param("storeId") Long storeId);
 }
