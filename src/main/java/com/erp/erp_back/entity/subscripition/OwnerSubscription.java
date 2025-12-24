@@ -43,4 +43,12 @@ public class OwnerSubscription {
 
     @Column(name = "expiry_date", nullable = false)
     private LocalDate expiryDate;
+
+    // [추가] 해지 여부 (true면 다음 달 자동 결제 안 함)
+    @Column(nullable = false)
+    private boolean canceled = false;
+
+    // [추가] 해지 사유
+    @Column(name = "cancel_reason")
+    private String cancelReason;
 }
