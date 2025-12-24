@@ -16,5 +16,7 @@ public class EmployeeAssignmentResponse {
     private Long employeeId;
     private Long storeId;
     private String role;
-    private String status; 
+    private String status;
+    private String employeeName;   
+    private String employeePhone;
 }
