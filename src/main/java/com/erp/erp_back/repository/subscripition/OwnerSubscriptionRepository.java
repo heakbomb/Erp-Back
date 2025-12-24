@@ -1,11 +1,12 @@
 package com.erp.erp_back.repository.subscripition;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.EntityGraph; 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -37,4 +38,8 @@ public interface OwnerSubscriptionRepository extends JpaRepository<OwnerSubscrip
      */
     @EntityGraph(attributePaths = {"subscription"}) 
     Optional<OwnerSubscription> findFirstByOwner_OwnerIdOrderByExpiryDateDesc(Long ownerId);
+
+    // [추가] 스케줄러용: 만료일이 특정 날짜(오늘)이고, 해지하지 않은 구독 목록 조회
+    List<OwnerSubscription> findByExpiryDateAndCanceledFalse(LocalDate expiryDate);
+
 }

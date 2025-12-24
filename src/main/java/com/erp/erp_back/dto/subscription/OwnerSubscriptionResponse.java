@@ -23,8 +23,11 @@ public class OwnerSubscriptionResponse {
     
     // Subscription 상세 정보 (JOIN)
     private Long subId;
-    private String subName;
+    private String subName;        
     private BigDecimal monthlyPrice;
     private Boolean isActive;
 
+    // [추가] 해지 여부 및 사유 전달
+    private boolean canceled; 
+    private String cancelReason;
 }
