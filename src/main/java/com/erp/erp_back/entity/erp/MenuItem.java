@@ -8,26 +8,8 @@ import com.erp.erp_back.common.ErrorCodes;
 import com.erp.erp_back.entity.enums.ActiveStatus;
 import com.erp.erp_back.entity.store.Store;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Index;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
-import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import jakarta.persistence.*;
+import lombok.*;
 
 @Entity
 @Table(
@@ -37,7 +19,10 @@ import lombok.Setter;
     },
     indexes = {
         @Index(name = "ix_menuitem_store", columnList = "store_id"),
-        @Index(name = "ix_menuitem_name", columnList = "menu_name")
+        @Index(name = "ix_menuitem_name", columnList = "menu_name"),
+        // ✅ [추가] 조회 최적화용
+        @Index(name = "ix_menuitem_category_name", columnList = "category_name"),
+        @Index(name = "ix_menuitem_sub_category_name", columnList = "sub_category_name")
     }
 )
 @Getter @Setter
@@ -61,7 +46,6 @@ public class MenuItem {
     @Builder.Default
     private BigDecimal price = BigDecimal.ZERO;
 
-    // 산출원가는 계산 전까지 0으로 유지
     @Column(name = "calculated_cost", nullable = false, precision = 18, scale = 4)
     @Builder.Default
     private BigDecimal calculatedCost = BigDecimal.ZERO;
@@ -71,7 +55,15 @@ public class MenuItem {
     @Builder.Default
     private ActiveStatus status = ActiveStatus.ACTIVE;
 
-    // ✔ 더블 세이프가드: 빌더/세터/직접 매핑 등으로 null 들어와도 INSERT 직전에 기본값 보장
+    // =========================================================
+    // ✅ [추가] 중분류/소분류 (코드에서 정해진 값만 저장)
+    // =========================================================
+    @Column(name = "category_name", nullable = false, length = 30)
+    private String categoryName;
+
+    @Column(name = "sub_category_name", nullable = false, length = 30)
+    private String subCategoryName;
+
     @PrePersist
     void prePersist() {
         if (price == null) price = BigDecimal.ZERO;
@@ -79,7 +71,6 @@ public class MenuItem {
         if (status == null) status = ActiveStatus.ACTIVE;
     }
 
-    // (선택) UPDATE 때도 혹시 모를 null 방지
     @PreUpdate
     void preUpdate() {
         if (calculatedCost == null) calculatedCost = BigDecimal.ZERO;

@@ -25,7 +25,13 @@ import com.erp.erp_back.repository.erp.MenuItemRepository;
 import com.erp.erp_back.repository.erp.RecipeIngredientRepository;
 import com.erp.erp_back.repository.store.StoreRepository;
 import com.erp.erp_back.service.erp.component.MenuCostCalculator;
+
+// ✅ [추가] 허용 카테고리 카탈로그
+import com.erp.erp_back.service.erp.constant.MenuCategoryCatalog;
+import com.erp.erp_back.service.erp.constant.MenuCategoryCatalog.Industry;
+
 import static com.erp.erp_back.repository.specification.MenuItemSpecification.*;
+
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 
@@ -42,7 +48,7 @@ public class MenuItemService {
     private final MenuCostCalculator menuCostCalculator;
 
     public Page<MenuItemResponse> getMenuPage(Long storeId, String q, ActiveStatus status, Pageable pageable) {
-        
+
         // 1. 기본 조건: storeId (Specification.where 없이 바로 대입)
         Specification<MenuItem> spec = byStoreId(storeId);
 
@@ -83,7 +89,25 @@ public class MenuItemService {
             throw new IllegalStateException(ErrorCodes.DUPLICATE_MENU_NAME);
         }
 
+        // =========================================================
+        // ✅ [추가] 중분류/소분류 허용값 검증 + 엔티티 세팅 (기존 로직 영향 X)
+        // =========================================================
+        if (req.getCategoryName() != null) req.setCategoryName(req.getCategoryName().trim());
+        if (req.getSubCategoryName() != null) req.setSubCategoryName(req.getSubCategoryName().trim());
+
+        Industry industry = resolveIndustry(store);
+
+        if (!MenuCategoryCatalog.isValid(industry, req.getCategoryName(), req.getSubCategoryName())) {
+            throw new IllegalArgumentException("INVALID_MENU_CATEGORY");
+        }
+        // =========================================================
+
         MenuItem menuItem = menuItemMapper.toEntity(req, store);
+
+        // ✅ [추가] DB 저장 필드 세팅 (NOT NULL 충족)
+        menuItem.setCategoryName(req.getCategoryName());
+        menuItem.setSubCategoryName(req.getSubCategoryName());
+
         MenuItem saved = menuItemRepository.save(menuItem);
 
         return toDTO(saved);
@@ -108,6 +132,22 @@ public class MenuItemService {
         }
 
         menuItemMapper.updateFromDto(req, menu);
+
+        // =========================================================
+        // ✅ [추가] 중분류/소분류 허용값 검증 + 엔티티 세팅 (기존 로직 영향 X)
+        // =========================================================
+        if (req.getCategoryName() != null) req.setCategoryName(req.getCategoryName().trim());
+        if (req.getSubCategoryName() != null) req.setSubCategoryName(req.getSubCategoryName().trim());
+
+        Industry industry = resolveIndustry(menu.getStore());
+
+        if (!MenuCategoryCatalog.isValid(industry, req.getCategoryName(), req.getSubCategoryName())) {
+            throw new IllegalArgumentException("INVALID_MENU_CATEGORY");
+        }
+
+        menu.setCategoryName(req.getCategoryName());
+        menu.setSubCategoryName(req.getSubCategoryName());
+        // =========================================================
 
         return toDTO(menu);
     }
@@ -179,5 +219,22 @@ public class MenuItemService {
         long total = menuItemRepository.countByStoreStoreId(storeId);
         long inactive = menuItemRepository.countByStoreStoreIdAndStatus(storeId, ActiveStatus.INACTIVE);
         return new MenuStatsResponse(total, inactive);
+    }
+
+    // =========================================================
+    // ✅ [추가] 업종 매핑 (여기만 너희 Store 구조에 맞추면 됨)
+    // - 다른 로직에 영향 없음
+    // =========================================================
+    private Industry resolveIndustry(Store store) {
+        // [1] Store에 enum industry가 있는 경우 (가장 흔함)
+        // 예: store.getIndustry()가 KOREAN/CHICKEN 또는 "한식/치킨" 등일 수 있음
+        // 아래 1줄만 너희 Store 필드에 맞게 조정하면 끝.
+
+        // ✅ 케이스 A: Store.industry가 enum(예: KOREAN/CHICKEN)인 경우
+        return Industry.valueOf(store.getIndustry().name());
+
+        // ✅ 케이스 B: Store.industry가 String("한식","치킨")인 경우라면 위 줄 대신:
+        // String v = store.getIndustry();
+        // return "한식".equals(v) ? Industry.KOREAN : Industry.CHICKEN;
     }
 }

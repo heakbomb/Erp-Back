@@ -120,7 +120,10 @@ public class OwnerPayrollService {
 
                 long workDays = workDaysMap.getOrDefault(empId, 0L);
                 long workMinutes = workMinutesMap.getOrDefault(empId, 0L);
-                double workHours = workMinutes / 60.0;  // 🔥 분 → 시간 변환
+
+                // ✅ [핵심 수정] 계산용(raw)과 표시용(정수)을 분리
+                double workHoursRaw = workMinutes / 60.0;      // 🔥 급여 계산용 (기존 로직 그대로)
+                double workHours = Math.round(workHoursRaw);   // ✅ UI 표시용 (정수 시간)
 
                 // ✅ 급여설정 가져오기
                 PayrollSetting setting = settingMap.get(empId);
@@ -143,7 +146,8 @@ public class OwnerPayrollService {
                 if ("MONTHLY".equalsIgnoreCase(wageType)) {
                     grossPay = baseWageValue;
                 } else {
-                    grossPay = Math.round(baseWageValue * workHours);
+                    // ✅ [중요] 급여 계산은 반드시 raw(기존값)로! (정수 workHours 쓰면 꼬임)
+                    grossPay = Math.round(baseWageValue * workHoursRaw);
                 }
 
                 // 3-3) 공제 정보(JSON) 추출
@@ -154,23 +158,20 @@ public class OwnerPayrollService {
                 long netPay = grossPay - deductions;
 
                 // 3-5) EmployeePayroll DTO 생성
-                // ⚠️ EmployeePayroll 필드 순서:
-                // id, name, role, workDays, workHours,
-                // hourlyWage, basePay, bonus, deductions, netPay, status, deductionType
                 return new EmployeePayroll(
                     empId,
                     assign.getEmployee().getName(),
                     assign.getRole(),
                     workDays,
-                    workHours,
-                    baseWageValue,        // hourlyWage 자리: 설정값 그대로
-                    baseWageValue,        // basePay 자리: 설정값 그대로
-                    0L,                   // bonus
-                    deductions,           // 공제액
-                    netPay,               // 실수령액
-                    "예정",                // 상태
-                    di.getType()          // ✅ 공제 유형 (FOUR_INSURANCE / TAX_3_3 / NONE)
-                    , wageType            // ✅ 급여 형태 (HOURLY / MONTHLY)
+                    workHours,          // ✅ UI에는 정수시간으로 내려감
+                    baseWageValue,
+                    baseWageValue,
+                    0L,
+                    deductions,
+                    netPay,
+                    "예정",
+                    di.getType(),
+                    wageType
                 );
             })
             .toList();
