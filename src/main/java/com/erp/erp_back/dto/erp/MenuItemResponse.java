@@ -21,6 +21,7 @@ public class MenuItemResponse {
     private BigDecimal price;
     private BigDecimal calculatedCost;
     private ActiveStatus status;  
-
+    private Long categoryId;
+    private Long subCategoryId;
     
 }
