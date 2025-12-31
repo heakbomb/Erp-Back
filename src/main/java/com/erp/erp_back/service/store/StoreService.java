@@ -34,7 +34,7 @@ import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
-
+import com.erp.erp_back.util.KmaGridConverter;
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -163,6 +163,12 @@ public class StoreService {
         gps.setStore(saved);
         gps.setLatitude(request.getLatitude());
         gps.setLongitude(request.getLongitude());
+
+         // ✅ 추가: 위경도 → nx, ny 변환 저장 (로직 영향 없음)
+        KmaGridConverter.Grid grid = KmaGridConverter.toGrid(request.getLatitude(), request.getLongitude());
+        gps.setNx(grid.nx());
+        gps.setNy(grid.ny());
+
         // gpsRadiusM이 없으면 기본값 80 설정
         gps.setGpsRadiusM(request.getGpsRadiusM() != null ? request.getGpsRadiusM() : 80);
         storeGpsRepository.save(gps);
@@ -196,6 +202,11 @@ public class StoreService {
 
         gps.setLatitude(request.getLatitude());
         gps.setLongitude(request.getLongitude());
+
+        // ✅ 추가: 위경도 → nx, ny 변환 저장 (로직 영향 없음)
+        KmaGridConverter.Grid grid = KmaGridConverter.toGrid(request.getLatitude(), request.getLongitude());
+        gps.setNx(grid.nx());
+        gps.setNy(grid.ny());
 
         if (request.getGpsRadiusM() != null) {
             gps.setGpsRadiusM(request.getGpsRadiusM());
