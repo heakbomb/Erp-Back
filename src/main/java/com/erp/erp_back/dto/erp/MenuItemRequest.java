@@ -29,4 +29,8 @@ public class MenuItemRequest {
     private BigDecimal price;
 
     private ActiveStatus status;
+
+    // ✅ [추가] 중분류/소분류 (무조건 선택 = NOT NULL)
+    private String categoryName;
+    private String subCategoryName;
 }

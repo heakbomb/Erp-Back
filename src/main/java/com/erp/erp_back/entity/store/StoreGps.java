@@ -34,6 +34,13 @@ public class StoreGps {
     @Column(nullable = false)
     private Double longitude;
 
+    // ✅ 추가: 기상청 격자
+    @Column(name = "nx")
+    private Integer nx;
+
+    @Column(name = "ny")
+    private Integer ny;
+
     @Column(name = "gps_radius_m")
     private Integer gpsRadiusM;
 }
