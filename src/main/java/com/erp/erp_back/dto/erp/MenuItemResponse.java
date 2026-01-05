@@ -23,5 +23,7 @@ public class MenuItemResponse {
     private ActiveStatus status;  
     private Long categoryId;
     private Long subCategoryId;
-    
+
+    private String categoryName;
+    private String subCategoryName;
 }
