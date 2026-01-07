@@ -25,4 +25,5 @@ public class EmployeeShiftResponse {
     private LocalTime endTime;
     private Boolean isFixed;
     private Integer breakMinutes;
+    private Long shiftGroupId; // 동일한 스케줄 묶음 식별용 (옵션)
 }

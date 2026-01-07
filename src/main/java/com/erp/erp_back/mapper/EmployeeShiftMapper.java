@@ -17,14 +17,14 @@ import com.erp.erp_back.entity.hr.EmployeeShift;
 import com.erp.erp_back.entity.store.Store;
 import com.erp.erp_back.entity.user.Employee;
 
-@Mapper(componentModel = MappingConstants.ComponentModel.SPRING,
-        unmappedTargetPolicy = ReportingPolicy.IGNORE)
+@Mapper(componentModel = MappingConstants.ComponentModel.SPRING, unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface EmployeeShiftMapper {
 
     // Entity -> Response DTO
     @Mapping(source = "store.storeId", target = "storeId")
     @Mapping(source = "employee.employeeId", target = "employeeId")
     @Mapping(source = "employee.name", target = "employeeName")
+    @Mapping(source = "shiftGroupId", target = "shiftGroupId") // ✅ 추가
     EmployeeShiftResponse toResponse(EmployeeShift entity);
 
     // 생성 (단건): Request + Store + Employee -> Entity
@@ -40,7 +40,7 @@ public interface EmployeeShiftMapper {
     @Mapping(target = "shiftId", ignore = true) // ID는 변경 불가
     @Mapping(target = "store", ignore = true)
     @Mapping(target = "employee", ignore = true)
-    @Mapping(target = "breakMinutes", source = "req.breakMinutes") 
+    @Mapping(target = "breakMinutes", source = "req.breakMinutes")
     @Mapping(target = "isFixed", source = "req.isFixed")
     void updateFromDto(EmployeeShiftUpsertRequest req, @MappingTarget EmployeeShift entity);
 
