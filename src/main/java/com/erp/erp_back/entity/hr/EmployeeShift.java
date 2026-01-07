@@ -24,6 +24,9 @@ public class EmployeeShift {
     @Column(name = "shift_id")
     private Long shiftId;
 
+    @Column(name = "shift_group_id")
+    private Long shiftGroupId; // 동일한 스케줄 묶음 식별용 (옵션)
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
@@ -33,13 +36,13 @@ public class EmployeeShift {
     private Store store;
 
     @Column(name = "shift_date", nullable = false)
-    private LocalDate shiftDate;      // 근무날짜
+    private LocalDate shiftDate; // 근무날짜
 
     @Column(name = "start_time", nullable = false)
-    private LocalTime startTime;      // 시작 시간
+    private LocalTime startTime; // 시작 시간
 
     @Column(name = "end_time", nullable = false)
-    private LocalTime endTime;        // 종료 시간
+    private LocalTime endTime; // 종료 시간
 
     // ✅ 휴게 시간(분) – 없으면 0 취급
     @Column(name = "break_minutes")
@@ -47,7 +50,7 @@ public class EmployeeShift {
 
     @Builder.Default
     @Column(name = "is_fixed", nullable = false)
-    private Boolean isFixed = false;  // 고정 스케줄 여부
+    private Boolean isFixed = false; // 고정 스케줄 여부
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -55,14 +58,13 @@ public class EmployeeShift {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-
     // =================================================================
     // ⚡️ 엔티티 생명주기(Lifecycle) 이벤트 메서드
     // =================================================================
     // 데이터 일관성 유지를 위해 @PrePersist, @PreUpdate 사용
     /**
      * @PrePersist: 데이터가 DB에 처음 저장(INSERT)되기 직전에 자동으로 실행됩니다.
-     * 역할: 생성일자 자동 기록 및 필수값(기본값) 누락 방지
+     *              역할: 생성일자 자동 기록 및 필수값(기본값) 누락 방지
      */
     @PrePersist
     protected void onCreate() {
@@ -81,7 +83,7 @@ public class EmployeeShift {
 
     /**
      * @PreUpdate: 데이터가 수정(UPDATE)되어 DB에 반영되기 직전에 자동으로 실행됩니다.
-     * 역할: 수정일자 갱신 및 데이터 무결성 유지
+     *             역할: 수정일자 갱신 및 데이터 무결성 유지
      */
     @PreUpdate
     protected void onUpdate() {
