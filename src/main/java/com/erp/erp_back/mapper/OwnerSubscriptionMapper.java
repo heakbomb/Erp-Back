@@ -8,8 +8,7 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
 import org.mapstruct.ReportingPolicy;
 
-@Mapper(componentModel = MappingConstants.ComponentModel.SPRING,
-        unmappedTargetPolicy = ReportingPolicy.IGNORE)
+@Mapper(componentModel = MappingConstants.ComponentModel.SPRING, unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface OwnerSubscriptionMapper {
 
     // 사장님용 응답 (Full DTO)
@@ -18,7 +17,7 @@ public interface OwnerSubscriptionMapper {
     @Mapping(source = "subscription.subName", target = "subName")
     @Mapping(source = "subscription.monthlyPrice", target = "monthlyPrice")
     // [수정] subscription.isActive (X) -> subscription.active (O)
-    @Mapping(source = "subscription.active", target = "isActive") 
+    @Mapping(source = "subscription.active", target = "isActive")
     OwnerSubscriptionResponse toResponse(OwnerSubscription entity);
 
     // 관리자용 응답

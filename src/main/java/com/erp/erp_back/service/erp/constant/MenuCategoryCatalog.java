@@ -45,7 +45,7 @@ public final class MenuCategoryCatalog {
         chicken.put("부분육", setOf("윙", "봉", "윙봉세트", "닭다리"));
         chicken.put("세트", setOf("치킨+감튀", "치킨+떡볶이", "1인세트", "가족세트"));
         chicken.put("사이드", setOf("감자튀김", "치즈볼", "치킨무", "치즈스틱", "오징어링"));
-        chicken.put("주류/음료", setOf("소주", "맥주", "생맥주", "음료"));
+        chicken.put("주류/음료", setOf("소주", "맥주", "막걸리", "음료", "청하", "하이볼"));
         root.put(Industry.CHICKEN, Collections.unmodifiableMap(chicken));
 
         CATALOG = Collections.unmodifiableMap(root);

@@ -1,7 +1,7 @@
 package com.erp.erp_back.repository.erp;
 
 import com.erp.erp_back.entity.erp.InventorySnapshot;
-import com.erp.erp_back.entity.erp.InventorySnapshotId; // ID 클래스 임포트
+// import com.erp.erp_back.entity.erp.InventorySnapshotId; // [삭제] 더 이상 필요 없음
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -10,9 +10,9 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 
-// [변경] PK 타입이 Long -> InventorySnapshotId
+// [수정 완료] JpaRepository<Entity, PK타입> -> PK가 Long으로 변경됨
 @Repository
-public interface InventorySnapshotRepository extends JpaRepository<InventorySnapshot, InventorySnapshotId> {
+public interface InventorySnapshotRepository extends JpaRepository<InventorySnapshot, Long> {
 
     boolean existsBySnapshotDate(LocalDate snapshotDate);
 

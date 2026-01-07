@@ -6,38 +6,60 @@ import java.time.LocalDateTime;
 
 import com.erp.erp_back.entity.store.Store;
 
-import jakarta.persistence.*; // 여기에 ConstraintMode가 포함되어 있습니다.
-import lombok.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.ConstraintMode;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(
     name = "inventory_snapshot", 
     indexes = {
         @Index(name = "ix_snapshot_store_date", columnList = "store_id, snapshot_date")
+    },
+    // [핵심] 복합키 대신 유니크 제약조건으로 데이터 중복 방지
+    uniqueConstraints = {
+        @UniqueConstraint(
+            name = "uk_snapshot_store_item_date", 
+            columnNames = {"store_id", "item_id", "snapshot_date"}
+        )
     }
 )
-@IdClass(InventorySnapshotId.class)
+// [수정 1] @IdClass 제거 (IDENTITY 전략과 충돌 방지)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
 public class InventorySnapshot {
 
-    @Id
+    @Id // [수정 2] snapshotId만 유일한 PK로 설정
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "snapshot_id")
     private Long snapshotId;
 
-    @Id
     @Column(name = "snapshot_date", nullable = false)
     private LocalDate snapshotDate;
 
-    // [수정 포인트 1] 외래키 제약조건 생성 방지 (ConstraintMode.NO_CONSTRAINT)
+    // 외래키 제약조건 생성 방지 (기존 유지)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "store_id", nullable = false, foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     private Store store;
 
-    // [수정 포인트 2] 외래키 제약조건 생성 방지
+    // 외래키 제약조건 생성 방지 (기존 유지)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "item_id", nullable = false, foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     private Inventory inventory;
