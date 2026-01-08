@@ -4,6 +4,7 @@ package com.erp.erp_back.service.erp;
 import static com.erp.erp_back.repository.specification.InventorySpecification.byStoreId;
 import static com.erp.erp_back.repository.specification.InventorySpecification.hasStatus;
 import static com.erp.erp_back.repository.specification.InventorySpecification.itemNameContains;
+import static com.erp.erp_back.util.BigDecimalUtils.nz;
 import static com.erp.erp_back.repository.specification.InventorySpecification.hasItemType;
 
 import java.math.BigDecimal;
@@ -23,8 +24,11 @@ import com.erp.erp_back.entity.enums.ActiveStatus;
 import com.erp.erp_back.entity.enums.IngredientCategory;
 import com.erp.erp_back.entity.erp.Inventory;
 import com.erp.erp_back.entity.store.Store;
+import com.erp.erp_back.exception.BusinessException;
 import com.erp.erp_back.mapper.InventoryMapper;
 import com.erp.erp_back.repository.erp.InventoryRepository;
+import com.erp.erp_back.repository.erp.PurchaseHistoryRepository;
+import com.erp.erp_back.repository.erp.RecipeIngredientRepository;
 import com.erp.erp_back.repository.store.StoreRepository;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -37,6 +41,8 @@ public class InventoryService {
 
     private final InventoryRepository inventoryRepository;
     private final StoreRepository storeRepository;
+    private final PurchaseHistoryRepository purchaseHistoryRepository;
+    private final RecipeIngredientRepository recipeIngredientRepository;
     private final InventoryMapper inventoryMapper;
 
     @Transactional
@@ -44,8 +50,13 @@ public class InventoryService {
         Store store = storeRepository.findById(req.getStoreId())
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.STORE_NOT_FOUND));
 
-        Inventory inv = inventoryMapper.toEntity(req, store);
+        String name = req.getItemName().trim();
 
+        if (inventoryRepository.existsByStoreStoreIdAndItemName(store.getStoreId(), name)) {
+            throw new BusinessException(ErrorCodes.DUPLICATE_INVENTORY_NAME, "이미 존재하는 품목명입니다.");
+        }
+
+        Inventory inv = inventoryMapper.toEntity(req, store);
         Inventory saved = inventoryRepository.save(inv);
         return inventoryMapper.toResponse(saved);
     }
@@ -56,7 +67,8 @@ public class InventoryService {
         return inventoryMapper.toResponse(inv);
     }
 
-    public Page<InventoryResponse> getInventoryPage(Long storeId, String q, ActiveStatus status, IngredientCategory itemType, Pageable pageable) {
+    public Page<InventoryResponse> getInventoryPage(Long storeId, String q, ActiveStatus status,
+            IngredientCategory itemType, Pageable pageable) {
         Specification<Inventory> spec = byStoreId(storeId);
 
         // 2. 동적 조건: 검색어(q)가 있으면 AND 조건 추가 (AND item_name LIKE %?%)
@@ -69,10 +81,10 @@ public class InventoryService {
             spec = spec.and(hasStatus(status));
         }
 
-        // 4. 동적 조건: 품목 타입 
-         if (itemType != null) {
-        spec = spec.and(hasItemType(itemType));
-    }
+        // 4. 동적 조건: 품목 타입
+        if (itemType != null) {
+            spec = spec.and(hasItemType(itemType));
+        }
 
         // 4. 실행: 완성된 명세(Spec)로 조회
         Page<Inventory> page = inventoryRepository.findAll(spec, pageable);
@@ -85,8 +97,22 @@ public class InventoryService {
         Inventory inv = inventoryRepository.findByItemIdAndStoreStoreId(itemId, storeId)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCodes.INVENTORY_NOT_FOUND));
 
-        inventoryMapper.updateFromDto(req, inv);
+        // ✅ 이름이 null/blank가 아닐 때만 체크 (req 구조에 맞게 조정)
+        String newName = req.getItemName() == null ? null : req.getItemName().trim();
 
+        // ✅ “이름 변경”이 발생할 때만 중복 체크 (불필요한 쿼리 줄임)
+        if (newName != null && !newName.isBlank() && !newName.equals(inv.getItemName())) {
+            boolean duplicated = inventoryRepository.existsByStoreStoreIdAndItemNameAndItemIdNot(storeId, newName,
+                    itemId);
+
+            if (duplicated) {
+                throw new BusinessException(
+                        ErrorCodes.DUPLICATE_INVENTORY_NAME,
+                        "이미 존재하는 품목명입니다.");
+            }
+        }
+
+        inventoryMapper.updateFromDto(req, inv);
         return inventoryMapper.toResponse(inv);
     }
 
@@ -138,4 +164,21 @@ public class InventoryService {
     public long countLowStockItems(Long storeId) {
         return inventoryRepository.countLowStockItems(storeId, ActiveStatus.ACTIVE);
     }
+
+    public void deleteOrphanInventoryIfPossible(Inventory item) {
+    Long itemId = item.getItemId();
+
+    // 1) 다른 매입 내역이 남아있으면 삭제 금지
+    if (purchaseHistoryRepository.existsByInventoryItemId(itemId)) return;
+
+    // 2) 레시피에서 사용 중이면 삭제 금지
+    if (recipeIngredientRepository.existsByInventoryItemId(itemId)) return;
+
+    // 3) 재고가 0이 아니면 삭제 금지 (안전)
+    BigDecimal stockQty = nz(inventoryRepository.findStockQtyByItemId(itemId));
+    if (stockQty.compareTo(BigDecimal.ZERO) != 0) return;
+
+    // ✅ 여기까지 오면 “고아 품목” → 삭제
+    inventoryRepository.delete(item);
+}
 }

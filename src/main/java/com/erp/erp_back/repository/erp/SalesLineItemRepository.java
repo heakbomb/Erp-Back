@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import com.erp.erp_back.dto.erp.DailyMenuStatDto;
 import com.erp.erp_back.dto.erp.TopMenuStatsResponse;
 import com.erp.erp_back.entity.erp.SalesLineItem;
 

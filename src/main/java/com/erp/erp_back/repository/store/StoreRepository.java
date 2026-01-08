@@ -67,4 +67,7 @@ public interface StoreRepository extends JpaRepository<Store, Long>, JpaSpecific
         and (s.active is null or s.active = true)
       """)
   Optional<Store> findApprovedActiveByStoreId(@Param("storeId") Long storeId);
+
+  @Query("select s.storeId from Store s")
+    List<Long> findAllStoreIds();
 }

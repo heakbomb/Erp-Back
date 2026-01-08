@@ -7,6 +7,8 @@ public final class ErrorCodes {
 
     public static final String STORE_NOT_FOUND = "STORE_NOT_FOUND";
     public static final String INVENTORY_NOT_FOUND = "INVENTORY_NOT_FOUND";
+    public static final String DUPLICATE_INVENTORY_NAME = "DUPLICATE_INVENTORY_NAME";
+    public static final String DUPLICATE_MENU_NAME = "DUPLICATE_MENU_NAME";
     public static final String INVENTORY_ITEM_NOT_FOUND = "INVENTORY_ITEM_NOT_FOUND";
     public static final String MENU_NOT_FOUND = "MENU_NOT_FOUND";
     public static final String PURCHASE_NOT_FOUND = "PURCHASE_NOT_FOUND";
@@ -16,7 +18,7 @@ public final class ErrorCodes {
     public static final String MENU_ID_MUST_NOT_BE_NULL = "MENU_ID_MUST_NOT_BE_NULL";
     public static final String RECIPE_ID_MUST_NOT_BE_NULL = "RECIPE_ID_MUST_NOT_BE_NULL";
     public static final String INVENTORY_ID_MUST_NOT_BE_NULL = "INVENTORY_ID_MUST_NOT_BE_NULL";
-    public static final String DUPLICATE_MENU_NAME = "DUPLICATE_MENU_NAME";
+
     public static final String INGREDIENT_ALREADY_EXISTS_FOR_MENU = "INGREDIENT_ALREADY_EXISTS_FOR_MENU";
 
     public static final String INVALID_CONSUMPTION_QTY = "INVALID_CONSUMPTION_QTY";
