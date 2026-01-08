@@ -1,5 +1,6 @@
 package com.erp.erp_back.repository.erp;
 
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -24,7 +25,6 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long>, Jpa
 
     boolean existsByStoreStoreIdAndItemNameAndItemIdNot(Long storeId, String itemName, Long itemId);
 
-
     // 🔒 [비관적 락] 재고 차감/증가 시 동시성 충돌 방지 + 일괄 조회
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT i FROM Inventory i WHERE i.itemId IN :ids")
@@ -35,30 +35,33 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long>, Jpa
     Optional<Inventory> findByIdWithLock(@Param("id") Long id);
 
     @Query("""
-           SELECT new com.erp.erp_back.dto.erp.InventoryResponse(
-               i.itemId,
-               i.store.storeId,
-               i.itemName,
-               i.itemType,
-               i.stockType,
-               i.stockQty,
-               i.safetyQty,
-               i.status,
-               i.lastUnitCost
-           )
-           FROM Inventory i
-           WHERE i.store.storeId = :storeId
-           ORDER BY i.itemName ASC
-           """)
+            SELECT new com.erp.erp_back.dto.erp.InventoryResponse(
+                i.itemId,
+                i.store.storeId,
+                i.itemName,
+                i.itemType,
+                i.stockType,
+                i.stockQty,
+                i.safetyQty,
+                i.status,
+                i.lastUnitCost
+            )
+            FROM Inventory i
+            WHERE i.store.storeId = :storeId
+            ORDER BY i.itemName ASC
+            """)
     List<InventoryResponse> findExportRowsByStoreId(@Param("storeId") Long storeId);
 
     @Query("""
-        SELECT COUNT(i)
-        FROM Inventory i
-        WHERE i.store.storeId = :storeId
-          AND i.status = :status
-          AND i.stockQty < i.safetyQty
-    """)
+                SELECT COUNT(i)
+                FROM Inventory i
+                WHERE i.store.storeId = :storeId
+                  AND i.status = :status
+                  AND i.stockQty < i.safetyQty
+            """)
     long countLowStockItems(@Param("storeId") Long storeId,
-                            @Param("status") ActiveStatus status);
+            @Param("status") ActiveStatus status);
+
+    @Query("select i.stockQty from Inventory i where i.itemId = :itemId")
+    BigDecimal findStockQtyByItemId(@Param("itemId") Long itemId);
 }

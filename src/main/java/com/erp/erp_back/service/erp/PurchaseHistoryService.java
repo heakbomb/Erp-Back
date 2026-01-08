@@ -40,6 +40,8 @@ public class PurchaseHistoryService {
     private final StoreRepository storeRepository;
     private final MenuItemService menuItemService;
     private final PurchaseHistoryMapper purchaseHistoryMapper;
+    private final InventoryService inventoryService;
+    
 
     /* ====== 목록 (Specification로 통합 필터) ====== */
     public Page<PurchaseHistoryResponse> listPurchase(
@@ -161,6 +163,9 @@ public class PurchaseHistoryService {
 
         // 원가 재계산
         onPurchaseChanged(item);
+
+        // ✅ 고아 품목이면 Inventory 삭제
+       inventoryService.deleteOrphanInventoryIfPossible(item);
     }
 
     /* ====== 내부: 최신단가만 재계산 ====== */

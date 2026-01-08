@@ -13,6 +13,8 @@ public interface RecipeIngredientRepository extends JpaRepository<RecipeIngredie
     // 존재 여부
     boolean existsByMenuItemMenuIdAndInventoryItemId(Long menuId, Long itemId);
 
+    boolean existsByInventoryItemId(Long itemId);
+    
     // 조회
     List<RecipeIngredient> findByMenuItemMenuId(Long menuId);
     List<RecipeIngredient> findByInventoryItemId(Long itemId);
