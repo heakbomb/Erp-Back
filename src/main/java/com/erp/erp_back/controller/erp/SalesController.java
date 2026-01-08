@@ -26,6 +26,8 @@ import com.erp.erp_back.dto.erp.SalesDailyStatResponse;
 import com.erp.erp_back.dto.erp.SalesSummaryResponse;
 import com.erp.erp_back.dto.erp.SalesTransactionSummaryResponse;
 import com.erp.erp_back.dto.erp.TopMenuStatsResponse;
+import com.erp.erp_back.dto.erp.WeeklyAreaAvgResponse;
+import com.erp.erp_back.service.erp.OwnerWeeklyAreaAvgService;
 import com.erp.erp_back.service.erp.SalesReportService;
 import com.erp.erp_back.service.erp.SalesService;
 import com.erp.erp_back.service.erp.SalesStatsService;
@@ -42,6 +44,7 @@ public class SalesController {
     private final SalesService salesService;
     private final SalesStatsService salesStatsService;
     private final SalesReportService salesReportService;
+    private final OwnerWeeklyAreaAvgService weeklyService;
 
     @PostMapping("/pos-order")
     public ResponseEntity<PosOrderResponse> createPosOrder(@Valid @RequestBody PosOrderRequest req) {
@@ -110,5 +113,15 @@ public class SalesController {
             @RequestParam int year,
             @RequestParam int month) {
         return salesReportService.getMonthlyReport(storeId, year, month);
+    }
+
+     @GetMapping("/weekly-area-avg")
+    public ResponseEntity<WeeklyAreaAvgResponse> weeklyAreaAvg(
+            @RequestParam Long storeId,
+            @RequestParam int year,
+            @RequestParam int month,
+            @RequestParam(defaultValue = "2000") int radiusM
+    ) {
+        return ResponseEntity.ok(weeklyService.getWeeklyAreaAvg(storeId, year, month, radiusM));
     }
 }

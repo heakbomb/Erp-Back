@@ -20,6 +20,11 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long>, Jpa
 
     Optional<Inventory> findByItemIdAndStoreStoreId(Long itemId, Long storeId);
 
+    boolean existsByStoreStoreIdAndItemName(Long storeId, String itemName);
+
+    boolean existsByStoreStoreIdAndItemNameAndItemIdNot(Long storeId, String itemName, Long itemId);
+
+
     // 🔒 [비관적 락] 재고 차감/증가 시 동시성 충돌 방지 + 일괄 조회
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT i FROM Inventory i WHERE i.itemId IN :ids")
