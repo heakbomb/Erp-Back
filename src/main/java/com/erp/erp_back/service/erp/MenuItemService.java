@@ -20,6 +20,7 @@ import com.erp.erp_back.entity.enums.ActiveStatus;
 import com.erp.erp_back.entity.erp.MenuItem;
 import com.erp.erp_back.entity.erp.RecipeIngredient;
 import com.erp.erp_back.entity.store.Store;
+import com.erp.erp_back.exception.BusinessException;
 import com.erp.erp_back.mapper.MenuItemMapper;
 import com.erp.erp_back.repository.erp.MenuItemRepository;
 import com.erp.erp_back.repository.erp.RecipeIngredientRepository;
@@ -86,14 +87,16 @@ public class MenuItemService {
 
         // 중복 검사
         if (menuItemRepository.existsByStoreStoreIdAndMenuName(req.getStoreId(), req.getMenuName())) {
-            throw new IllegalStateException(ErrorCodes.DUPLICATE_MENU_NAME);
+            throw new BusinessException(ErrorCodes.DUPLICATE_MENU_NAME, "이미 존재하는 메뉴명입니다.");
         }
 
         // =========================================================
         // ✅ [추가] 중분류/소분류 허용값 검증 + 엔티티 세팅 (기존 로직 영향 X)
         // =========================================================
-        if (req.getCategoryName() != null) req.setCategoryName(req.getCategoryName().trim());
-        if (req.getSubCategoryName() != null) req.setSubCategoryName(req.getSubCategoryName().trim());
+        if (req.getCategoryName() != null)
+            req.setCategoryName(req.getCategoryName().trim());
+        if (req.getSubCategoryName() != null)
+            req.setSubCategoryName(req.getSubCategoryName().trim());
 
         Industry industry = resolveIndustry(store);
 
@@ -125,10 +128,10 @@ public class MenuItemService {
 
         // 이름 변경 시 중복 검사
         String newName = req.getMenuName();
-        if (newName != null
+        if (newName != null && !newName.isBlank()
                 && !Objects.equals(menu.getMenuName(), newName)
-                && menuItemRepository.existsByStoreStoreIdAndMenuName(storeId, newName)) {
-            throw new IllegalStateException(ErrorCodes.DUPLICATE_MENU_NAME);
+                && menuItemRepository.existsByStoreStoreIdAndMenuNameAndMenuIdNot(storeId, newName, menuId)) {
+            throw new BusinessException(ErrorCodes.DUPLICATE_MENU_NAME, "이미 존재하는 메뉴명입니다.");
         }
 
         menuItemMapper.updateFromDto(req, menu);
@@ -136,8 +139,10 @@ public class MenuItemService {
         // =========================================================
         // ✅ [추가] 중분류/소분류 허용값 검증 + 엔티티 세팅 (기존 로직 영향 X)
         // =========================================================
-        if (req.getCategoryName() != null) req.setCategoryName(req.getCategoryName().trim());
-        if (req.getSubCategoryName() != null) req.setSubCategoryName(req.getSubCategoryName().trim());
+        if (req.getCategoryName() != null)
+            req.setCategoryName(req.getCategoryName().trim());
+        if (req.getSubCategoryName() != null)
+            req.setSubCategoryName(req.getSubCategoryName().trim());
 
         Industry industry = resolveIndustry(menu.getStore());
 
@@ -174,7 +179,8 @@ public class MenuItemService {
                 .map(r -> r.getMenuItem().getMenuId())
                 .collect(Collectors.toSet());
 
-        if (menuIdsToUpdate.isEmpty()) return;
+        if (menuIdsToUpdate.isEmpty())
+            return;
 
         List<MenuItem> menus = menuItemRepository.findAllById(menuIdsToUpdate);
 
@@ -207,8 +213,7 @@ public class MenuItemService {
         Page<MenuItem> page = menuItemRepository.findByStoreStoreIdAndStatus(
                 storeId,
                 ActiveStatus.ACTIVE,
-                Pageable.unpaged()
-        );
+                Pageable.unpaged());
 
         return page.getContent().stream()
                 .map(this::toDTO)

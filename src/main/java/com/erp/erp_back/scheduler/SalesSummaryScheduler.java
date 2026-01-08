@@ -10,11 +10,11 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.erp.erp_back.dto.erp.DailyMenuStatDto;
 import com.erp.erp_back.entity.erp.MenuItem;
 import com.erp.erp_back.entity.erp.SalesDailySummary;
 import com.erp.erp_back.entity.erp.SalesMenuDailySummary;
 import com.erp.erp_back.entity.store.Store;
-import com.erp.erp_back.repository.erp.DailyMenuStatDto; // 이전에 만든 인터페이스
 import com.erp.erp_back.repository.erp.SalesDailySummaryRepository;
 import com.erp.erp_back.repository.erp.SalesLineItemRepository;
 import com.erp.erp_back.repository.erp.SalesMenuDailySummaryRepository;

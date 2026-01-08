@@ -13,11 +13,15 @@ import com.erp.erp_back.entity.erp.MenuItem;
 public interface MenuItemRepository extends JpaRepository<MenuItem, Long>, JpaSpecificationExecutor<MenuItem> {
 
     Optional<MenuItem> findByMenuIdAndStoreStoreId(Long menuId, Long storeId);
-   
+
     long countByStoreStoreId(Long storeId);
+
     long countByStoreStoreIdAndStatus(Long storeId, ActiveStatus status);
-    
+
     boolean existsByStoreStoreIdAndMenuName(Long storeId, String menuName);
 
+    boolean existsByStoreStoreIdAndMenuNameAndMenuIdNot(Long storeId, String menuName, Long menuId);
+
     Page<MenuItem> findByStoreStoreIdAndStatus(Long storeId, ActiveStatus status, Pageable pageable);
+
 }
