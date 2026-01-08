@@ -4,6 +4,7 @@ package com.erp.erp_back.service.erp;
 import static com.erp.erp_back.repository.specification.InventorySpecification.byStoreId;
 import static com.erp.erp_back.repository.specification.InventorySpecification.hasStatus;
 import static com.erp.erp_back.repository.specification.InventorySpecification.itemNameContains;
+import static com.erp.erp_back.util.BigDecimalUtils.nz;
 import static com.erp.erp_back.repository.specification.InventorySpecification.hasItemType;
 
 import java.math.BigDecimal;
@@ -26,6 +27,8 @@ import com.erp.erp_back.entity.store.Store;
 import com.erp.erp_back.exception.BusinessException;
 import com.erp.erp_back.mapper.InventoryMapper;
 import com.erp.erp_back.repository.erp.InventoryRepository;
+import com.erp.erp_back.repository.erp.PurchaseHistoryRepository;
+import com.erp.erp_back.repository.erp.RecipeIngredientRepository;
 import com.erp.erp_back.repository.store.StoreRepository;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -38,6 +41,8 @@ public class InventoryService {
 
     private final InventoryRepository inventoryRepository;
     private final StoreRepository storeRepository;
+    private final PurchaseHistoryRepository purchaseHistoryRepository;
+    private final RecipeIngredientRepository recipeIngredientRepository;
     private final InventoryMapper inventoryMapper;
 
     @Transactional
@@ -159,4 +164,21 @@ public class InventoryService {
     public long countLowStockItems(Long storeId) {
         return inventoryRepository.countLowStockItems(storeId, ActiveStatus.ACTIVE);
     }
+
+    public void deleteOrphanInventoryIfPossible(Inventory item) {
+    Long itemId = item.getItemId();
+
+    // 1) 다른 매입 내역이 남아있으면 삭제 금지
+    if (purchaseHistoryRepository.existsByInventoryItemId(itemId)) return;
+
+    // 2) 레시피에서 사용 중이면 삭제 금지
+    if (recipeIngredientRepository.existsByInventoryItemId(itemId)) return;
+
+    // 3) 재고가 0이 아니면 삭제 금지 (안전)
+    BigDecimal stockQty = nz(inventoryRepository.findStockQtyByItemId(itemId));
+    if (stockQty.compareTo(BigDecimal.ZERO) != 0) return;
+
+    // ✅ 여기까지 오면 “고아 품목” → 삭제
+    inventoryRepository.delete(item);
+}
 }

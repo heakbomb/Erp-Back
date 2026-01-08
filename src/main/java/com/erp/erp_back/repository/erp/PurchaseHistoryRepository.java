@@ -10,4 +10,8 @@ import com.erp.erp_back.entity.erp.PurchaseHistory;
 public interface PurchaseHistoryRepository extends JpaRepository<PurchaseHistory, Long>, JpaSpecificationExecutor<PurchaseHistory> {
 
    Optional<PurchaseHistory> findTop1ByInventoryItemIdOrderByPurchaseDateDescPurchaseIdDesc(Long itemId);
+
+   boolean existsByInventoryItemId(Long itemId);
+
+   long countByInventoryItemId(Long itemId);
 }
