@@ -1,6 +1,5 @@
 package com.erp.erp_back.service.erp;
 
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -10,9 +9,11 @@ import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
+import com.erp.erp_back.dto.erp.TradeAreaInfo;
 import com.erp.erp_back.dto.erp.WeeklyAreaAvgPoint;
 import com.erp.erp_back.dto.erp.WeeklyAreaAvgResponse;
 import com.erp.erp_back.repository.erp.StoreNeighborRepository;
+import com.erp.erp_back.repository.erp.StoreTradeAreaRepository;
 import com.erp.erp_back.repository.erp.WeeklyAreaAvgFromDailyRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -23,11 +24,15 @@ public class OwnerWeeklyAreaAvgService {
 
     private final StoreNeighborRepository neighborRepo;
     private final WeeklyAreaAvgFromDailyRepository avgRepo;
+    private final StoreTradeAreaRepository tradeAreaRepo;
 
     public WeeklyAreaAvgResponse getWeeklyAreaAvg(Long storeId, int year, int month, int radiusM) {
         int y = Math.max(2000, Math.min(year, 2100));
         int m = Math.max(1, Math.min(month, 12));
         int r = Math.max(100, Math.min(radiusM, 10000));
+
+        // ✅ 상권 라벨 조회 (없으면 null)
+        TradeAreaInfo tradeArea = fetchTradeAreaInfo(storeId);
 
         // 1) 반경 내 이웃 매장 총 수(매출 유무 무관)
         int nearTotal = neighborRepo.findByIdStoreIdAndIdRadiusM(storeId, r).size();
@@ -56,6 +61,11 @@ public class OwnerWeeklyAreaAvgService {
             data.add(map.getOrDefault(w, new WeeklyAreaAvgPoint(w, BigDecimal.ZERO, 0)));
         }
 
-        return new WeeklyAreaAvgResponse(storeId, y, m, r, nearTotal, data);
+        return new WeeklyAreaAvgResponse(storeId, y, m, r, nearTotal, tradeArea, data);
+    }
+
+    private TradeAreaInfo fetchTradeAreaInfo(Long storeId) {
+        // ✅ Object[] 직접 파싱하지 말고 Repository에서 DTO로 바로 받기
+        return tradeAreaRepo.findTradeAreaInfo(storeId);
     }
 }

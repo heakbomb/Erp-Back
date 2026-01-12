@@ -8,5 +8,6 @@ public record WeeklyAreaAvgResponse(
     int month,
     int radiusM,
     int nearStoreTotalCount,
+    TradeAreaInfo tradeArea,
     List<WeeklyAreaAvgPoint> data
 ) {} 

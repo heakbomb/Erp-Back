@@ -36,4 +36,18 @@ public class StoreNeighborBuildService {
         }
         return total;
     }
+
+    @Transactional
+    public long rebuildForStoreAndAffected(Long storeId, int radiusM) {
+        long total = rebuildForStore(storeId, radiusM, true);
+
+        List<Long> affected = buildRepo.findStoreIdsWithinRadius(storeId, radiusM);
+
+        for (Long sid : affected) {
+            if (sid.equals(storeId))
+                continue;
+            total += rebuildForStore(sid, radiusM, false);
+        }
+        return total;
+    }
 }
