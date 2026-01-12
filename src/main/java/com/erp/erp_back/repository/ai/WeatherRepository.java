@@ -1,0 +1,22 @@
+package com.erp.erp_back.repository.ai;
+
+import com.erp.erp_back.dto.ai.WeatherRawDto;
+import com.erp.erp_back.entity.ai.WeatherHourlyEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
+
+import java.time.LocalDate;
+import java.util.List;
+
+@Repository
+public interface WeatherRepository extends JpaRepository<WeatherHourlyEntity, Long> {
+
+    @Query("SELECT new com.erp.erp_back.dto.ai.WeatherRawDto(" +
+           "  function('date_format', w.forecastDate, '%Y-%m-%d'), " +
+           "  function('date_format', w.forecastTime, '%H:%i'), " +
+           "  w.nx, w.ny, w.temperature, w.rainfallMm, w.humidity) " +
+           "FROM WeatherHourlyEntity w " +
+           "WHERE w.forecastDate BETWEEN :startDate AND :endDate")
+    List<WeatherRawDto> findRawWeather(LocalDate startDate, LocalDate endDate);
+}
