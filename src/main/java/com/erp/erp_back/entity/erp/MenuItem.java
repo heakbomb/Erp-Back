@@ -27,7 +27,7 @@ import lombok.*;
 )
 @Getter @Setter
 @Builder
-@AllArgsConstructor @NoArgsConstructor
+@AllArgsConstructor @NoArgsConstructor 
 public class MenuItem {
 
     @Id

@@ -119,9 +119,8 @@ public class SalesController {
     public ResponseEntity<WeeklyAreaAvgResponse> weeklyAreaAvg(
             @RequestParam Long storeId,
             @RequestParam int year,
-            @RequestParam int month,
-            @RequestParam(defaultValue = "2000") int radiusM
+            @RequestParam int month
     ) {
-        return ResponseEntity.ok(weeklyService.getWeeklyAreaAvg(storeId, year, month, radiusM));
+        return ResponseEntity.ok(weeklyService.getWeeklyAreaAvg(storeId, year, month));
     }
 }
