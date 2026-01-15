@@ -34,7 +34,7 @@ public final class ErrorCodes {
 
     public static final String PURCHASE_QTY_LESS_THAN_SOLD = "PURCHASE_QTY_LESS_THAN_SOLD";
     public static final String PURCHASE_DELETE_BELOW_CONSUMED = "PURCHASE_DELETE_BELOW_CONSUMED";
-    
+
     public static final String UNSUPPORTED_PERIOD = "Unsupported period";
 
     // existing code...

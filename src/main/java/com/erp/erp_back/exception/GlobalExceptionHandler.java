@@ -7,6 +7,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException; // ✅ 추가
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -29,6 +30,18 @@ public class GlobalExceptionHandler {
     }
 
     // =========================
+    // ✅ 로그인 인증 실패 (401) - B안 핵심
+    // =========================
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ErrorResponse> handleBadCredentials(BadCredentialsException ex) {
+        // 로그인 실패는 "정상적인 실패"라 ERROR로 남기지 않음
+        log.warn("Login failed: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(new ErrorResponse("INVALID_CREDENTIALS", ex.getMessage()));
+    }
+
+    // =========================
     // 1) Validation
     // =========================
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -47,7 +60,7 @@ public class GlobalExceptionHandler {
         String primaryMessage = errors.values().stream().findFirst().orElse("잘못된 요청 데이터입니다.");
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .<ErrorResponse>body(new ErrorResponse("INVALID_INPUT", primaryMessage, errors));
+                .body(new ErrorResponse("INVALID_INPUT", primaryMessage, errors));
     }
 
     // =========================
@@ -56,12 +69,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusiness(BusinessException ex) {
 
-        // 여기서 ex.getCode()는 "문자열 코드"라고 가정 (네 기존 코드가 그 구조)
         String code = ex.getCode();
-
         HttpStatus status = HttpStatus.BAD_REQUEST;
 
-        // ✅ ErrorCodes가 enum이 아니라 String 상수면, 그냥 equals로 비교해야 함
         if (ErrorCodes.DUPLICATE_DATA.equals(code)
                 || ErrorCodes.DUPLICATE_MENU_NAME.equals(code)
                 || ErrorCodes.DUPLICATE_INVENTORY_NAME.equals(code)) {
@@ -70,11 +80,11 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(status)
-                .<ErrorResponse>body(new ErrorResponse(code, ex.getMessage(), null));
+                .body(new ErrorResponse(code, ex.getMessage(), null));
     }
 
     // =========================
-    // 3) DB duplicate (레이스컨디션/유니크 제약)
+    // 3) DB duplicate
     // =========================
     @ExceptionHandler(DuplicateKeyException.class)
     public ResponseEntity<ErrorResponse> handleDuplicateKey(DuplicateKeyException ex) {
@@ -82,17 +92,16 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
-                .<ErrorResponse>body(new ErrorResponse(ErrorCodes.DUPLICATE_DATA, "이미 존재하는 데이터입니다."));
+                .body(new ErrorResponse(ErrorCodes.DUPLICATE_DATA, "이미 존재하는 데이터입니다."));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrity(DataIntegrityViolationException ex) {
         log.warn("Data Integrity Violation: ", ex);
 
-        // ✅ 여기서도 프론트가 처리 가능한 코드로 통일 (409)
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
-                .<ErrorResponse>body(new ErrorResponse(ErrorCodes.DUPLICATE_DATA, "이미 존재하는 데이터입니다."));
+                .body(new ErrorResponse(ErrorCodes.DUPLICATE_DATA, "이미 존재하는 데이터입니다."));
     }
 
     // =========================
@@ -100,10 +109,12 @@ public class GlobalExceptionHandler {
     // =========================
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+        // 기존 로직 영향 최소화를 위해 응답은 그대로(BAD_REQUEST)
+        // (원하면 여기 로그를 warn으로 낮추는 것도 권장)
         log.error("Illegal Argument: ", ex);
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .<ErrorResponse>body(new ErrorResponse("BAD_REQUEST", ex.getMessage()));
+                .body(new ErrorResponse("BAD_REQUEST", ex.getMessage()));
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
@@ -111,7 +122,7 @@ public class GlobalExceptionHandler {
         log.error("Constraint Violation: ", ex);
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .<ErrorResponse>body(new ErrorResponse("CONSTRAINT_VIOLATION", ex.getMessage()));
+                .body(new ErrorResponse("CONSTRAINT_VIOLATION", ex.getMessage()));
     }
 
     @ExceptionHandler(EntityNotFoundException.class)
@@ -119,7 +130,7 @@ public class GlobalExceptionHandler {
         log.error("Entity Not Found: ", ex);
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
-                .<ErrorResponse>body(new ErrorResponse("RESOURCE_NOT_FOUND", ex.getMessage()));
+                .body(new ErrorResponse("RESOURCE_NOT_FOUND", ex.getMessage()));
     }
 
     // =========================
@@ -130,6 +141,6 @@ public class GlobalExceptionHandler {
         log.error("Unexpected Error: ", ex);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .<ErrorResponse>body(new ErrorResponse("INTERNAL_SERVER_ERROR", "알 수 없는 서버 오류가 발생했습니다. 관리자에게 문의하세요."));
+                .body(new ErrorResponse("INTERNAL_SERVER_ERROR", "알 수 없는 서버 오류가 발생했습니다. 관리자에게 문의하세요."));
     }
 }
