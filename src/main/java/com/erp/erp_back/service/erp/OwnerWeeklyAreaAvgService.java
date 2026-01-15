@@ -57,3 +57,4 @@ public class OwnerWeeklyAreaAvgService {
         return new WeeklyAreaAvgResponse(storeId, y, m, nearTotal, data);
     }
 }
+
