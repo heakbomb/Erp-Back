@@ -34,7 +34,7 @@ public class OwnerSubscriptionController {
     public ResponseEntity<OwnerSubscriptionResponse> createSubscription(
             @Valid @RequestBody OwnerSubscriptionRequest request
     ) {
-        // TODO: 추후 Spring Security의 @AuthenticationPrincipal 등으로 ownerId 교체 필요
+        // 추후 Spring Security의 @AuthenticationPrincipal 등으로 ownerId 교체 필요
         Long tempOwnerId = 1L;
         OwnerSubscriptionResponse response = ownerSubService.createSubscription(tempOwnerId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);

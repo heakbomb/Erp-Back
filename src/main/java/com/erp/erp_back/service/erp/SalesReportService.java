@@ -100,7 +100,7 @@ public class SalesReportService {
         for (Map<String, Object> row : rows) {
             BigDecimal mySales = nz((BigDecimal) row.get("sales"));
 
-            // TODO: 나중에 진짜 상권 평균 매출 로직 들어오면 여기에서 areaAvgSales 계산
+            // 나중에 진짜 상권 평균 매출 로직 들어오면 여기에서 areaAvgSales 계산
             BigDecimal areaAvg = mySales; // 현재는 내 매출 = 상권 평균 placeholder
 
             result.add(WeeklySalesPointResponse.builder()

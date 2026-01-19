@@ -73,5 +73,10 @@
     "name": "app.jwt.refresh-token-ttl-days",
     "type": "java.lang.String",
     "description": "A description for 'app.jwt.refresh-token-ttl-days'"
+  },
+  {
+    "name": "app.frontend.social-callback",
+    "type": "java.lang.String",
+    "description": "A description for 'app.frontend.social-callback'"
   }
 ]}
