@@ -101,7 +101,7 @@ public class OwnerSubscriptionService {
         ownerSub.setCanceled(true);
         ownerSub.setCancelReason(reason);
 
-        // TODO: 만약 PG사(포트원 등)에 '예약 결제'가 걸려있다면 여기서 API 호출하여 취소해야 함.
+        // 만약 PG사(포트원 등)에 '예약 결제'가 걸려있다면 여기서 API 호출하여 취소해야 함.
         // paymentModule.cancelSchedule(ownerSub.getOwner().getBillingKey());
 
         log.info("구독 해지 완료 - ID: {}, 사유: {}", ownerSubId, reason);
