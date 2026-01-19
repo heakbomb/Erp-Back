@@ -1,6 +1,7 @@
 package com.erp.erp_back.repository.user;
 
 import java.time.LocalDateTime; // ⭐️ 추가
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,5 +23,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 
     // ⭐️ (신규) 통계용: 특정 시간 이후 가입한 직원 수
     long countByCreatedAtAfter(LocalDateTime start);
+
+    Optional<Employee> findByProviderAndProviderId(String provider, String providerId);
 
 }

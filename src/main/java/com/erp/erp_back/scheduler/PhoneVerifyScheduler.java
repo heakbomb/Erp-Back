@@ -32,13 +32,13 @@ public class PhoneVerifyScheduler {
     private final PhoneVerifyRequestRepository phoneVerifyRepository;
 
     // --- Gmail IMAP 설정값 주입 ---
-    @Value("${spring.mail.host}")
+    @Value("${app.imap.host}")
     private String host;
-    @Value("${spring.mail.port}")
+    @Value("${app.imap.port}")
     private int port;
-    @Value("${spring.mail.username}")
+    @Value("${app.imap.username}")
     private String username;
-    @Value("${spring.mail.password}")
+    @Value("${app.imap.password}")
     private String password;
 
     /**
@@ -77,20 +77,21 @@ public class PhoneVerifyScheduler {
             inbox.open(Folder.READ_WRITE);
 
             Message[] messages = inbox.search(new FlagTerm(new Flags(Flags.Flag.SEEN), false));
-            if (messages.length == 0) return;
-            
+            if (messages.length == 0)
+                return;
+
             System.out.println(">>> 새 메일 " + messages.length + "건 발견!");
 
             for (Message message : messages) {
                 try {
                     String receivedCode = getTextFromMessage(message);
                     String cleanedBody = receivedCode.replaceAll("<[^>]*>", "").replaceAll("\\s+", "").trim();
-                    
+
                     String finalAuthCode = (cleanedBody.length() >= 6) ? cleanedBody.substring(0, 6) : cleanedBody;
 
                     if (finalAuthCode.isBlank()) {
-                         message.setFlag(Flags.Flag.SEEN, true);
-                         continue;
+                        message.setFlag(Flags.Flag.SEEN, true);
+                        continue;
                     }
 
                     // (수정) 파싱 로직은 Service의 헬퍼 메소드 사용
@@ -102,15 +103,16 @@ public class PhoneVerifyScheduler {
                     }
 
                     System.out.println("메일 처리 시도: Code=" + finalAuthCode + ", Phone=" + receivedPhone);
-                    
+
                     // (수정) 검증 로직은 Service에 위임
                     phoneVerifyService.verifyEmailAuth(finalAuthCode, receivedPhone);
-                    
+
                     message.setFlag(Flags.Flag.SEEN, true);
-                    
+
                 } catch (Exception e) {
                     System.out.println("메일 1건 처리 중 오류: " + e.getMessage());
-                    if (message != null) message.setFlag(Flags.Flag.SEEN, true);
+                    if (message != null)
+                        message.setFlag(Flags.Flag.SEEN, true);
                 }
             }
         } catch (AuthenticationFailedException e) {
@@ -119,9 +121,13 @@ public class PhoneVerifyScheduler {
             System.out.println("이메일 게이트웨이 오류: " + e.getMessage());
         } finally {
             try {
-                if (inbox != null && inbox.isOpen()) inbox.close(true);
-                if (store != null) store.close();
-            } catch (MessagingException e) { e.printStackTrace(); }
+                if (inbox != null && inbox.isOpen())
+                    inbox.close(true);
+                if (store != null)
+                    store.close();
+            } catch (MessagingException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -132,16 +138,15 @@ public class PhoneVerifyScheduler {
     @Transactional
     public void cleanupExpiredRequests() {
         LocalDateTime now = LocalDateTime.now();
-        
+
         // Repository의 쿼리 호출
         phoneVerifyRepository.deleteAllByExpiresAtBefore(now);
-        
+
         System.out.println("인증 요청 청소 완료.");
     }
 
-    
     // --- 이메일 파싱 헬퍼 메소드들 ---
-    
+
     private String getTextFromMessage(Message message) throws Exception {
         Object content = message.getContent();
         if (content instanceof String) {

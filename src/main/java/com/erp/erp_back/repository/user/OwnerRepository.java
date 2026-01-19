@@ -26,4 +26,7 @@ public interface OwnerRepository extends JpaRepository<Owner, Long> {
 
     // ⭐️ (신규) 통계용: 특정 시간 이후 가입한 사장님 수
     long countByCreatedAtAfter(LocalDateTime start);
+
+    boolean existsByEmail(String email);
+    
 }
