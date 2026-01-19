@@ -1,24 +1,14 @@
 package com.erp.erp_back.entity.ai;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
-import com.erp.erp_back.entity.store.Store;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "DemandForecast")
+@Table(name = "demand_forecast")
 @Data
 @NoArgsConstructor
 public class DemandForecast {
@@ -28,16 +18,41 @@ public class DemandForecast {
     @Column(name = "forecast_id")
     private Long forecastId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "store_id", nullable = false)
-    private Store store;
+    @Column(name = "store_id", nullable = false)
+    private Long storeId;
 
+    @Column(name = "menu_id", nullable = false)
+    private Long menuId;
+
+    // 예측 대상 날짜 (예: 내일, 모레)
+    @Column(name = "target_date", nullable = false)
+    private LocalDate targetDate;
+
+    // 예측 수량
+    @Column(name = "predicted_qty", nullable = false)
+    private int predictedQty;
+
+    // 예측을 수행한 날짜 (생성일)
     @Column(name = "forecast_date", nullable = false)
     private LocalDate forecastDate;
 
-    @Column(name = "predicted_sales_max", nullable = false, precision = 10, scale = 2)
-    private BigDecimal predictedSalesMax;
+    // 실제 판매량 (검증용, 나중에 채워짐)
+    @Column(name = "actual_qty")
+    private Integer actualQty;
 
-    @Column(name = "predicted_visitors", nullable = false)
-    private int predictedVisitors;
+    // 정확도 (검증용)
+    @Column(name = "accuracy_rate")
+    private Double accuracyRate;
+
+    @Column(name = "is_reflected")
+    private Boolean isReflected;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+    
+    @PrePersist
+    public void prePersist() {
+        if (createdAt == null) createdAt = LocalDateTime.now();
+        if (isReflected == null) isReflected = false;
+    }
 }

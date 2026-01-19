@@ -34,7 +34,7 @@ public class NtsOpenApiClient {
     /** 국세청 사업자 상태조회 호출 */
     public NtsStatusResponse status(List<String> bizNumbers) {
         URI uri = UriComponentsBuilder
-                .fromHttpUrl(baseUrl)
+                .fromUriString(baseUrl.trim())
                 .path("/status")
                 .queryParam("serviceKey", serviceKey) // ✅ 문자열 붙이지 말고 queryParam 사용
                 .queryParam("returnType", "JSON")
