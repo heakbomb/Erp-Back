@@ -31,14 +31,20 @@ public class BusinessNumberService {
     private final OwnerRepository ownerRepository;
     private final BusinessNumberMapper businessNumberMapper;
 
-    private final Long defaultOwnerId = 1L;
-
     /** 숫자만 남기기(하이픈/공백 제거) */
     private String norm(String input) {
         return input == null ? "" : input.replaceAll("[^0-9]", "");
     }
 
-    public BusinessNumber verifyAndSave(String rawBizNo, String rawPhone) {
+    /**
+     * ✅ 변경: ownerId를 인자로 받아 해당 Owner에 귀속시켜 저장
+     * - 기존 NTS 검증/중복체크/응답검증/예외메시지/로그 모두 유지
+     */
+    public BusinessNumber verifyAndSave(Long ownerId, String rawBizNo, String rawPhone) {
+        if (ownerId == null || ownerId <= 0) {
+            throw new IllegalStateException("로그인 사용자(ownerId)를 확인할 수 없습니다.");
+        }
+
         String bno = norm(rawBizNo);
         if (bno.length() != 10) {
             throw new IllegalArgumentException("사업자번호 형식이 올바르지 않습니다. (숫자 10자리)");
@@ -64,7 +70,6 @@ public class BusinessNumberService {
                     bno, e.getStatusCode(), e.getResponseBodyAsString());
             throw new IllegalArgumentException("국세청 조회에 실패했습니다. 잠시 후 다시 시도해주세요.");
         } catch (RuntimeException e) {
-            // client에서 IllegalStateException으로 감쌀 수도 있으니 여기서도 잡아 로그 남김
             log.warn("NTS 호출 실패(런타임) bizNo={}, msg={}", bno, e.getMessage(), e);
             throw new IllegalArgumentException("국세청 조회에 실패했습니다. 잠시 후 다시 시도해주세요.");
         }
@@ -75,7 +80,7 @@ public class BusinessNumberService {
 
         NtsStatusItem item = res.data().get(0);
 
-        // ✅ 원인 확정 로그 3줄
+        // ✅ 원인 확정 로그 3줄(기존 유지)
         log.info("NTS raw response: status_code={}, dataSize={}",
                 res.statusCode(), (res.data() == null ? -1 : res.data().size()));
         log.info("NTS item fields: b_no={}, b_stt={}, tax_type={}, end_dt={}",
@@ -84,24 +89,22 @@ public class BusinessNumberService {
         String stt = item.bStt();
         String taxType = item.taxType();
 
-        // 3) 유효성 검증 (end_dt는 계속사업자면 null 정상)
+        // 3) 유효성 검증
         if (stt == null || stt.isBlank() || stt.contains("등록되지")) {
             throw new IllegalArgumentException("유효하지 않은 사업자번호입니다.");
         }
         if (stt.contains("폐업")) {
             throw new IllegalArgumentException("폐업 상태의 사업자번호는 인증 및 등록할 수 없습니다.");
         }
-
-        // ✅ open_status/tax_type가 비어있으면 "인증 성공"으로 저장하지 않는다 (NULL row 방지)
         if (taxType == null || taxType.isBlank()) {
             throw new IllegalStateException("국세청 응답 tax_type 누락으로 등록할 수 없습니다.");
         }
 
-        // 4) Owner 조회
-        Owner defaultOwner = ownerRepository.findById(defaultOwnerId)
-                .orElseThrow(() -> new IllegalStateException("기본 Owner가 존재하지 않습니다. (owner_id=1)"));
+        // 4) Owner 조회 (✅ defaultOwnerId 하드코딩 제거)
+        Owner owner = ownerRepository.findById(ownerId)
+                .orElseThrow(() -> new IllegalStateException("Owner가 존재하지 않습니다. (owner_id=" + ownerId + ")"));
 
-        // 5) 저장 (여기서부터는 필드가 정상인 경우만 도달)
+        // 5) 저장
         String openStatus = item.bStt();
         String endDt = (item.endDt() == null || item.endDt().isBlank()) ? null : item.endDt();
 
@@ -111,10 +114,11 @@ public class BusinessNumberService {
                 openStatus,
                 taxType,
                 endDt,
-                defaultOwner);
+                owner
+        );
 
-        log.info("Mapped entity: bizNum={}, openStatus={}, taxType={}, endDt={}",
-                bn.getBizNum(), bn.getOpenStatus(), bn.getTaxType(), bn.getEndDt());
+        log.info("Mapped entity: bizNum={}, openStatus={}, taxType={}, endDt={}, ownerId={}",
+                bn.getBizNum(), bn.getOpenStatus(), bn.getTaxType(), bn.getEndDt(), ownerId);
 
         return businessRepo.save(bn);
     }
@@ -129,10 +133,5 @@ public class BusinessNumberService {
         return businessRepo.findByOwner_OwnerId(ownerId).stream()
                 .filter(bn -> !"폐업자".equals(bn.getOpenStatus()))
                 .toList();
-    }
-
-    @Transactional(readOnly = true)
-    public List<BusinessNumber> listActiveForDefaultOwner() {
-        return listActiveByOwner(defaultOwnerId);
     }
 }

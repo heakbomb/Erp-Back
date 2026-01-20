@@ -33,21 +33,28 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
 
             .authorizeHttpRequests(auth -> auth
+                // ✅ 로그인 없이 접근해야 하는 경로들
                 .requestMatchers(
+                    // 기본 인증/회원가입
                     "/auth/login/**",
                     "/auth/register/**",
                     "/auth/email-verifications/**",
                     "/auth/token/refresh",
                     "/error",
 
-                    // OAuth2 로그인 기본 엔드포인트
+                    // OAuth2 로그인 엔드포인트
                     "/oauth2/**",
                     "/login/oauth2/**",
 
-                    // ✅ 중요: 프론트 콜백(토큰 저장 전 접근해야 함)
-                    "/employee/social/callback"
+                    // ✅ 프론트 콜백(토큰 저장 전)
+                    "/employee/social/callback",
+
+                    // ✅ 비밀번호 재설정(컨트롤러 기준 정확 경로)
+                    "/auth/password/reset/request",
+                    "/auth/password/reset/confirm"
                 ).permitAll()
 
+                // ✅ 권한별 보호
                 .requestMatchers("/owner/**").hasRole("OWNER")
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/employee/**").hasRole("EMPLOYEE")
