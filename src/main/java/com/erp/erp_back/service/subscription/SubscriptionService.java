@@ -23,14 +23,10 @@ public class SubscriptionService {
 
     /**
      * 1. (Admin) 구독 상품 목록 조회 (GET /admin/subscriptions)
-     * ⭐️ Repository의 @Query 메서드를 호출합니다.
      */
     @Transactional(readOnly = true)
     public Page<SubscriptionResponse> getSubscriptions(String status, String q, Pageable pageable) {
-        // ⭐️ 제공해주신 Repository의 findAdminSubscriptions 쿼리 호출
         Page<Subscription> subPage = subscriptionRepository.findAdminSubscriptions(status, q, pageable);
-        
-        // ⭐️ Entity Page -> DTO Page 변환
         return subPage.map(subscriptionMapper::toResponse);
     }
 
@@ -52,7 +48,8 @@ public class SubscriptionService {
         Subscription newSub = new Subscription();
         newSub.setSubName(request.getSubName());
         newSub.setMonthlyPrice(request.getMonthlyPrice());
-        newSub.setActive(request.getIsActive());
+        // null이 들어와도 안전하게 처리 (null -> false)
+        newSub.setActive(Boolean.TRUE.equals(request.getIsActive()));
         
         Subscription saved = subscriptionRepository.save(newSub);
         return subscriptionMapper.toResponse(saved);
@@ -68,7 +65,9 @@ public class SubscriptionService {
         
         sub.setSubName(request.getSubName());
         sub.setMonthlyPrice(request.getMonthlyPrice());
-        sub.setActive(request.getIsActive());
+        
+        // ✅ [핵심 수정] request.getIsActive()가 null이어도 에러 없이 처리됨
+        sub.setActive(Boolean.TRUE.equals(request.getIsActive()));
         
         Subscription updated = subscriptionRepository.save(sub);
         return subscriptionMapper.toResponse(updated);
@@ -82,8 +81,6 @@ public class SubscriptionService {
         if (!subscriptionRepository.existsById(id)) {
             throw new EntityNotFoundException("삭제할 구독 상품을 찾을 수 없습니다. ID: " + id);
         }
-        // ⭐️ (주의) 이 상품을 구독 중인 사장님이 있으면 오류가 날 수 있습니다.
-        // (향후 비활성화(isActive=false) 처리로 변경하는 것을 권장)
         subscriptionRepository.deleteById(id);
     }
 }

@@ -4,6 +4,7 @@ import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal; // ✅ 추가
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,20 +33,23 @@ public class OwnerSubscriptionController {
     // 구독 신청 API
     @PostMapping
     public ResponseEntity<OwnerSubscriptionResponse> createSubscription(
+            @AuthenticationPrincipal String ownerIdStr, // ✅ 수정: 토큰에서 ID 받기
             @Valid @RequestBody OwnerSubscriptionRequest request
     ) {
-        // 추후 Spring Security의 @AuthenticationPrincipal 등으로 ownerId 교체 필요
-        Long tempOwnerId = 1L;
-        OwnerSubscriptionResponse response = ownerSubService.createSubscription(tempOwnerId, request);
+        // ❌ 기존: Long tempOwnerId = 1L; (삭제)
+        
+        // ✅ 수정: 실제 로그인한 ownerId 사용
+        Long ownerId = Long.parseLong(ownerIdStr);
+        
+        OwnerSubscriptionResponse response = ownerSubService.createSubscription(ownerId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     // [신규] 구독 해지 API
-    // POST /owner/subscriptions/{id}/cancel
     @PostMapping("/{ownerSubId}/cancel")
     public ResponseEntity<String> cancelSubscription(
             @PathVariable Long ownerSubId,
-            @RequestBody Map<String, String> body // { "reason": "..." }
+            @RequestBody Map<String, String> body
     ) {
         String reason = body.getOrDefault("reason", "단순 변심");
         ownerSubService.cancelSubscription(ownerSubId, reason);
@@ -55,10 +59,15 @@ public class OwnerSubscriptionController {
 
     // (Owner) 현재 구독 상태 조회
     @GetMapping("/current")
-    public ResponseEntity<OwnerSubscriptionResponse> getCurrentSubscription() {
-        Long tempOwnerId = 1L;
+    public ResponseEntity<OwnerSubscriptionResponse> getCurrentSubscription(
+            @AuthenticationPrincipal String ownerIdStr // ✅ 수정: 토큰에서 ID 받기
+    ) {
+        // ❌ 기존: Long tempOwnerId = 1L; (삭제)
 
-        OwnerSubscriptionResponse response = ownerSubService.getCurrentSubscriptionByOwnerId(tempOwnerId);
+        // ✅ 수정: 실제 로그인한 ownerId 사용
+        Long ownerId = Long.parseLong(ownerIdStr);
+
+        OwnerSubscriptionResponse response = ownerSubService.getCurrentSubscriptionByOwnerId(ownerId);
         return ResponseEntity.ok(response);
     }
 
@@ -73,8 +82,11 @@ public class OwnerSubscriptionController {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
     }
 
+    // ✅ 이 핸들러가 400 에러를 반환하고 있습니다.
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<String> handleBadReq(IllegalArgumentException e) {
+        // 브라우저 개발자 도구(F12) -> Network 탭 -> Response를 보면
+        // "이미 구독 중인 내역이 있습니다" 같은 구체적인 메시지가 있을 것입니다.
         return ResponseEntity.badRequest().body(e.getMessage());
     }
 }

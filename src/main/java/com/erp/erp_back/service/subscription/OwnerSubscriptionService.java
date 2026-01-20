@@ -195,4 +195,32 @@ public class OwnerSubscriptionService {
         Page<OwnerSubscription> page = ownerSubRepo.findAdminOwnerSubscriptions(effectiveQuery, pageable);
         return page.map(subscriptionMapper::toAdminResponse);
     }
+
+    /**
+     * 7. (Admin) 구독 상태 강제 변경 (ACTIVE / INACTIVE)
+     * - active가 true면: 해지 취소(canceled=false) 및 만료일이 지났다면 1달 연장
+     * - active가 false면: 구독 해지(canceled=true)
+     */
+    public void adminUpdateSubscriptionStatus(Long ownerSubId, boolean isActive) {
+        OwnerSubscription ownerSub = ownerSubRepo.findById(ownerSubId)
+                .orElseThrow(() -> new EntityNotFoundException("구독 정보를 찾을 수 없습니다."));
+
+        if (isActive) {
+            // [ACTIVE로 변경]
+            ownerSub.setCanceled(false); // 해지 취소
+            ownerSub.setCancelReason(null);
+
+            // 만료일이 이미 지났다면, 오늘부터 1달 뒤로 연장하여 '활성' 상태로 만듦
+            if (ownerSub.getExpiryDate().isBefore(LocalDate.now())) {
+                ownerSub.setStartDate(LocalDate.now());
+                ownerSub.setExpiryDate(LocalDate.now().plusMonths(1));
+            }
+        } else {
+            // [INACTIVE로 변경]
+            ownerSub.setCanceled(true);
+            ownerSub.setCancelReason("관리자에 의한 직권 해지");
+        }
+        // Dirty checking에 의해 자동 저장되지만 명시적 호출
+        ownerSubRepo.save(ownerSub);
+    }
 }

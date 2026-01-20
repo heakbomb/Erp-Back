@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod; // ✅ 추가
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -44,9 +45,16 @@ public class SecurityConfig {
                     "/oauth2/**",
                     "/login/oauth2/**",
 
-                    // ✅ 중요: 프론트 콜백(토큰 저장 전 접근해야 함)
+                    // 프론트 콜백
                     "/employee/social/callback"
                 ).permitAll()
+
+                // 관리자 로그인 경로 허용
+                .requestMatchers("/auth/admin/login").permitAll()
+
+                // ✅ [핵심 수정] 구독 상품 목록 조회(GET)는 인증된 누구나(사장님 포함) 접근 가능하게 허용
+                // 순서 중요: /admin/** 제한보다 먼저 선언해야 적용됩니다.
+                .requestMatchers(HttpMethod.GET, "/admin/subscriptions").authenticated()
 
                 .requestMatchers("/owner/**").hasRole("OWNER")
                 .requestMatchers("/admin/**").hasRole("ADMIN")
