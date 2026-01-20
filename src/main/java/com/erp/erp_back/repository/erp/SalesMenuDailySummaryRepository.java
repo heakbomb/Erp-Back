@@ -30,4 +30,15 @@ public interface SalesMenuDailySummaryRepository extends JpaRepository<SalesMenu
       @Modifying
     @Query("delete from SalesMenuDailySummary s where s.summaryDate = :summaryDate")
     void deleteBySummaryDate(@Param("summaryDate") LocalDate summaryDate);
+
+    // ✅ [신규 추가] 특정 기간 동안의 메뉴별 판매 요약 데이터 조회
+    @Query("SELECT s FROM SalesMenuDailySummary s " +
+           "JOIN FETCH s.menuItem " + // 메뉴 정보도 같이 가져와서 N+1 방지
+           "WHERE s.store.storeId = :storeId " +
+           "AND s.summaryDate BETWEEN :from AND :to")
+    List<SalesMenuDailySummary> findByStoreIdAndSummaryDateBetween(
+            @Param("storeId") Long storeId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to
+    );
 }
