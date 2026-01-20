@@ -14,10 +14,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 
 import com.erp.erp_back.dto.ai.DemandForecastResponse;
+import com.erp.erp_back.dto.ai.MenuGrowthResponse;
 import com.erp.erp_back.entity.ai.DemandForecast;
 import com.erp.erp_back.entity.erp.MenuItem;
+import com.erp.erp_back.entity.erp.SalesMenuDailySummary;
 import com.erp.erp_back.repository.ai.DemandForecastRepository;
 import com.erp.erp_back.repository.erp.MenuItemRepository;
+import com.erp.erp_back.repository.erp.SalesMenuDailySummaryRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,19 +33,17 @@ public class AiDataService {
 
     private final DemandForecastRepository demandForecastRepository;
     private final MenuItemRepository menuItemRepository;
-    private final RestClient restClient; // RestClientConfig에 등록된 빈 사용
+    private final SalesMenuDailySummaryRepository salesMenuDailySummaryRepository;
+    private final RestClient restClient;
 
-    // ✅ [추가] 파이썬 AI 서버로 학습 요청 보내기
     public String sendTrainingDataToPython() {
         try {
             log.info("🚀 AI 학습 요청 전송 중... (POST http://localhost:8000/train)");
-            
             String response = restClient.post()
                     .uri("http://localhost:8000/train")
                     .contentType(MediaType.APPLICATION_JSON)
                     .retrieve()
                     .body(String.class);
-            
             log.info("✅ AI 학습 요청 성공: {}", response);
             return response;
         } catch (Exception e) {
@@ -51,21 +52,16 @@ public class AiDataService {
         }
     }
 
-    // (기존) 주간 수요 예측 조회 로직 유지
     public List<DemandForecastResponse> getWeeklyForecast(Long storeId) {
         LocalDate startDate = LocalDate.now().plusDays(1);
         LocalDate endDate = startDate.plusDays(6);
 
-        // 1. 해당 기간의 메뉴별 예측 데이터 조회
         List<DemandForecast> forecasts = demandForecastRepository.findByStoreIdAndTargetDateBetween(storeId, startDate, endDate);
-
-        // 2. 메뉴 가격 정보 조회
         List<Long> menuIds = forecasts.stream().map(DemandForecast::getMenuId).distinct().collect(Collectors.toList());
         List<MenuItem> menuItems = menuItemRepository.findAllById(menuIds);
         Map<Long, BigDecimal> priceMap = menuItems.stream()
                 .collect(Collectors.toMap(MenuItem::getMenuId, MenuItem::getPrice));
 
-        // 3. 날짜별 합계 계산
         Map<LocalDate, BigDecimal> dailyTotalSales = new HashMap<>();
         Map<LocalDate, Integer> dailyTotalQty = new HashMap<>();
 
@@ -78,7 +74,6 @@ public class AiDataService {
             dailyTotalQty.merge(date, f.getPredictedQty(), Integer::sum);
         }
 
-        // 4. 결과 변환
         List<DemandForecastResponse> responseList = new ArrayList<>();
         for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
             BigDecimal totalSales = dailyTotalSales.getOrDefault(date, BigDecimal.ZERO);
@@ -92,5 +87,73 @@ public class AiDataService {
                     .build());
         }
         return responseList;
+    }
+
+    // ✅ 메뉴 트렌드 분석 (오류 수정됨)
+    public List<MenuGrowthResponse> getMenuGrowthAnalysis(Long storeId) {
+        LocalDate today = LocalDate.now();
+        LocalDate lastWeekEnd = today.minusDays(1);
+        LocalDate lastWeekStart = lastWeekEnd.minusDays(6);
+        LocalDate nextWeekStart = today.plusDays(1);
+        LocalDate nextWeekEnd = nextWeekStart.plusDays(6);
+
+        // 1. 지난주 판매 데이터
+        List<SalesMenuDailySummary> pastSales = salesMenuDailySummaryRepository
+                .findByStoreIdAndSummaryDateBetween(storeId, lastWeekStart, lastWeekEnd);
+        
+        Map<Long, Long> pastSalesMap = pastSales.stream()
+                .collect(Collectors.groupingBy(
+                        s -> s.getMenuItem().getMenuId(),
+                        Collectors.summingLong(SalesMenuDailySummary::getTotalQuantity)
+                ));
+
+        // 2. 다음주 예측 데이터
+        List<DemandForecast> forecasts = demandForecastRepository
+                .findByStoreIdAndTargetDateBetween(storeId, nextWeekStart, nextWeekEnd);
+
+        Map<Long, Long> forecastMap = forecasts.stream()
+                .collect(Collectors.groupingBy(
+                        DemandForecast::getMenuId,
+                        Collectors.summingLong(df -> (long) df.getPredictedQty())
+                ));
+
+        // ✅ [수정 1] findAllByStoreId -> findByStoreStoreId (Repository에 추가한 메서드 사용)
+        List<MenuItem> menuItems = menuItemRepository.findByStoreStoreId(storeId);
+        
+        List<MenuGrowthResponse> result = new ArrayList<>();
+
+        for (MenuItem menu : menuItems) {
+            Long pastQty = pastSalesMap.getOrDefault(menu.getMenuId(), 0L);
+            Long nextQty = forecastMap.getOrDefault(menu.getMenuId(), 0L);
+
+            if (pastQty == 0 && nextQty == 0) continue;
+
+            double growthRate = 0.0;
+            if (pastQty > 0) {
+                growthRate = ((double) (nextQty - pastQty) / pastQty) * 100.0;
+            } else if (nextQty > 0) {
+                growthRate = 100.0;
+            }
+
+            String recommendation = "유지";
+            if (growthRate >= 20.0) recommendation = "발주 증량";
+            else if (growthRate >= 10.0) recommendation = "소폭 증량";
+            else if (growthRate <= -20.0) recommendation = "재고 소진 집중";
+            else if (growthRate <= -10.0) recommendation = "발주 감소";
+
+            result.add(MenuGrowthResponse.builder()
+                    .menuId(menu.getMenuId())
+                    // ✅ [수정 2] getName() -> getMenuName() (Entity 필드명 반영)
+                    .menuName(menu.getMenuName())
+                    .lastWeekSales(pastQty)
+                    .nextWeekPrediction(nextQty)
+                    .growthRate(Math.round(growthRate * 10.0) / 10.0)
+                    .recommendation(recommendation)
+                    .build());
+        }
+
+        result.sort((a, b) -> Double.compare(b.getGrowthRate(), a.getGrowthRate()));
+        
+        return result;
     }
 }
