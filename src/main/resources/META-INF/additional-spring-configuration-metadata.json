@@ -1,5 +1,4 @@
 {"properties": [
-  
   {
     "name": "nts.service-key",
     "type": "java.lang.String",
@@ -9,5 +8,75 @@
     "name": "nts.base-url",
     "type": "java.lang.String",
     "description": "A description for 'nts.base-url'"
+  },
+  {
+    "name": "app.imap.ssl",
+    "type": "java.lang.String",
+    "description": "A description for 'app.imap.ssl'"
+  },
+  {
+    "name": "app.imap.host",
+    "type": "java.lang.String",
+    "description": "A description for 'app.imap.host'"
+  },
+  {
+    "name": "app.imap.password",
+    "type": "java.lang.String",
+    "description": "A description for 'app.imap.password'"
+  },
+  {
+    "name": "app.imap.username",
+    "type": "java.lang.String",
+    "description": "A description for 'app.imap.username'"
+  },
+  {
+    "name": "app.imap.port",
+    "type": "java.lang.String",
+    "description": "A description for 'app.imap.port'"
+  },
+  {
+    "name": "app.jwt.access-token-ttl-minutes",
+    "type": "java.lang.String",
+    "description": "A description for 'app.jwt.access-token-ttl-minutes'"
+  },
+  {
+    "name": "app.jwt.secret",
+    "type": "java.lang.String",
+    "description": "A description for 'app.jwt.secret'"
+  },
+  {
+    "name": "app.verification.code-secret",
+    "type": "java.lang.String",
+    "description": "A description for 'app.verification.code-secret'"
+  },
+  {
+    "name": "iamport.api.key",
+    "type": "java.lang.String",
+    "description": "A description for 'iamport.api.key'"
+  },
+  {
+    "name": "iamport.api.secret",
+    "type": "java.lang.String",
+    "description": "A description for 'iamport.api.secret'"
+  },
+  {
+    "name": "file.upload-dir",
+    "type": "java.lang.String",
+    "description": "A description for 'file.upload-dir'"
+  },
+  {
+    "name": "management.endpoints.web.exposure.include",
+    "type": "java.lang.String",
+    "description": "A description for 'management.endpoints.web.exposure.include'"
+  },
+  {
+    "name": "app.jwt.refresh-token-ttl-days",
+    "type": "java.lang.String",
+    "description": "A description for 'app.jwt.refresh-token-ttl-days'"
+  },
+  {
+    "name": "app.frontend.social-callback",
+    "type": "java.lang.String",
+    "description": "A description for 'app.frontend.social-callback'"
   }
 ]}
