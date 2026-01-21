@@ -69,8 +69,6 @@ public class AdminSubscriptionController {
         return ResponseEntity.ok(updated);
     }
 
-    // ❌ [삭제됨] 토글 기능 제거 (수정 기능으로 대체)
-
     // 삭제
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteSubscription(@PathVariable Long id) {

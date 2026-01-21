@@ -1,5 +1,6 @@
 package com.erp.erp_back.controller.subscription;
 
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.erp.erp_back.dto.subscription.OwnerSubscriptionRequest;
 import com.erp.erp_back.dto.subscription.OwnerSubscriptionResponse;
+import com.erp.erp_back.dto.subscription.SubscriptionResponse;
 import com.erp.erp_back.service.subscription.OwnerSubscriptionService;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -36,13 +38,21 @@ public class OwnerSubscriptionController {
             @AuthenticationPrincipal String ownerIdStr, // ✅ 수정: 토큰에서 ID 받기
             @Valid @RequestBody OwnerSubscriptionRequest request
     ) {
-        // ❌ 기존: Long tempOwnerId = 1L; (삭제)
-        
         // ✅ 수정: 실제 로그인한 ownerId 사용
         Long ownerId = Long.parseLong(ownerIdStr);
         
         OwnerSubscriptionResponse response = ownerSubService.createSubscription(ownerId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * ✅ [신규] 사장님용 구독 상품 목록 조회
+     * GET /owner/subscriptions/products
+     */
+    @GetMapping("/products")
+    public ResponseEntity<List<SubscriptionResponse>> getSubscriptionProducts() {
+        List<SubscriptionResponse> products = ownerSubService.getAllActiveSubscriptions();
+        return ResponseEntity.ok(products);
     }
 
     // [신규] 구독 해지 API
@@ -62,8 +72,6 @@ public class OwnerSubscriptionController {
     public ResponseEntity<OwnerSubscriptionResponse> getCurrentSubscription(
             @AuthenticationPrincipal String ownerIdStr // ✅ 수정: 토큰에서 ID 받기
     ) {
-        // ❌ 기존: Long tempOwnerId = 1L; (삭제)
-
         // ✅ 수정: 실제 로그인한 ownerId 사용
         Long ownerId = Long.parseLong(ownerIdStr);
 

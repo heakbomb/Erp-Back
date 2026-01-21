@@ -1,5 +1,7 @@
 package com.erp.erp_back.repository.subscripition;
 
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -25,4 +27,7 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
             @Param("q") String q,
             Pageable pageable
     );
+
+    // ✅ [신규] 사장님용: 활성화된 구독 상품 리스트 조회
+    List<Subscription> findAllByIsActiveTrue();
 }
