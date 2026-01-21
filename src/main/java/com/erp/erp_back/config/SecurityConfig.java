@@ -34,28 +34,31 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
 
             .authorizeHttpRequests(auth -> auth
+                // ✅ 로그인 없이 접근해야 하는 경로들
                 .requestMatchers(
+                    // 기본 인증/회원가입
                     "/auth/login/**",
                     "/auth/register/**",
                     "/auth/email-verifications/**",
                     "/auth/token/refresh",
                     "/error",
 
-                    // OAuth2 로그인 기본 엔드포인트
+                    // OAuth2 로그인 엔드포인트
                     "/oauth2/**",
                     "/login/oauth2/**",
 
-                    // 프론트 콜백
-                    "/employee/social/callback"
+                    // ✅ 프론트 콜백(토큰 저장 전)
+                    "/employee/social/callback",
+
+                    // ✅ 비밀번호 재설정(컨트롤러 기준 정확 경로)
+                    "/auth/password/reset/request",
+                    "/auth/password/reset/confirm"
                 ).permitAll()
 
                 // 관리자 로그인 경로 허용
                 .requestMatchers("/auth/admin/login").permitAll()
 
-                // ✅ [핵심 수정] 구독 상품 목록 조회(GET)는 인증된 누구나(사장님 포함) 접근 가능하게 허용
-                // 순서 중요: /admin/** 제한보다 먼저 선언해야 적용됩니다.
-                .requestMatchers(HttpMethod.GET, "/admin/subscriptions").authenticated()
-
+                // ✅ 권한별 보호
                 .requestMatchers("/owner/**").hasRole("OWNER")
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/employee/**").hasRole("EMPLOYEE")
