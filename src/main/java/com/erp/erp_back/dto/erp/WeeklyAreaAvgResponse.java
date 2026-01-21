@@ -6,7 +6,6 @@ public record WeeklyAreaAvgResponse(
     Long storeId,
     int year,
     int month,
-    int radiusM,
     int nearStoreTotalCount,
     List<WeeklyAreaAvgPoint> data
 ) {} 

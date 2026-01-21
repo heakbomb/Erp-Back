@@ -29,17 +29,20 @@ import com.erp.erp_back.repository.log.AttendanceQrTokenRepository;
 import com.erp.erp_back.repository.store.BusinessNumberRepository;
 import com.erp.erp_back.repository.store.StoreGpsRepository;
 import com.erp.erp_back.repository.store.StoreRepository;
+import com.erp.erp_back.service.erp.StoreNeighborBuildService;
 
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import com.erp.erp_back.util.KmaGridConverter;
+
 @Service
 @Transactional
 @RequiredArgsConstructor
 public class StoreService {
 
+    private final StoreNeighborBuildService storeNeighborBuildService;
     private final StoreRepository storeRepository;
     private final BusinessNumberRepository businessNumberRepository;
     private final EmployeeAssignmentRepository assignmentRepository;
@@ -164,7 +167,7 @@ public class StoreService {
         gps.setLatitude(request.getLatitude());
         gps.setLongitude(request.getLongitude());
 
-         // ✅ 추가: 위경도 → nx, ny 변환 저장 (로직 영향 없음)
+        // ✅ 추가: 위경도 → nx, ny 변환 저장 (로직 영향 없음)
         KmaGridConverter.Grid grid = KmaGridConverter.toGrid(request.getLatitude(), request.getLongitude());
         gps.setNx(grid.nx());
         gps.setNy(grid.ny());
@@ -172,6 +175,9 @@ public class StoreService {
         // gpsRadiusM이 없으면 기본값 80 설정
         gps.setGpsRadiusM(request.getGpsRadiusM() != null ? request.getGpsRadiusM() : 80);
         storeGpsRepository.save(gps);
+
+        int radiusM = 2000; // 상권 분석 기준 반경
+        storeNeighborBuildService.rebuildForStoreAndAffected(saved.getStoreId(), radiusM);
 
         return storeMapper.toResponse(saved, gps);
     }
@@ -200,6 +206,12 @@ public class StoreService {
                     return newGps;
                 });
 
+        Double oldLat = gps.getLatitude();
+        Double oldLng = gps.getLongitude();
+
+        gps.setLatitude(request.getLatitude());
+        gps.setLongitude(request.getLongitude());
+
         gps.setLatitude(request.getLatitude());
         gps.setLongitude(request.getLongitude());
 
@@ -215,6 +227,15 @@ public class StoreService {
         }
 
         storeGpsRepository.save(gps);
+
+        boolean moved = oldLat == null || oldLng == null ||
+                Math.abs(oldLat - request.getLatitude()) > 1e-7 ||
+                Math.abs(oldLng - request.getLongitude()) > 1e-7;
+
+        if (moved) {
+            int radiusM = 2000;
+            storeNeighborBuildService.rebuildForStoreAndAffected(storeId, radiusM);
+        }
 
         return storeMapper.toResponse(store, gps);
     }
@@ -354,6 +375,7 @@ public class StoreService {
 
         return storeMapper.toResponse(store, gps, assignments);
     }
+
     // 직원 페이지 사업장 위치 정보 조회
     @Transactional(readOnly = true)
     public StoreGpsResponse getStoreGps(Long storeId) {

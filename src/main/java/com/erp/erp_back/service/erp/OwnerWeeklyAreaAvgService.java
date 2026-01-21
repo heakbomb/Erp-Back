@@ -1,6 +1,5 @@
 package com.erp.erp_back.service.erp;
 
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -12,7 +11,7 @@ import org.springframework.stereotype.Service;
 
 import com.erp.erp_back.dto.erp.WeeklyAreaAvgPoint;
 import com.erp.erp_back.dto.erp.WeeklyAreaAvgResponse;
-import com.erp.erp_back.repository.erp.StoreNeighborRepository;
+import com.erp.erp_back.repository.erp.StoreTradeAreaRepository;
 import com.erp.erp_back.repository.erp.WeeklyAreaAvgFromDailyRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -21,24 +20,23 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class OwnerWeeklyAreaAvgService {
 
-    private final StoreNeighborRepository neighborRepo;
     private final WeeklyAreaAvgFromDailyRepository avgRepo;
+    private final StoreTradeAreaRepository tradeAreaRepo;
 
-    public WeeklyAreaAvgResponse getWeeklyAreaAvg(Long storeId, int year, int month, int radiusM) {
+    public WeeklyAreaAvgResponse getWeeklyAreaAvg(Long storeId, int year, int month) {
         int y = Math.max(2000, Math.min(year, 2100));
         int m = Math.max(1, Math.min(month, 12));
-        int r = Math.max(100, Math.min(radiusM, 10000));
 
-        // 1) 반경 내 이웃 매장 총 수(매출 유무 무관)
-        int nearTotal = neighborRepo.findByIdStoreIdAndIdRadiusM(storeId, r).size();
+        // 1) ✅ 같은 구 + 동종 업종 이웃 매장 수
+        int nearTotal = tradeAreaRepo.countGuNeighbors(storeId);
 
         // 2) 해당 월 범위
         LocalDate from = LocalDate.of(y, m, 1);
         LocalDate to = from.plusMonths(1);
 
-        // 3) 주차별 평균
+        // 3) ✅ 주차별 구 평균
         List<WeeklyAreaAvgFromDailyRepository.Row> rows =
-                avgRepo.fetchWeeklyAreaAvg(storeId, r, from, to);
+                avgRepo.fetchWeeklyAreaAvg(storeId, from, to);
 
         Map<Integer, WeeklyAreaAvgPoint> map = new HashMap<>();
         for (var row : rows) {
@@ -56,6 +54,7 @@ public class OwnerWeeklyAreaAvgService {
             data.add(map.getOrDefault(w, new WeeklyAreaAvgPoint(w, BigDecimal.ZERO, 0)));
         }
 
-        return new WeeklyAreaAvgResponse(storeId, y, m, r, nearTotal, data);
+        return new WeeklyAreaAvgResponse(storeId, y, m, nearTotal, data);
     }
 }
+
