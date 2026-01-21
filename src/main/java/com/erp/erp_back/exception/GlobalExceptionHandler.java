@@ -7,7 +7,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.BadCredentialsException; // ✅ 추가
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -30,15 +30,27 @@ public class GlobalExceptionHandler {
     }
 
     // =========================
-    // ✅ 로그인 인증 실패 (401) - B안 핵심
+    // ✅ 로그인 인증 실패 (401)
     // =========================
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorResponse> handleBadCredentials(BadCredentialsException ex) {
-        // 로그인 실패는 "정상적인 실패"라 ERROR로 남기지 않음
         log.warn("Login failed: {}", ex.getMessage());
         return ResponseEntity
                 .status(HttpStatus.UNAUTHORIZED)
                 .body(new ErrorResponse("INVALID_CREDENTIALS", ex.getMessage()));
+    }
+
+    // =========================
+    // ✅ 비밀번호 재설정(Reset) 전용 예외 처리 (stacktrace 출력 X)
+    // - 비밀번호 재설정은 유저 입력/토큰 만료 등 "정상 실패" 케이스가 많아서 ERROR 로그로 남기지 않음
+    // =========================
+    @ExceptionHandler(PasswordResetException.class)
+    public ResponseEntity<ErrorResponse> handlePasswordReset(PasswordResetException ex) {
+        // stacktrace를 찍지 않기 위해 ex를 두 번째 인자로 넘기지 않음
+        log.warn("Password reset rejected: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("PASSWORD_RESET_ERROR", ex.getMessage()));
     }
 
     // =========================
@@ -109,8 +121,7 @@ public class GlobalExceptionHandler {
     // =========================
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
-        // 기존 로직 영향 최소화를 위해 응답은 그대로(BAD_REQUEST)
-        // (원하면 여기 로그를 warn으로 낮추는 것도 권장)
+        // ✅ 기존 로직 유지(팀 영향 최소화)
         log.error("Illegal Argument: ", ex);
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
