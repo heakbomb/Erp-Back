@@ -15,21 +15,22 @@ import com.erp.erp_back.service.ai.AiDataService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-// ✅ 경로 수정: /api 제거
 @RequestMapping("/ai/insights")
 @RequiredArgsConstructor
 public class AiInsightController {
 
     private final AiDataService aiDataService;
 
-    // 호출 URL: GET /ai/insights/{storeId}/forecast
+    // 1. 수요 예측 데이터 (그래프용)
+    // URL: /ai/insights/{storeId}/forecast
     @GetMapping("/{storeId}/forecast")
     public ResponseEntity<List<DemandForecastResponse>> getDemandForecast(@PathVariable Long storeId) {
         List<DemandForecastResponse> response = aiDataService.getWeeklyForecast(storeId);
         return ResponseEntity.ok(response);
     }
 
-    // ✅ [추가] 메뉴 트렌드 분석 API
+    // 2. 메뉴 트렌드 분석 (표용)
+    // URL: /ai/insights/{storeId}/menu-growth
     @GetMapping("/{storeId}/menu-growth")
     public ResponseEntity<List<MenuGrowthResponse>> getMenuGrowth(@PathVariable Long storeId) {
         List<MenuGrowthResponse> response = aiDataService.getMenuGrowthAnalysis(storeId);

@@ -52,16 +52,21 @@ public class AiDataService {
         }
     }
 
+    // ✅ 1. 주간 수요 예측 (DB 데이터 합산)
     public List<DemandForecastResponse> getWeeklyForecast(Long storeId) {
         LocalDate startDate = LocalDate.now().plusDays(1);
         LocalDate endDate = startDate.plusDays(6);
 
+        // DB에서 해당 기간 예측값 조회
         List<DemandForecast> forecasts = demandForecastRepository.findByStoreIdAndTargetDateBetween(storeId, startDate, endDate);
+        
+        // 가격 계산을 위해 메뉴 정보 조회
         List<Long> menuIds = forecasts.stream().map(DemandForecast::getMenuId).distinct().collect(Collectors.toList());
         List<MenuItem> menuItems = menuItemRepository.findAllById(menuIds);
         Map<Long, BigDecimal> priceMap = menuItems.stream()
                 .collect(Collectors.toMap(MenuItem::getMenuId, MenuItem::getPrice));
 
+        // 날짜별 합계 계산
         Map<LocalDate, BigDecimal> dailyTotalSales = new HashMap<>();
         Map<LocalDate, Integer> dailyTotalQty = new HashMap<>();
 
@@ -74,9 +79,11 @@ public class AiDataService {
             dailyTotalQty.merge(date, f.getPredictedQty(), Integer::sum);
         }
 
+        // 결과 리스트 생성
         List<DemandForecastResponse> responseList = new ArrayList<>();
         for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
             BigDecimal totalSales = dailyTotalSales.getOrDefault(date, BigDecimal.ZERO);
+            // 방문객 수는 단순히 판매 수량의 80%로 가정 (추정치)
             int estimatedVisitors = (int) (dailyTotalQty.getOrDefault(date, 0) * 0.8);
 
             responseList.add(DemandForecastResponse.builder()
@@ -89,7 +96,7 @@ public class AiDataService {
         return responseList;
     }
 
-    // ✅ 메뉴 트렌드 분석 (오류 수정됨)
+    // ✅ 2. 메뉴 트렌드 분석 (지난주 vs 다음주 예측 비교)
     public List<MenuGrowthResponse> getMenuGrowthAnalysis(Long storeId) {
         LocalDate today = LocalDate.now();
         LocalDate lastWeekEnd = today.minusDays(1);
@@ -97,7 +104,7 @@ public class AiDataService {
         LocalDate nextWeekStart = today.plusDays(1);
         LocalDate nextWeekEnd = nextWeekStart.plusDays(6);
 
-        // 1. 지난주 판매 데이터
+        // 1. 지난주 판매 데이터 (실제)
         List<SalesMenuDailySummary> pastSales = salesMenuDailySummaryRepository
                 .findByStoreIdAndSummaryDateBetween(storeId, lastWeekStart, lastWeekEnd);
         
@@ -107,7 +114,7 @@ public class AiDataService {
                         Collectors.summingLong(SalesMenuDailySummary::getTotalQuantity)
                 ));
 
-        // 2. 다음주 예측 데이터
+        // 2. 다음주 예측 데이터 (DB)
         List<DemandForecast> forecasts = demandForecastRepository
                 .findByStoreIdAndTargetDateBetween(storeId, nextWeekStart, nextWeekEnd);
 
@@ -117,24 +124,25 @@ public class AiDataService {
                         Collectors.summingLong(df -> (long) df.getPredictedQty())
                 ));
 
-        // ✅ [수정 1] findAllByStoreId -> findByStoreStoreId (Repository에 추가한 메서드 사용)
+        // 3. 매장의 모든 메뉴에 대해 증감률 계산
         List<MenuItem> menuItems = menuItemRepository.findByStoreStoreId(storeId);
-        
         List<MenuGrowthResponse> result = new ArrayList<>();
 
         for (MenuItem menu : menuItems) {
             Long pastQty = pastSalesMap.getOrDefault(menu.getMenuId(), 0L);
             Long nextQty = forecastMap.getOrDefault(menu.getMenuId(), 0L);
 
+            // 판매도 없었고 예측도 없으면 제외
             if (pastQty == 0 && nextQty == 0) continue;
 
             double growthRate = 0.0;
             if (pastQty > 0) {
                 growthRate = ((double) (nextQty - pastQty) / pastQty) * 100.0;
             } else if (nextQty > 0) {
-                growthRate = 100.0;
+                growthRate = 100.0; // 0 -> 양수 (신규 급상승)
             }
 
+            // 추천 로직
             String recommendation = "유지";
             if (growthRate >= 20.0) recommendation = "발주 증량";
             else if (growthRate >= 10.0) recommendation = "소폭 증량";
@@ -143,15 +151,15 @@ public class AiDataService {
 
             result.add(MenuGrowthResponse.builder()
                     .menuId(menu.getMenuId())
-                    // ✅ [수정 2] getName() -> getMenuName() (Entity 필드명 반영)
                     .menuName(menu.getMenuName())
                     .lastWeekSales(pastQty)
                     .nextWeekPrediction(nextQty)
-                    .growthRate(Math.round(growthRate * 10.0) / 10.0)
+                    .growthRate(Math.round(growthRate * 10.0) / 10.0) // 소수점 첫째자리 반올림
                     .recommendation(recommendation)
                     .build());
         }
 
+        // 증감률 높은 순으로 정렬
         result.sort((a, b) -> Double.compare(b.getGrowthRate(), a.getGrowthRate()));
         
         return result;
