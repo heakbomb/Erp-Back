@@ -6,8 +6,9 @@ import com.erp.erp_back.repository.user.OwnerRepository;
 import com.erp.erp_back.entity.user.Owner;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal; // ✅ 추가
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.*; // PutMapping, PathVariable 등 포함됨
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
@@ -23,8 +24,10 @@ public class PaymentMethodController {
 
     // 1. 내 카드 목록 조회
     @GetMapping
-    public ResponseEntity<List<Map<String, Object>>> getMyCards() {
-        Long ownerId = 1L; // ✅ 테스트용 고정 ID (로그인 구현 전까지 유지)
+    public ResponseEntity<List<Map<String, Object>>> getMyCards(
+            @AuthenticationPrincipal String ownerIdStr // ✅ 수정: 로그인 정보 사용
+    ) {
+        Long ownerId = Long.parseLong(ownerIdStr); // String -> Long 변환
         
         List<Map<String, Object>> cards = paymentMethodRepository.findAllByOwner_OwnerId(ownerId)
             .stream()
@@ -41,8 +44,11 @@ public class PaymentMethodController {
     // 2. 카드 추가 (빌링키 저장)
     @PostMapping
     @Transactional
-    public ResponseEntity<String> addCard(@RequestBody Map<String, String> request) {
-        Long ownerId = 1L; // ✅ 테스트용 고정 ID
+    public ResponseEntity<String> addCard(
+            @AuthenticationPrincipal String ownerIdStr, // ✅ 수정: 로그인 정보 사용
+            @RequestBody Map<String, String> request
+    ) {
+        Long ownerId = Long.parseLong(ownerIdStr);
         String billingKey = request.get("customerUid");
         String cardName = request.getOrDefault("cardName", "새 카드");
         
@@ -62,14 +68,15 @@ public class PaymentMethodController {
         return ResponseEntity.ok("카드가 등록되었습니다.");
     }
 
-    // ✅ 3. 카드 이름(별칭) 수정
+    // 3. 카드 이름(별칭) 수정
     @PutMapping("/{paymentId}")
     @Transactional
     public ResponseEntity<String> updateCardName(
-        @PathVariable Long paymentId, // URL의 {paymentId}를 받음
+        @AuthenticationPrincipal String ownerIdStr, // ✅ 수정: 로그인 정보 사용
+        @PathVariable Long paymentId,
         @RequestBody Map<String, String> request
     ) {
-        Long ownerId = 1L; // ✅ 테스트용 고정 ID (보안 어노테이션 제거함)
+        Long ownerId = Long.parseLong(ownerIdStr);
         String newName = request.get("cardName");
 
         PaymentMethod pm = paymentMethodRepository.findById(paymentId)
@@ -85,13 +92,15 @@ public class PaymentMethodController {
 
         return ResponseEntity.ok("카드 이름이 변경되었습니다.");
     }
-    // ✅ 4. 카드 삭제
+
+    // 4. 카드 삭제
     @DeleteMapping("/{paymentId}")
     @Transactional
     public ResponseEntity<String> deleteCard(
+        @AuthenticationPrincipal String ownerIdStr, // ✅ 수정: 로그인 정보 사용
         @PathVariable Long paymentId
     ) {
-        Long ownerId = 1L; // 테스트용 고정 ID
+        Long ownerId = Long.parseLong(ownerIdStr);
 
         PaymentMethod pm = paymentMethodRepository.findById(paymentId)
             .orElseThrow(() -> new RuntimeException("Card not found"));

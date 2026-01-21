@@ -1,11 +1,16 @@
 package com.erp.erp_back.controller.admin;
 
+import java.util.Map;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -34,5 +39,20 @@ public class AdminOwnerSubscriptionController {
     ) {
         Page<AdminOwnerSubscriptionResponse> page = ownerSubService.getAdminSubscriptions(q, pageable);
         return ResponseEntity.ok(page);
+    }
+
+    /**
+     * (Admin) 구독 상태 변경 API
+     * PUT /admin/owner-subscriptions/{id}/status
+     * Body: { "active": true }
+     */
+    @PutMapping("/{id}/status")
+    public ResponseEntity<Void> updateSubscriptionStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, Boolean> body
+    ) {
+        boolean isActive = body.getOrDefault("active", true);
+        ownerSubService.adminUpdateSubscriptionStatus(id, isActive);
+        return ResponseEntity.ok().build();
     }
 }

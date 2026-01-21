@@ -1,6 +1,8 @@
 package com.erp.erp_back.service.subscription;
 
 import java.time.LocalDate;
+import java.util.List; // ✅ 추가
+import java.util.stream.Collectors; // ✅ 추가
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -10,11 +12,13 @@ import org.springframework.transaction.annotation.Transactional;
 import com.erp.erp_back.dto.subscription.AdminOwnerSubscriptionResponse;
 import com.erp.erp_back.dto.subscription.OwnerSubscriptionRequest;
 import com.erp.erp_back.dto.subscription.OwnerSubscriptionResponse;
+import com.erp.erp_back.dto.subscription.SubscriptionResponse; // ✅ 추가
 import com.erp.erp_back.entity.subscripition.OwnerSubscription;
 import com.erp.erp_back.entity.subscripition.Subscription;
 import com.erp.erp_back.entity.user.Owner;
 import com.erp.erp_back.entity.user.PaymentMethod;
 import com.erp.erp_back.mapper.OwnerSubscriptionMapper;
+import com.erp.erp_back.mapper.SubscriptionMapper; // ✅ 추가
 import com.erp.erp_back.repository.subscripition.OwnerSubscriptionRepository;
 import com.erp.erp_back.repository.subscripition.SubscriptionRepository;
 import com.erp.erp_back.repository.user.OwnerRepository;
@@ -34,7 +38,10 @@ public class OwnerSubscriptionService {
     private final OwnerRepository ownerRepository;
     private final SubscriptionRepository subscriptionRepository;
     private final PaymentMethodRepository paymentMethodRepository;
-    private final OwnerSubscriptionMapper subscriptionMapper;
+    
+    // ✅ 매퍼 2개를 명확히 구분하여 주입
+    private final OwnerSubscriptionMapper ownerSubscriptionMapper; // (기존 subscriptionMapper -> 이름 변경)
+    private final SubscriptionMapper subscriptionMapper;           // (상품용 매퍼 추가)
 
     /**
      * 1. (Owner) 구독 신청 및 결제 수단 처리
@@ -82,13 +89,12 @@ public class OwnerSubscriptionService {
         }
 
         OwnerSubscription saved = ownerSubRepo.save(ownerSub);
-        return subscriptionMapper.toResponse(saved);
+        // ✅ OwnerSubscriptionMapper 사용
+        return ownerSubscriptionMapper.toResponse(saved);
     }
 
     /**
-     * 2. [신규] 구독 해지 (자동 결제 예약 취소)
-     * - 만료일은 그대로 두고, canceled 플래그만 true로 변경
-     * - 남은 기간 동안은 서비스 이용 가능
+     * 2. 구독 해지 (자동 결제 예약 취소)
      */
     public void cancelSubscription(Long ownerSubId, String reason) {
         OwnerSubscription ownerSub = ownerSubRepo.findById(ownerSubId)
@@ -108,8 +114,7 @@ public class OwnerSubscriptionService {
     }
 
     /**
-     * 3. [신규] 자동 갱신 (스케줄러가 호출)
-     * - 만료된 구독을 찾아 결제 시도 후 연장
+     * 3. 자동 갱신 (스케줄러가 호출)
      */
     public void renewSubscription(OwnerSubscription ownerSub) {
         Owner owner = ownerSub.getOwner();
@@ -183,7 +188,8 @@ public class OwnerSubscriptionService {
         OwnerSubscription ownerSub = ownerSubRepo.findFirstByOwner_OwnerIdOrderByExpiryDateDesc(ownerId)
                 .orElseThrow(() -> new EntityNotFoundException("현재 이용 중인 구독 정보가 없습니다."));
 
-        return subscriptionMapper.toResponse(ownerSub);
+        // ✅ OwnerSubscriptionMapper 사용
+        return ownerSubscriptionMapper.toResponse(ownerSub);
     }
 
     /**
@@ -193,6 +199,48 @@ public class OwnerSubscriptionService {
     public Page<AdminOwnerSubscriptionResponse> getAdminSubscriptions(String q, Pageable pageable) {
         String effectiveQuery = (q == null) ? "" : q.trim();
         Page<OwnerSubscription> page = ownerSubRepo.findAdminOwnerSubscriptions(effectiveQuery, pageable);
-        return page.map(subscriptionMapper::toAdminResponse);
+        // ✅ OwnerSubscriptionMapper 사용
+        return page.map(ownerSubscriptionMapper::toAdminResponse);
+    }
+
+    /**
+     * 7. (Admin) 구독 상태 강제 변경 (ACTIVE / INACTIVE)
+     */
+    public void adminUpdateSubscriptionStatus(Long ownerSubId, boolean isActive) {
+        OwnerSubscription ownerSub = ownerSubRepo.findById(ownerSubId)
+                .orElseThrow(() -> new EntityNotFoundException("구독 정보를 찾을 수 없습니다."));
+
+        if (isActive) {
+            // [ACTIVE로 변경]
+            ownerSub.setCanceled(false); // 해지 취소
+            ownerSub.setCancelReason(null);
+
+            // 만료일이 이미 지났다면, 오늘부터 1달 뒤로 연장하여 '활성' 상태로 만듦
+            if (ownerSub.getExpiryDate().isBefore(LocalDate.now())) {
+                ownerSub.setStartDate(LocalDate.now());
+                ownerSub.setExpiryDate(LocalDate.now().plusMonths(1));
+            }
+        } else {
+            // [INACTIVE로 변경]
+            ownerSub.setCanceled(true);
+            ownerSub.setCancelReason("관리자에 의한 직권 해지");
+        }
+        // Dirty checking에 의해 자동 저장되지만 명시적 호출
+        ownerSubRepo.save(ownerSub);
+    }
+
+    /**
+     * 8. [신규] (Owner) 구독 가능한 상품 목록 조회
+     * - 사장님이 구독 신청 화면에서 상품 리스트를 볼 때 사용
+     */
+    @Transactional(readOnly = true)
+    public List<SubscriptionResponse> getAllActiveSubscriptions() {
+        // ✅ Repository에서 활성 상품 조회 (메소드 추가 필요)
+        List<Subscription> subscriptions = subscriptionRepository.findAllByIsActiveTrue();
+        
+        // ✅ SubscriptionMapper를 사용하여 DTO로 변환
+        return subscriptions.stream()
+                .map(subscriptionMapper::toResponse)
+                .collect(Collectors.toList());
     }
 }

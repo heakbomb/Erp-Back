@@ -37,8 +37,10 @@ public final class ErrorCodes {
 
     public static final String UNSUPPORTED_PERIOD = "Unsupported period";
 
-    // existing code...
     public static final String DUPLICATE_DATA = "DUPLICATE_DATA";
     public static final String INVALID_INPUT = "INVALID_INPUT";
     public static final String INTERNAL_SERVER_ERROR = "INTERNAL_SERVER_ERROR";
+
+    public static final String USER_NOT_FOUND = "USER_NOT_FOUND";
+    public static final String INVALID_PASSWORD = "INVALID_PASSWORD";
 }
