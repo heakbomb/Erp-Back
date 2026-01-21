@@ -43,4 +43,9 @@ public final class ErrorCodes {
 
     public static final String USER_NOT_FOUND = "USER_NOT_FOUND";
     public static final String INVALID_PASSWORD = "INVALID_PASSWORD";
+
+    public static final String ML_FEATURE_NOT_READY = "ML_FEATURE_NOT_READY";
+    public static final String ML_PREDICT_BAD_REQUEST = "ML_PREDICT_BAD_REQUEST";
+    public static final String ML_PREDICT_FAILED = "ML_PREDICT_FAILED";
+
 }
