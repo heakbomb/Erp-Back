@@ -30,7 +30,9 @@ public final class MenuCategoryCatalog {
         korean.put("찜/조림", setOf("갈비찜", "닭볶음탕", "김치찜", "고등어조림", "갈치조림", "코다리찜"));
         korean.put("전/부침", setOf("파전", "해물파전", "김치전", "감자전", "부추전", "모둠전"));
         korean.put("분식/간편식", setOf("떡볶이", "순대", "김밥", "만두", "튀김"));
+        korean.put("고기/구이", setOf("삼겹살", "목살", "항정살", "돼지갈비", "소갈비", "등심", "차돌박이", "육회", "대패삼겹살"));
         korean.put("사이드", setOf("공기밥", "사리추가", "계란말이", "잡채", "두부김치"));
+        korean.put("주류/음료", setOf("소주", "맥주", "음료", "막걸리", "청하"));
         root.put(Industry.KOREAN, Collections.unmodifiableMap(korean));
 
         // ===== 치킨 =====
@@ -42,7 +44,8 @@ public final class MenuCategoryCatalog {
         chicken.put("오븐/구이", setOf("오븐구이", "바비큐", "숯불치킨", "로스트치킨"));
         chicken.put("부분육", setOf("윙", "봉", "윙봉세트", "닭다리"));
         chicken.put("세트", setOf("치킨+감튀", "치킨+떡볶이", "1인세트", "가족세트"));
-        chicken.put("사이드", setOf("감자튀김", "치즈볼", "치킨무", "치즈스틱", "오징어링"));
+        chicken.put("사이드", setOf("감자튀김", "치즈볼", "치킨무", "치즈스틱", "오징어링")); 
+        chicken.put("주류/음료", setOf("소주", "맥주", "막걸리", "음료", "청하", "하이볼"));
         root.put(Industry.CHICKEN, Collections.unmodifiableMap(chicken));
 
         CATALOG = Collections.unmodifiableMap(root);

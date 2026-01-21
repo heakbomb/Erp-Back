@@ -44,7 +44,7 @@ public class InquiryService {
             store = storeRepository.findById(request.getStoreId())
                     .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사업장입니다."));
 
-            // (선택) 본인 사업장이 맞는지 검증 로직 추가 가능
+            // (선택) 본인 사업장이 맞는지 검증
             if (!store.getBusinessNumber().getOwner().getOwnerId().equals(ownerId)) {
                 throw new IllegalArgumentException("본인의 사업장이 아닙니다.");
             }
@@ -71,7 +71,7 @@ public class InquiryService {
             throw new IllegalArgumentException("본인의 문의글만 삭제할 수 있습니다.");
         }
 
-        // 2. 답변이 달린 상태면 삭제 불가 (선택 사항 - 정책에 따라 다름)
+        // 2. 답변이 달린 상태면 삭제 불가 (선택 사항)
         if (inquiry.getStatus() == InquiryStatus.RESPONDED) {
             throw new IllegalArgumentException("이미 답변이 등록된 문의는 삭제할 수 없습니다.");
         }
@@ -80,8 +80,9 @@ public class InquiryService {
     }
 
     // [관리자] 전체 문의 조회 (상태, 카테고리 필터링)
+    // Controller에서 파라미터가 없으면 status, category에 null이 들어옵니다.
+    // findAllByFilters 내부 쿼리에서 null일 경우 조건을 무시하고 전체를 가져오도록 처리되어 있습니다.
     public Page<InquiryResponseDto> getAllInquiries(InquiryStatus status, InquiryCategory category, Pageable pageable) {
-        // Repository의 통합 메서드 호출
         return inquiryRepository.findAllByFilters(status, category, pageable)
                 .map(inquiryMapper::toResponse);
     }

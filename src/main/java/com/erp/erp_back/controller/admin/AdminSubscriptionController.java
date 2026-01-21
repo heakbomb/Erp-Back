@@ -33,10 +33,7 @@ public class AdminSubscriptionController {
 
     private final SubscriptionService subscriptionService;
 
-    /**
-     * (Admin) 구독 상품 목록 조회 (페이징, 검색, 필터)
-     * GET /admin/subscriptions?status=ACTIVE&q=프리미엄&page=0&size=10
-     */
+    // 목록 조회
     @GetMapping
     public ResponseEntity<Page<SubscriptionResponse>> getSubscriptions(
             @RequestParam(name = "status", required = false, defaultValue = "ALL") String status,
@@ -47,19 +44,13 @@ public class AdminSubscriptionController {
         return ResponseEntity.ok(subPage);
     }
 
-    /**
-     * (Admin) 구독 상품 단건 조회
-     * GET /admin/subscriptions/{id}
-     */
+    // 단건 조회
     @GetMapping("/{id}")
     public ResponseEntity<SubscriptionResponse> getSubscriptionById(@PathVariable Long id) {
         return ResponseEntity.ok(subscriptionService.getSubscriptionById(id));
     }
 
-    /**
-     * (Admin) 구독 상품 생성
-     * POST /admin/subscriptions
-     */
+    // 생성
     @PostMapping
     public ResponseEntity<SubscriptionResponse> createSubscription(
             @Valid @RequestBody SubscriptionRequest request
@@ -68,10 +59,7 @@ public class AdminSubscriptionController {
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
-    /**
-     * (Admin) 구독 상품 수정
-     * PUT /admin/subscriptions/{id}
-     */
+    // 수정 (전체 정보 + 상태 변경 포함)
     @PutMapping("/{id}")
     public ResponseEntity<SubscriptionResponse> updateSubscription(
             @PathVariable Long id,
@@ -81,17 +69,14 @@ public class AdminSubscriptionController {
         return ResponseEntity.ok(updated);
     }
 
-    /**
-     * (Admin) 구독 상품 삭제
-     * DELETE /admin/subscriptions/{id}
-     */
+    // 삭제
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteSubscription(@PathVariable Long id) {
         subscriptionService.deleteSubscription(id);
         return ResponseEntity.noContent().build();
     }
 
-    // --- (예외 핸들러) ---
+    // --- 예외 핸들러 ---
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<String> handleNotFound(EntityNotFoundException e) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
