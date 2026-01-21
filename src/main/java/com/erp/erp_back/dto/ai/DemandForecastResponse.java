@@ -16,6 +16,6 @@ public class DemandForecastResponse {
     private Long forecastId;
     private Long storeId;
     private LocalDate forecastDate; 
-    private BigDecimal predictedSalesMax; 
-    private Integer predictedVisitors;
+    private BigDecimal predictedSalesMax; // 예상 매출 (메뉴별 합산)
+    private Integer predictedVisitors;    // 예상 방문객 (수량 기반 추정)
 }

@@ -36,7 +36,7 @@ public class DemandForecast {
     @Column(name = "forecast_date", nullable = false)
     private LocalDate forecastDate;
 
-    // 실제 판매량 (검증용, 나중에 채워짐)
+    // 실제 판매량 (검증용, 추후 업데이트)
     @Column(name = "actual_qty")
     private Integer actualQty;
 
