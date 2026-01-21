@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.erp.erp_back.dto.erp.MenuAnalyticsResponse;
 import com.erp.erp_back.dto.erp.MonthlySalesReportResponse;
 import com.erp.erp_back.dto.erp.PosOrderRequest;
 import com.erp.erp_back.dto.erp.PosOrderResponse;
@@ -115,12 +116,19 @@ public class SalesController {
         return salesReportService.getMonthlyReport(storeId, year, month);
     }
 
-     @GetMapping("/weekly-area-avg")
+    @GetMapping("/weekly-area-avg")
     public ResponseEntity<WeeklyAreaAvgResponse> weeklyAreaAvg(
             @RequestParam Long storeId,
             @RequestParam int year,
-            @RequestParam int month
-    ) {
+            @RequestParam int month) {
         return ResponseEntity.ok(weeklyService.getWeeklyAreaAvg(storeId, year, month));
+    }
+
+    @GetMapping("/menu-analytics")
+    public MenuAnalyticsResponse menuAnalytics(
+            @RequestParam Long storeId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return salesStatsService.getMenuAnalytics(storeId, from, to);
     }
 }
