@@ -17,6 +17,6 @@ import lombok.NoArgsConstructor;
 public class MonthlySalesReportResponse {
 
     private MonthlySalesSummaryResponse summary;            // 지난달/이번달/증감액
-    private List<TopMenuShareResponse> topMenus;            // 인기 메뉴 비율
+    private List<TopMenuStatsResponse> topMenus;            // 인기 메뉴 비율
     private List<WeeklySalesPointResponse> weeklySales;     // 주간 매출 그래프 + 표
 }
