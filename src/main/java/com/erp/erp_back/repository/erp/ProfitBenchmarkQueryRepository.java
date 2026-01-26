@@ -1,6 +1,5 @@
 package com.erp.erp_back.repository.erp;
 
-
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Repository;
@@ -14,6 +13,30 @@ public class ProfitBenchmarkQueryRepository {
 
     @PersistenceContext
     private EntityManager em;
+
+    /** ✅ 벤치마크 집계용: (storeId, sigungu, industry) 한 번에 가져오기 */
+    public List<StoreScopeRow> findStoreScopes() {
+        String sql = """
+            SELECT
+                s.store_id AS storeId,
+                sta.sigungu_cd_nm AS sigunguCdNm,
+                s.industry AS industry
+            FROM store s
+            JOIN store_trade_area sta ON sta.store_id = s.store_id
+            WHERE s.status = 'APPROVED'
+        """;
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> rows = em.createNativeQuery(sql).getResultList();
+
+        return rows.stream()
+                .map(r -> new StoreScopeRow(
+                        ((Number) r[0]).longValue(),
+                        (String) r[1],
+                        (String) r[2]
+                ))
+                .toList();
+    }
 
     /** store_trade_area에서 구 이름 */
     public String findSigunguCdNm(Long storeId) {
@@ -64,7 +87,7 @@ public class ProfitBenchmarkQueryRepository {
         return new BigDecimal(String.valueOf(v));
     }
 
-  
+    /** 월 판매량 기준 top sub_category_name */
     public String findTopSubCategoryByQty(Long storeId, LocalDate from, LocalDate toExclusive) {
         String sql = """
             SELECT mi.sub_category_name
@@ -87,4 +110,7 @@ public class ProfitBenchmarkQueryRepository {
 
         return rows.isEmpty() ? null : rows.get(0);
     }
+
+    /** ✅ 내부 DTO */
+    public record StoreScopeRow(Long storeId, String sigunguCdNm, String industry) {}
 }
