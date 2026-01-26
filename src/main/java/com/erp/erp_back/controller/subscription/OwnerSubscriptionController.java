@@ -5,7 +5,7 @@ import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal; // ✅ 추가
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import com.erp.erp_back.dto.subscription.OwnerSubscriptionRequest;
 import com.erp.erp_back.dto.subscription.OwnerSubscriptionResponse;
@@ -32,30 +34,26 @@ public class OwnerSubscriptionController {
 
     private final OwnerSubscriptionService ownerSubService;
 
-    // 구독 신청 API
+    // 1. 구독 신청 API
     @PostMapping
     public ResponseEntity<OwnerSubscriptionResponse> createSubscription(
-            @AuthenticationPrincipal String ownerIdStr, // ✅ 수정: 토큰에서 ID 받기
+            @AuthenticationPrincipal String ownerIdStr, // 토큰에서 ID 받기
             @Valid @RequestBody OwnerSubscriptionRequest request
     ) {
-        // ✅ 수정: 실제 로그인한 ownerId 사용
         Long ownerId = Long.parseLong(ownerIdStr);
         
         OwnerSubscriptionResponse response = ownerSubService.createSubscription(ownerId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    /**
-     * ✅ [신규] 사장님용 구독 상품 목록 조회
-     * GET /owner/subscriptions/products
-     */
+    // 2. 사장님용 구독 상품 목록 조회
     @GetMapping("/products")
     public ResponseEntity<List<SubscriptionResponse>> getSubscriptionProducts() {
         List<SubscriptionResponse> products = ownerSubService.getAllActiveSubscriptions();
         return ResponseEntity.ok(products);
     }
 
-    // [신규] 구독 해지 API
+    // 3. 구독 해지 API
     @PostMapping("/{ownerSubId}/cancel")
     public ResponseEntity<String> cancelSubscription(
             @PathVariable Long ownerSubId,
@@ -67,12 +65,41 @@ public class OwnerSubscriptionController {
         return ResponseEntity.ok("구독이 성공적으로 해지되었습니다. (다음 결제일부터 청구되지 않습니다.)");
     }
 
-    // (Owner) 현재 구독 상태 조회
+    // 4. [신규] 구독 해지 취소 API (500 에러 수정됨)
+    @PostMapping("/{ownerSubId}/undo-cancel")
+    public ResponseEntity<Void> undoCancelSubscription(
+            Authentication authentication, // 변경: 안전하게 Authentication 전체를 받음
+            @PathVariable Long ownerSubId) {
+        
+        Object principal = authentication.getPrincipal();
+        Long ownerId;
+
+        // Principal 타입에 따라 안전하게 ID 추출
+        if (principal instanceof UserDetails) {
+            // CustomUserDetails 객체인 경우 (getUsername()이 ID인 경우)
+            ownerId = Long.parseLong(((UserDetails) principal).getUsername());
+        } else if (principal instanceof String) {
+            // String ID가 바로 들어오는 경우
+            ownerId = Long.parseLong((String) principal);
+        } else {
+            // 그 외의 경우 (toString으로 시도)
+            try {
+                ownerId = Long.parseLong(principal.toString());
+            } catch (NumberFormatException e) {
+                throw new IllegalStateException("지원하지 않는 사용자 인증 타입입니다: " + principal.getClass());
+            }
+        }
+        
+        ownerSubService.undoCancellation(ownerId, ownerSubId);
+        
+        return ResponseEntity.ok().build();
+    }
+
+    // 5. (Owner) 현재 구독 상태 조회
     @GetMapping("/current")
     public ResponseEntity<OwnerSubscriptionResponse> getCurrentSubscription(
-            @AuthenticationPrincipal String ownerIdStr // ✅ 수정: 토큰에서 ID 받기
+            @AuthenticationPrincipal String ownerIdStr
     ) {
-        // ✅ 수정: 실제 로그인한 ownerId 사용
         Long ownerId = Long.parseLong(ownerIdStr);
 
         OwnerSubscriptionResponse response = ownerSubService.getCurrentSubscriptionByOwnerId(ownerId);
@@ -90,11 +117,8 @@ public class OwnerSubscriptionController {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
     }
 
-    // ✅ 이 핸들러가 400 에러를 반환하고 있습니다.
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<String> handleBadReq(IllegalArgumentException e) {
-        // 브라우저 개발자 도구(F12) -> Network 탭 -> Response를 보면
-        // "이미 구독 중인 내역이 있습니다" 같은 구체적인 메시지가 있을 것입니다.
         return ResponseEntity.badRequest().body(e.getMessage());
     }
 }
